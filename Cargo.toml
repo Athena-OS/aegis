@@ -1,0 +1,19 @@
+[package]
+name = "aegis-installer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "aegis-installer"
+path = "src/main.rs"
+
+[dependencies]
+clap = {version = "4.4.2", features = ["derive"] }
+serde = { version = "1.0.188", features = ["derive"] }
+toml = "0.7.6"
+log = "0.4.20"
+flexi_logger = {version = "0.22.3", features = ["colors"] }
+lazy_static = "1.4.0"
+human-panic = "1.2.0"
