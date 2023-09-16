@@ -1,1 +1,4 @@
-/target
+/back-end/target
+/GUI/target
+/TUI/target
+

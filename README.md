@@ -1,2 +1,2 @@
 # aegis
-Aegis - secure, rust-based installer back-end for Athena OS
+Aegis is an installer back-end for AthenaOS.
