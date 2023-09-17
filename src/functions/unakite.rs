@@ -135,7 +135,7 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
             vec![
                 String::from("-i"),
                 String::from("-e"),
-                String::from("s/crystal/unakite/g"),
+                String::from("s/athena/unakite/g"),
                 String::from("/mnt/etc/os-release"),
             ],
         ),
@@ -147,7 +147,7 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
             vec![
                 String::from("-i"),
                 String::from("-e"),
-                String::from("s/Crystal/Unakite/g"),
+                String::from("s/Athena/Unakite/g"),
                 String::from("/mnt/etc/os-release"),
             ],
         ),
