@@ -187,7 +187,7 @@ fn partition_no_efi(device: &Path, unakite: bool) {
                     String::from("100%"),
                 ],
             ),
-            "create btrfs Crystal root partition",
+            "create btrfs Athena root partition",
         );
     } else {
         exec_eval(
@@ -265,7 +265,7 @@ fn partition_with_efi(device: &Path, unakite: bool) {
                     String::from("100%"),
                 ],
             ),
-            "create btrfs Crystal root partition",
+            "create btrfs Athena root partition",
         );
     } else {
         exec_eval(

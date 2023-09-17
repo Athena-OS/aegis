@@ -9,7 +9,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
         "grub",
         "efibootmgr",
         "grub-btrfs",
-        "crystal-grub-theme",
+        "athena-grub-theme",
     ]);
     let efidir = std::path::Path::new("/mnt").join(efidir);
     let efi_str = efidir.to_str().unwrap();
@@ -42,9 +42,9 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
     files_eval(
         files::append_file(
             "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/usr/share/grub/themes/crystal/theme.txt\"",
+            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
         ),
-        "enable crystal grub theme",
+        "enable athena grub theme",
     );
     exec_eval(
         exec_chroot(
@@ -163,11 +163,11 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
         exec(
             "cp",
             vec![
-                String::from("/tmp/jade.json"),
+                String::from("/tmp/aegis.json"),
                 String::from("/mnt/etc/installSettings.json"),
             ],
         ),
-        "Copy jade.json to /etc/installSettings.json in unakite",
+        "Copy aegis.json to /etc/installSettings.json in unakite",
     );
     remount(root, oldroot, efi, efidir, bootdev, false);
     exec_eval(
@@ -175,6 +175,6 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
             "grub-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
         ),
-        "Recreate grub.cfg in crystal",
+        "Recreate grub.cfg in athena",
     );
 }

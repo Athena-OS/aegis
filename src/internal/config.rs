@@ -80,7 +80,7 @@ pub fn read_config(configpath: PathBuf) {
             );
         }
     }
-    let config: std::result::Result<Config, toml::de::Error> =
+    /*let config: std::result::Result<Config, toml::de::Error> =
         toml::from_str(&data.unwrap());
     match &config {
         Ok(_) => {
@@ -89,7 +89,19 @@ pub fn read_config(configpath: PathBuf) {
         Err(e) => {
             crash(format!("Parse config file {configpath:?}  ERROR: {}", e), 1);
         }
+    }*/
+    /////// USED ONLY FOR TESTING PURPOSES
+    let config: std::result::Result<Config, serde_json::Error> =
+        serde_json::from_str(&data.unwrap());
+    match &config {
+        Ok(_) => {
+            log::debug!("[ \x1b[2;1;32mOK\x1b[0m ] Parse config file {configpath:?}",);
+        }
+        Err(e) => {
+            crash(format!("Parse config file {configpath:?}  ERROR: {}", e), 1);
+        }
     }
+    //////
     let config: Config = config.unwrap();
     log::info!("Block device to use : /dev/{}", config.partition.device);
     log::info!("Partitioning mode : {:?}", config.partition.mode);

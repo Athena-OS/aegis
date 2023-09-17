@@ -67,7 +67,7 @@ pub enum Command {
     #[command(name = "flatpak")]
     Flatpak,
 
-    /// Read Jade installation config
+    /// Read Aegis installation config
     #[command(name = "config")]
     Config {
         /// The config file to read
@@ -85,7 +85,7 @@ pub enum Command {
 
 #[derive(Debug, Args)]
 pub struct PartitionArgs {
-    /// If jade should automatically partition (mode = auto)
+    /// If aegis should automatically partition (mode = auto)
     /// or the user manually partitioned it (mode = manual)
     #[arg(value_enum)]
     pub mode: PartitionMode,

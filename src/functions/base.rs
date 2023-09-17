@@ -14,6 +14,10 @@ pub fn install_base_packages(kernel: String) {
             "linux-lts" => "linux-lts",
             "linux-zen" => "linux-zen",
             "linux-hardened" => "linux-hardened",
+            "linux-rt" => "linux-rt",
+            "linux-rt-lts" => "linux-rt-lts",
+            "linux-lqx" => "linux-lqx",
+            "linux-xanmod" => "linux-xanmod",
             _ => {
                 warn!("Unknown kernel: {}, using default instead", kernel);
                 "linux"
@@ -35,35 +39,154 @@ pub fn install_base_packages(kernel: String) {
         "sudo",
         "curl",
         "archlinux-keyring",
-        // Extra goodies
-        "neofetch",
-        "btrfs-progs",
-        "which",
-        "base-devel",
+        // Extra Base Arch
+        "accountsservice",
+        "alsa-utils",
+        "arch-install-scripts",
+        "broadcom-wl-dkms",
+        "dhcpcd",
+        "dialog",
+        "dosfstools",
+        "edk2-shell",
+        "inetutils",
+        "irqbalance",
+        "lvm2",
+        "memtest86+",
+        "mesa",
+        "mesa-utils",
+        "mkinitcpio-nfs-utils",
+        "mkinitcpio-openswap",
+        "most",
+        "mtools",
+        "nbd",
+        "net-tools",
+        "netctl",
+        "nfs-utils",
+        "nohang",
+        "nss-mdns",
+        "ntfsprogs",
+        "ntp",
+        "pavucontrol",
+        "profile-sync-daemon",
+        "pv",
+        "rsync",
+        "rtl8821cu-morrownr-dkms-git",
+        "sof-firmware",
+        "squashfs-tools",
+        "syslinux",
+        "timelineproject-hg",
+        "usbutils",
+        "wireless_tools",
+        "wpa_supplicant",
+        "xfsprogs",
         // Fonts
         "noto-fonts",
         "noto-fonts-emoji",
         "noto-fonts-cjk",
-        "noto-fonts-extra",
-        "ttf-nerd-fonts-symbols-common",
-        "vazirmatn-fonts",
         // Common packages for all desktops
-        "xterm",
         "pipewire",
         "pipewire-pulse",
         "pipewire-alsa",
         "pipewire-jack",
         "wireplumber",
-        "power-profiles-daemon",
-        "cups",
-        "cups-pdf",
-        "bluez",
-        "bluez-cups",
         "ntfs-3g",
+        "vi",
+        "eza",
+        "pocl", // Hashcat dependency
+        "ananicy",
+        "armcord-git",
+        "asciinema",
         "bash-completion",
-        "zsh-completions",
-        "ttf-liberation",
-        "dnsmasq",
+        "bashtop",
+        "bat",
+        "bc",
+        "blesh-git",
+        "bless",
+        "chatgpt-desktop-bin",
+        "cmatrix",
+        "cowsay",
+        "cron",
+        "cyberchef-electron",
+        "downgrade",
+        "edex-ui-bin",
+        "eog",
+        "espeakup",
+        "figlet",
+        "figlet-fonts",
+        "file-roller",
+        "fortune-mod",
+        "git",
+        "gparted",
+        "grub-customizer",
+        "gtk-engine-murrine",
+        "gvfs-gphoto2",
+        "gvfs-mtp",
+        "hexedit",
+        //"hw-probe, //HW probing
+        "imagemagick",
+        "jdk-openjdk",
+        "jq",
+        "lib32-glibc",
+        "lolcat",
+        "lsd",
+        "mtpfs",
+        "nano-syntax-highlighting",
+        "nautilus",
+        "ncdu",
+        "networkmanager-openvpn",
+        "nyancat",
+        "octopi",
+        "onionshare",
+        "openbsd-netcat",
+        "openvpn",
+        "orca",
+        "p7zip",
+        "paru",
+        "pfetch",
+        "polkit",
+        "python-pywhat",
+        "reflector",
+        "sl",
+        //"smartmontools", //hw-probe deps
+        "snap-pac",
+        "snap-pac-grub",
+        "snapper-support",
+        "superbfetch-git",
+        "textart",
+        "tidy",
+        "tk",
+        "toilet-fonts",
+        "tor-browser",
+        "tree",
+        "ufw",
+        "unzip",
+        "vnstat",
+        "wget",
+        "which",
+        "xclip",
+        "xcp",
+        "xmlstarlet",
+        "zoxide",
+        // Repositories
+        "athena-keyring",
+        "athena-mirrorlist",
+        "blackarch-keyring",
+        "blackarch-mirrorlist",
+        "chaotic-keyring",
+        "chaotic-mirrorlist",
+        // Athena
+        "athena-cyber-hub",
+        "athena-neofetch-config",
+        "athena-nvchad",
+        "athena-powershell-config",
+        "athena-system-config",
+        "athena-theme-tweak",
+        "athena-tmux-config",
+        "athena-vim-config",
+        "athena-vscodium-themes",
+        "athena-welcome",
+        "htb-toolkit",
+        "nist-feed",
     ]);
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
 
@@ -75,13 +198,13 @@ pub fn install_base_packages(kernel: String) {
         "Enable bluetooth",
     );
 
-    exec_eval(
+    /*exec_eval(
         exec_chroot(
             "systemctl",
             vec![String::from("enable"), String::from("cups")],
         ),
         "Enable CUPS",
-    );
+    );*/
 }
 
 pub fn genfstab() {
@@ -134,9 +257,9 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
     files_eval(
         append_file(
             "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/usr/share/grub/themes/crystal/theme.txt\"",
+            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
         ),
-        "enable crystal grub theme",
+        "enable athena grub theme",
     );
     exec_eval(
         exec_chroot(
@@ -150,9 +273,8 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
 pub fn install_bootloader_legacy(device: PathBuf) {
     install::install(vec![
         "grub",
-        "crystal-grub-theme",
+        "athena-grub-theme",
         "os-prober",
-        "crystal-branding",
     ]);
     if !device.exists() {
         crash(format!("The device {device:?} does not exist"), 1);
@@ -168,9 +290,9 @@ pub fn install_bootloader_legacy(device: PathBuf) {
     files_eval(
         append_file(
             "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/usr/share/grub/themes/crystal/theme.txt\"",
+            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
         ),
-        "enable crystal grub theme",
+        "enable athena grub theme",
     );
     exec_eval(
         exec_chroot(
