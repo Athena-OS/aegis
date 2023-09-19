@@ -16,6 +16,7 @@ struct Config {
     rootpass: String,
     desktop: String,
     timeshift: bool,
+    snapper: bool,
     flatpak: bool,
     zramd: bool,
     extra_packages: Vec<String>,
@@ -200,6 +201,11 @@ pub fn read_config(configpath: PathBuf) {
     log::info!("Enabling timeshift : {}", config.timeshift);
     if config.timeshift {
         base::setup_timeshift();
+    }
+    println!();
+    log::info!("Enabling snapper : {}", config.snapper);
+    if config.snapper {
+        base::setup_snapper();
     }
     println!();
     log::info!("Enabling flatpak : {}", config.flatpak);

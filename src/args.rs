@@ -33,6 +33,10 @@ pub enum Command {
     #[command(name = "setup-timeshift")]
     SetupTimeshift,
 
+    /// Setup Snapper
+    #[command(name = "setup-snapper")]
+    SetupSnapper,
+
     /// Install the bootloader
     #[command(name = "bootloader")]
     Bootloader {

@@ -30,6 +30,7 @@ fn main() {
             base::genfstab();
         }
         Command::SetupTimeshift => base::setup_timeshift(),
+        Command::SetupSnapper => base::setup_snapper(),
         Command::Bootloader { subcommand } => match subcommand {
             BootloaderSubcommand::GrubEfi { efidir } => {
                 base::install_bootloader_efi(efidir);

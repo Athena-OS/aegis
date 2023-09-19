@@ -7,7 +7,7 @@ use std::path::PathBuf;
 pub fn install_base_packages(kernel: String) {
     std::fs::create_dir_all("/mnt/etc").unwrap();
     let kernel_to_install = if kernel.is_empty() {
-        "linux"
+        "linux-lts"
     } else {
         match kernel.as_str() {
             "linux" => "linux",
@@ -20,7 +20,7 @@ pub fn install_base_packages(kernel: String) {
             "linux-xanmod" => "linux-xanmod",
             _ => {
                 warn!("Unknown kernel: {}, using default instead", kernel);
-                "linux"
+                "linux-lts"
             }
         }
     };
@@ -148,9 +148,6 @@ pub fn install_base_packages(kernel: String) {
         "reflector",
         "sl",
         //"smartmontools", //hw-probe deps
-        "snap-pac",
-        "snap-pac-grub",
-        "snapper-support",
         "superbfetch-git",
         "textart",
         "tidy",
@@ -309,6 +306,10 @@ pub fn setup_timeshift() {
         exec_chroot("timeshift", vec![String::from("--btrfs")]),
         "setup timeshift",
     )
+}
+
+pub fn setup_snapper() {
+    install(vec!["snap-pac", "snap-pac-grub", "snapper-support"]);
 }
 
 pub fn install_homemgr() {
