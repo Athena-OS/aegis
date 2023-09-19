@@ -82,5 +82,8 @@ fn main() {
         Command::Desktops { desktop } => {
             desktops::install_desktop_setup(desktop);
         }
+        Command::Themes { theme } => {
+            themes::install_theme_setup(theme);
+        }
     }
 }

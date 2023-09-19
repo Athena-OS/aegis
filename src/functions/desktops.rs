@@ -19,6 +19,7 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
         DesktopSetup::Herbstluftwm => install_herbstluftwm(),
         DesktopSetup::Awesome => install_awesome(),
         DesktopSetup::Bspwm => install_bspwm(),
+        DesktopSetup::Hyprland => install_hyprland(),
         DesktopSetup::None => log::debug!("No desktop setup selected"),
     }
     install_networkmanager();
@@ -33,6 +34,20 @@ fn install_networkmanager() {
         ),
         "Enable network manager",
     );
+}
+
+fn install_hyprland() {
+    install(vec![
+        "athena-hyprland-config",
+    ]);
+    files_eval(
+        files::append_file(
+            "/mnt/etc/lightdm/lightdm.conf",
+            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
+        ),
+        "Add lightdm greeter",
+    );
+    enable_dm("lightdm");
 }
 
 fn install_bspwm() {

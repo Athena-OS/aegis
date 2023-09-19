@@ -1,5 +1,5 @@
 use crate::args;
-use crate::args::{DesktopSetup, PartitionMode};
+use crate::args::{DesktopSetup, ThemeSetup, PartitionMode};
 use crate::functions::*;
 use crate::internal::*;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,11 @@ struct Config {
     users: Vec<Users>,
     rootpass: String,
     desktop: String,
+    theme: String,
+    displaymanager: String,
+    browser: String,
+    shell: String,
+    terminal: String,
     timeshift: bool,
     snapper: bool,
     flatpak: bool,
@@ -196,6 +201,21 @@ pub fn read_config(configpath: PathBuf) {
         "bspwm" => desktops::install_desktop_setup(DesktopSetup::Bspwm),
         "none/diy" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => log::info!("No desktop setup selected!"),
+    }
+    println!();
+    log::info!("Installing theme : {:?}", config.theme);
+    /*if let Some(theme) = &config.theme {
+        themes::install_theme_setup(*theme);
+    }*/
+    match config.theme.to_lowercase().as_str() {
+        "akame" => themes::install_theme_setup(ThemeSetup::Akame),
+        "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
+        "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
+        "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
+        "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
+        "xxe" => themes::install_theme_setup(ThemeSetup::XXE),
+        "htb" => themes::install_theme_setup(ThemeSetup::HackTheBox),
+        _ => log::info!("No theme setup selected!"),
     }
     println!();
     log::info!("Enabling timeshift : {}", config.timeshift);

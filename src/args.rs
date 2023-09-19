@@ -85,6 +85,14 @@ pub enum Command {
         #[arg(value_enum)]
         desktop: DesktopSetup,
     },
+
+    /// Install a graphical theme
+    #[command(name = "themes")]
+    Themes {
+        /// The theme setup to use
+        #[arg(value_enum)]
+        theme: ThemeSetup,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -265,6 +273,36 @@ pub enum DesktopSetup {
 
     #[value(name = "bspwm")]
     Bspwm,
+
+    #[value(name = "hyprland")]
+    Hyprland,
+
+    #[value(name = "None/DIY")]
+    None,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ThemeSetup {
+    #[value(name = "akame")]
+    Akame,
+
+    #[value(name = "samurai")]
+    Samurai,
+
+    #[value(name = "graphite")]
+    Graphite,
+
+    #[value(name = "cyborg")]
+    Cyborg,
+
+    #[value(name = "sweet")]
+    Sweet,
+
+    #[value(name = "xxe")]
+    XXE,
+
+    #[value(name = "htb")]
+    HackTheBox,
 
     #[value(name = "None/DIY")]
     None,
