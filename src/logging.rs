@@ -28,14 +28,18 @@ fn format_log_entry(
 ) -> std::io::Result<()> {
     let msg = record.args().to_string();
     let level = record.level();
-    let (h, m, s) = now.now().time().as_hms();
+    
+    // Get the current time as a NaiveTime
+    let time = now.now().time();
+    
+    // Format the time as a string
+    let time_str = time.format("%H:%M:%S").to_string();
+    
     write!(
         w,
-        "[ {} ] {}:{}:{} {}",
+        "[ {} ] {} {}",
         style(level).paint(level.to_string()),
-        h,
-        m,
-        s,
+        time_str,
         msg
     )
 }

@@ -10,10 +10,10 @@ name = "athena-aegis"
 path = "src/main.rs"
 
 [dependencies]
-clap = {version = "4.4.2", features = ["derive"] }
-serde_json = "1.0.59"
+clap = {version = "4.4.4", features = ["derive"] }
+serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
-toml = "0.7.6"
+toml = "0.8.0"
 log = "0.4.20"
-flexi_logger = {version = "0.22.3", features = ["colors"] }
+flexi_logger = {version = "0.27.0", features = ["colors"] }
 human-panic = "1.2.0"
