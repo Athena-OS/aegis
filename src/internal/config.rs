@@ -367,7 +367,7 @@ pub fn read_config(configpath: PathBuf) {
     if config.desktop == "gnome" {
         files_eval(
             files::sed_file(
-                "/mnt/etc/profile.d/gnome-config.sh",
+                "/mnt/etc/profile.d/gnome-init.sh",
                 "gnome-terminal",
                 &config.terminal,
             ),
