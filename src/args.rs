@@ -71,6 +71,30 @@ pub enum Command {
     #[command(name = "flatpak")]
     Flatpak,
 
+    /// Install CUDA
+    #[command(name = "cuda")]
+    Cuda,
+
+    /// Install Spotify
+    #[command(name = "spotify")]
+    Spotify,
+
+    /// Install CherryTree
+    #[command(name = "cherrytree")]
+    CherryTree,
+
+    /// Install Flameshot
+    #[command(name = "flameshot")]
+    Flameshot,
+
+    /// Install BusyBox
+    #[command(name = "busybox")]
+    BusyBox,
+
+    /// Install Toybox
+    #[command(name = "toybox")]
+    Toybox,
+
     /// Read Aegis installation config
     #[command(name = "config")]
     Config {
@@ -108,6 +132,22 @@ pub enum Command {
         /// The shell setup to use
         #[arg(value_enum)]
         shell: ShellSetup,
+    },
+
+    /// Install a browser
+    #[command(name = "browsers")]
+    Browsers {
+        /// The browser setup to use
+        #[arg(value_enum)]
+        browser: BrowserSetup,
+    },
+
+    /// Install a terminal
+    #[command(name = "terminals")]
+    Terminals {
+        /// The terminal setup to use
+        #[arg(value_enum)]
+        terminal: TerminalSetup,
     },
 }
 
@@ -349,6 +389,60 @@ pub enum ShellSetup {
 
     #[value(name = "zsh")]
     Zsh,
+
+    #[value(name = "None/DIY")]
+    None,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum BrowserSetup {
+    #[value(name = "firefox")]
+    Firefox,
+
+    #[value(name = "brave")]
+    Brave,
+
+    #[value(name = "mullvad")]
+    Mullvad,
+
+    #[value(name = "None/DIY")]
+    None,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TerminalSetup {
+    #[value(name = "alacritty")]
+    Alacritty,
+
+    #[value(name = "cool-retro-term")]
+    CoolRetroTerm,
+
+    #[value(name = "foot")]
+    Foot,
+
+    #[value(name = "gnome-terminal")]
+    GnomeTerminal,
+
+    #[value(name = "kitty")]
+    Kitty,
+
+    #[value(name = "konsole")]
+    Konsole,
+
+    #[value(name = "terminator")]
+    Terminator,
+
+    #[value(name = "terminology")]
+    Terminology,
+
+    #[value(name = "urxvt")]
+    Urxvt,
+
+    #[value(name = "xfce4-terminal")]
+    Xfce,
+
+    #[value(name = "xterm")]
+    Xterm,
 
     #[value(name = "None/DIY")]
     None,

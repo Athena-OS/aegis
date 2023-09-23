@@ -1,4 +1,4 @@
-use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup};
 use crate::functions::partition::mount;
 use crate::functions::*;
 use crate::internal::exec::*;
@@ -161,7 +161,9 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
     themes::install_theme_setup(ThemeSetup::Samurai);
     displaymanagers::install_dm_setup(DMSetup::Sddm);
     shells::install_shell_setup(ShellSetup::Zsh);
-    install(vec!["gparted", "firefox"]);
+    browsers::install_browser_setup(BrowserSetup::Firefox);
+    terminals::install_terminal_setup(TerminalSetup::Alacritty);
+    install(vec!["gparted", "nix"]);
     exec_eval(
         exec(
             "cp",

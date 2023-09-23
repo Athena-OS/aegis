@@ -1,9 +1,11 @@
 use crate::args;
-use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, PartitionMode};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
 use crate::functions::*;
 use crate::internal::*;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader, Write};
+use std::path::{Path,PathBuf};
 
 
 #[derive(Serialize, Deserialize)]
@@ -237,8 +239,8 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/lightdm/lightdm.conf",
-                        "^#user-session=.*",
-                        "user-session=gnome-xorg",
+                        r"^#user-session=.*",
+                        r"user-session=gnome-xorg",
                     ),
                     "Apply GNOME User Session on LightDM",
                 );
@@ -247,8 +249,8 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/lightdm/lightdm.conf",
-                        "^#user-session=.*",
-                        "user-session=hyprland",
+                        r"^#user-session=.*",
+                        r"user-session=hyprland",
                     ),
                     "Apply Hyprland User Session on LightDM",
                 );
@@ -268,6 +270,124 @@ pub fn read_config(configpath: PathBuf) {
         "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
         _ => log::info!("No shell setup selected!"),
     }
+    println!();
+    log::info!("Installing browser : {:?}", config.browser);
+    /*if let Some(browser) = &config.browser {
+        browsers::install_browser_setup(*browser);
+    }*/
+    match config.browser.to_lowercase().as_str() {
+        "firefox" => {
+            browsers::install_browser_setup(BrowserSetup::Firefox);
+            if config.desktop == "gnome" {
+                files_eval(
+                    files::sed_file(
+                        "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
+                        r#"{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}"#,
+                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
+                    ),
+                    "Apply Browser info on dconf shell",
+                );
+            }
+        },
+        "brave" => {
+            browsers::install_browser_setup(BrowserSetup::Brave);
+            if config.desktop == "gnome" {
+                files_eval(
+                    files::sed_file(
+                        "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
+                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
+                        r#"{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}"#,
+                    ),
+                    "Apply Browser info on dconf shell",
+                );
+            }
+        }
+        "mullvad" => {
+            browsers::install_browser_setup(BrowserSetup::Mullvad);
+            if config.desktop == "gnome" {
+                files_eval(
+                    files::sed_file(
+                        "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
+                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
+                        r#"{\\\"name\\\":\\\"Mullvad\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/mullvad-browser.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"mullvad-browser\\\"},\\\"angle\\\":-1}"#,
+                    ),
+                    "Apply Browser info on dconf shell",
+                );
+            }
+        }
+        _ => log::info!("No browser setup selected!"),
+    }
+    println!();
+    // Terminal configuration //
+    log::info!("Installing terminal : {:?}", config.terminal);
+    /*if let Some(terminal) = &config.terminal {
+        terminals::install_terminal_setup(*terminal);
+    }*/
+    match config.terminal.to_lowercase().as_str() {
+        "alacritty" => terminals::install_terminal_setup(TerminalSetup::Alacritty),
+        "cool-retro-term" => terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm),
+        "foot" => terminals::install_terminal_setup(TerminalSetup::Foot),
+        "gnome-terminal" => terminals::install_terminal_setup(TerminalSetup::GnomeTerminal),
+        "kitty" => terminals::install_terminal_setup(TerminalSetup::Kitty),
+        "konsole" => terminals::install_terminal_setup(TerminalSetup::Konsole),
+        "terminator" => terminals::install_terminal_setup(TerminalSetup::Terminator),
+        "terminology" => terminals::install_terminal_setup(TerminalSetup::Terminology),
+        "urxvt" => terminals::install_terminal_setup(TerminalSetup::Urxvt),
+        "xfce4-terminal" => terminals::install_terminal_setup(TerminalSetup::Xfce),
+        "xterm" => terminals::install_terminal_setup(TerminalSetup::Xterm),
+        _ => log::info!("No terminal setup selected!"),
+    }
+    // Update the .desktop files
+    let skel_path = "/mnt/etc/skel/.local/share/applications";
+    let desktop_files = get_filenames_in_directory(skel_path);
+
+    for file in desktop_files {
+        let file_path = format!("{}/{}", skel_path, file);
+        if let Err(err) = update_file(&file_path, &config.terminal, if config.terminal == "gnome-terminal" { "--" } else { "-e" }) {
+            eprintln!("Error updating {}: {}", file_path, err);
+        }
+    }
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.local/share/applications/shell.desktop",
+            "gnome-terminal",
+            &config.terminal,
+        ),
+        "Set terminal call on shell.desktop file",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/athena-welcome/athena-welcome.py",
+            "\"gnome-terminal\", \"--\"",
+            &("\"".to_owned()+&config.terminal+"\", \""+if config.terminal == "gnome-terminal" { "--" } else { "-e" }+"\""),
+        ),
+        "Set terminal call on Athena Welcome",
+    );
+    //
+    if config.desktop == "gnome" {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/profile.d/gnome-config.sh",
+                "gnome-terminal",
+                &config.terminal,
+            ),
+            "Set terminal call on gnome-config file",
+        );
+        let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
+        if let Err(err) = update_file(file_path, &config.terminal, if config.terminal == "gnometerminal" { "--" } else { "-e" }) {
+            eprintln!("Error updating {}: {}", file_path, err);
+        }
+
+        files_eval(
+            files::sed_file(
+                "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
+                "gnome-terminal",
+                &config.terminal,
+            ),
+            "Set terminal call on dconf file",
+        );
+    }
+    //////////
     println!();
     log::info!("Enabling timeshift : {}", config.timeshift);
     if config.timeshift {
@@ -364,4 +484,60 @@ fn disable_xsession(session: &str) {
 fn disable_wsession(session: &str) {
     log::debug!("Disabling {}", session);
     files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
+}
+
+fn update_file(filename: &str, bin: &str, arg_cmd: &str) -> io::Result<()> {
+    let file_path = Path::new(filename);
+    let tmp_path = Path::new("/tmp").join(file_path.file_name().unwrap());
+
+    let input = File::open(file_path)?;
+    let output = File::create(&tmp_path)?;
+
+    let reader = BufReader::new(input);
+    let mut writer = io::BufWriter::new(output);
+
+    for line in reader.lines() {
+        let line = line?;
+        let modified_line = line
+            .replace("alacritty -e", &format!("{} {}", bin, arg_cmd))
+            .replace("cool-retro-term -e", &format!("{} {}", bin, arg_cmd))
+            .replace("foot -e", &format!("{} {}", bin, arg_cmd))
+            .replace("gnome-terminal --", &format!("{} {}", bin, arg_cmd))
+            .replace("kitty -e", &format!("{} {}", bin, arg_cmd))
+            .replace("konsole -e", &format!("{} {}", bin, arg_cmd))
+            .replace("urxvt -e", &format!("{} {}", bin, arg_cmd))
+            .replace("xterm -e", &format!("{} {}", bin, arg_cmd));
+        writeln!(writer, "{}", modified_line)?;
+    }
+
+    fs::rename(&tmp_path, file_path)?;
+
+    Ok(())
+}
+
+fn get_filenames_in_directory(directory_path: &str) -> Vec<String> {
+    let dir_entries = match fs::read_dir(directory_path) {
+        Ok(entries) => entries,
+        Err(_) => {
+            eprintln!("Error reading directory");
+            return Vec::new();
+        }
+    };
+
+    let file_names: Vec<String> = dir_entries
+        .filter_map(|entry| {
+            match entry {
+                Ok(dir_entry) => {
+                    if dir_entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                        Some(dir_entry.file_name().to_string_lossy().to_string())
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            }
+        })
+        .collect();
+
+    file_names
 }

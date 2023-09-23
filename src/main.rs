@@ -76,6 +76,24 @@ fn main() {
         Command::Flatpak => {
             base::install_flatpak();
         }
+        Command::Cuda => {
+            base::install_cuda();
+        }
+        Command::Spotify => {
+            base::install_spotify();
+        }
+        Command::CherryTree => {
+            base::install_cherrytree();
+        }
+        Command::Flameshot => {
+            base::install_flameshot();
+        }
+        Command::BusyBox => {
+            base::install_busybox();
+        }
+        Command::Toybox => {
+            base::install_toybox();
+        }
         Command::Config { config } => {
             crate::internal::config::read_config(config);
         }
@@ -90,6 +108,12 @@ fn main() {
         }
         Command::Shells { shell } => {
             shells::install_shell_setup(shell);
+        }
+        Command::Browsers { browser } => {
+            browsers::install_browser_setup(browser);
+        }
+        Command::Terminals { terminal } => {
+            terminals::install_terminal_setup(terminal);
         }
     }
 }

@@ -13,7 +13,7 @@ pub fn install_shell_setup(shell_setup: ShellSetup) {
 
 fn install_bash() {
     install(vec![
-        "bash", "bash-completion", "blesh-git"
+        "bash", "bash-completion", "blesh-git",
     ]);
 }
 

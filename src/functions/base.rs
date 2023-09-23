@@ -330,6 +330,30 @@ pub fn install_flatpak() {
     )
 }
 
+pub fn install_cuda() {
+    install(vec!["cuda"]);
+}
+
+pub fn install_spotify() {
+    install(vec!["spotify"]);
+}
+
+pub fn install_cherrytree() {
+    install(vec!["cherrytree"]);
+}
+
+pub fn install_flameshot() {
+    install(vec!["flameshot"]);
+}
+
+pub fn install_busybox() {
+    install(vec!["busybox"]);
+}
+
+pub fn install_toybox() {
+    install(vec!["toybox"]);
+}
+
 pub fn install_zram() {
     install(vec!["zram-generator"]);
     files::create_file("/mnt/etc/systemd/zram-generator.conf");
