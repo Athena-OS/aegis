@@ -16,5 +16,4 @@ serde = { version = "1.0.188", features = ["derive"] }
 toml = "0.7.6"
 log = "0.4.20"
 flexi_logger = {version = "0.22.3", features = ["colors"] }
-lazy_static = "1.4.0"
 human-panic = "1.2.0"
