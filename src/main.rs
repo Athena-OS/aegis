@@ -85,5 +85,11 @@ fn main() {
         Command::Themes { theme } => {
             themes::install_theme_setup(theme);
         }
+        Command::DisplayManagers { displaymanager } => {
+            displaymanagers::install_dm_setup(displaymanager);
+        }
+        Command::Shells { shell } => {
+            shells::install_shell_setup(shell);
+        }
     }
 }

@@ -93,6 +93,22 @@ pub enum Command {
         #[arg(value_enum)]
         theme: ThemeSetup,
     },
+
+    /// Install a display manager
+    #[command(name = "displaymanagers")]
+    DisplayManagers {
+        /// The display manager setup to use
+        #[arg(value_enum)]
+        displaymanager: DMSetup,
+    },
+
+    /// Install a shell
+    #[command(name = "shells")]
+    Shells {
+        /// The shell setup to use
+        #[arg(value_enum)]
+        shell: ShellSetup,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -299,10 +315,40 @@ pub enum ThemeSetup {
     Sweet,
 
     #[value(name = "xxe")]
-    XXE,
+    Xxe,
 
     #[value(name = "htb")]
     HackTheBox,
+
+    #[value(name = "None/DIY")]
+    None,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum DMSetup {
+    #[value(name = "gdm")]
+    Gdm,
+
+    #[value(name = "lightdm")]
+    LightDM,
+
+    #[value(name = "sddm")]
+    Sddm,
+
+    #[value(name = "None/DIY")]
+    None,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum ShellSetup {
+    #[value(name = "bash")]
+    Bash,
+
+    #[value(name = "fish")]
+    Fish,
+
+    #[value(name = "zsh")]
+    Zsh,
 
     #[value(name = "None/DIY")]
     None,

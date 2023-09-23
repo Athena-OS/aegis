@@ -1,5 +1,5 @@
 use crate::args;
-use crate::args::{DesktopSetup, ThemeSetup, PartitionMode};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, PartitionMode};
 use crate::functions::*;
 use crate::internal::*;
 use serde::{Deserialize, Serialize};
@@ -17,8 +17,8 @@ struct Config {
     desktop: String,
     theme: String,
     displaymanager: String,
-    browser: String,
     shell: String,
+    browser: String,
     terminal: String,
     timeshift: bool,
     snapper: bool,
@@ -213,9 +213,60 @@ pub fn read_config(configpath: PathBuf) {
         "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
         "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
-        "xxe" => themes::install_theme_setup(ThemeSetup::XXE),
+        "xxe" => themes::install_theme_setup(ThemeSetup::Xxe),
         "htb" => themes::install_theme_setup(ThemeSetup::HackTheBox),
         _ => log::info!("No theme setup selected!"),
+    }
+    println!();
+    log::info!("Installing display manager : {:?}", config.displaymanager);
+    /*if let Some(displaymanager) = &config.displaymanager {
+        displaymanagers::install_displaymanager_setup(*displaymanager);
+    }*/
+    match config.displaymanager.to_lowercase().as_str() {
+        "gdm" => {
+            displaymanagers::install_dm_setup(DMSetup::Gdm);
+            if config.desktop == "hyprland" {
+                files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
+                disable_xsession("gnome-xorg.desktop");
+                disable_wsession("gnome-wayland.desktop");
+            }
+        },
+        "lightdm" => {
+            displaymanagers::install_dm_setup(DMSetup::LightDM);
+            if config.desktop == "gnome" {
+                files_eval(
+                    files::sed_file(
+                        "/mnt/etc/lightdm/lightdm.conf",
+                        "^#user-session=.*",
+                        "user-session=gnome-xorg",
+                    ),
+                    "Apply GNOME User Session on LightDM",
+                );
+            }
+            if config.desktop == "hyprland" {
+                files_eval(
+                    files::sed_file(
+                        "/mnt/etc/lightdm/lightdm.conf",
+                        "^#user-session=.*",
+                        "user-session=hyprland",
+                    ),
+                    "Apply Hyprland User Session on LightDM",
+                );
+            }
+        },
+        "sddm" => displaymanagers::install_dm_setup(DMSetup::Sddm),
+        _ => log::info!("No display manager setup selected!"),
+    }
+    println!();
+    log::info!("Installing shell : {:?}", config.shell);
+    /*if let Some(shell) = &config.shell {
+        shells::install_shell_setup(*shell);
+    }*/
+    match config.shell.to_lowercase().as_str() {
+        "bash" => shells::install_shell_setup(ShellSetup::Bash),
+        "fish" => shells::install_shell_setup(ShellSetup::Fish),
+        "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
+        _ => log::info!("No shell setup selected!"),
     }
     println!();
     log::info!("Enabling timeshift : {}", config.timeshift);
@@ -303,4 +354,14 @@ pub fn read_config(configpath: PathBuf) {
         log::info!("Unakite disabled");
     }
     println!("Installation finished! You may reboot now!")
+}
+
+fn disable_xsession(session: &str) {
+    log::debug!("Disabling {}", session);
+    files::rename_file(&("/mnt/usr/share/xsessions/".to_owned()+session), &("/mnt/usr/share/xsessions/".to_owned()+session+".disable"));
+}
+
+fn disable_wsession(session: &str) {
+    log::debug!("Disabling {}", session);
+    files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
 }

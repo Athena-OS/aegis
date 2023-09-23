@@ -1,4 +1,4 @@
-use crate::args::{DesktopSetup, ThemeSetup};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup};
 use crate::functions::partition::mount;
 use crate::functions::*;
 use crate::internal::exec::*;
@@ -159,6 +159,8 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
     users::root_pass("Cp7oN04ZY0PsA"); // unakite
     desktops::install_desktop_setup(DesktopSetup::Xfce);
     themes::install_theme_setup(ThemeSetup::Samurai);
+    displaymanagers::install_dm_setup(DMSetup::Sddm);
+    shells::install_shell_setup(ShellSetup::Zsh);
     install(vec!["gparted", "firefox"]);
     exec_eval(
         exec(

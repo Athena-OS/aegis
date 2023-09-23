@@ -29,6 +29,33 @@ pub fn copy_file(path: &str, destpath: &str) {
     }
 }
 
+pub fn rename_file(path: &str, destpath: &str) {
+    let return_code = std::fs::rename(path, destpath);
+    match return_code {
+        Ok(_) => {
+            log::info!("Rename {} to {}", path, destpath);
+        }
+        Err(e) => {
+            crash(
+                format!("Rename {} to {}: Failed with error {}", path, destpath, e),
+                1,
+            );
+        }
+    }
+}
+
+pub fn remove_file(path: &str) {
+    let returncode = std::fs::remove_file(path);
+    match returncode {
+        Ok(_) => {
+            log::info!("Remove {}", path);
+        }
+        Err(e) => {
+            crash(format!("Remove {}: Failed with error {}", path, e), 1);
+        }
+    }
+}
+
 pub fn append_file(path: &str, content: &str) -> std::io::Result<()> {
     log::info!("Append '{}' to file {}", content.trim_end(), path);
     let mut file = OpenOptions::new().append(true).open(path)?;

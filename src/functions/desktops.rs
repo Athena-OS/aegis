@@ -40,35 +40,12 @@ fn install_hyprland() {
     install(vec![
         "athena-hyprland-config",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_bspwm() {
     install(vec![
-        "xorg",
-        "bspwm",
-        "sxhkd",
-        "xdo",
-        "lightdm",
-        "lightdm-gtk-greeter",
-        "lightdm-gtk-greeter-settings",
-        "xdg-user-dirs",
+        "athena-bspwm-config",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_awesome() {
@@ -83,14 +60,6 @@ fn install_awesome() {
         "lightdm-gtk-greeter-settings",
         "xdg-user-dirs",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_herbstluftwm() {
@@ -105,14 +74,6 @@ fn install_herbstluftwm() {
         "lightdm-gtk-greeter-settings",
         "xdg-user-dirs",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_i3() {
@@ -131,13 +92,6 @@ fn install_i3() {
         "polkit-gnome",
     ]);
     files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    files_eval(
         files::append_file("/mnt/etc/i3/config", "exec --no-startup-id dex -a\n"),
         "Add dex to i3 config for autostart",
     );
@@ -148,7 +102,6 @@ fn install_i3() {
         ),
         "Add polkit gnome to i3 config",
     );
-    enable_dm("lightdm");
 }
 
 fn install_sway() {
@@ -181,7 +134,6 @@ fn install_sway() {
         ),
         "Add polkit gnome to sway config",
     );
-    enable_dm("sddm");
 }
 
 fn install_lxqt() {
@@ -198,7 +150,6 @@ fn install_lxqt() {
         "wireplumber",
         "sddm",
     ]);
-    enable_dm("sddm");
 }
 
 fn install_enlightenment() {
@@ -215,89 +166,24 @@ fn install_enlightenment() {
         "lightdm-gtk-greeter",
         "lightdm-gtk-greeter-settings",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_xfce() {
     install(vec![
-        "xorg",
-        "xfce4",
-        "lightdm",
-        "lightdm-gtk-greeter",
-        "lightdm-gtk-greeter-settings",
-        "xfce4-goodies",
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-jack",
-        "pipewire-alsa",
-        "wireplumber",
-        "pavucontrol",
+        "athena-xfce-config",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_mate() {
     install(vec![
-        "xorg",
-        "mate",
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-alsa",
-        "pipewire-jack",
-        "wireplumber",
-        "lightdm",
-        "lightdm-gtk-greeter",
-        "lightdm-gtk-greeter-settings",
-        "mate-extra",
+        "athena-mate-config",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_cinnamon() {
     install(vec![
-        "xorg",
-        "cinnamon",
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-alsa",
-        "pipewire-jack",
-        "wireplumber",
-        "lightdm",
-        "lightdm-gtk-greeter",
-        "lightdm-gtk-greeter-settings",
-        "metacity",
-        "gnome-shell",
-        "gnome-terminal",
+        "athena-cinnamon-config",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_budgie() {
@@ -317,46 +203,18 @@ fn install_budgie() {
         "xdg-desktop-portal-gtk",
         "xdg-utils",
     ]);
-    files_eval(
-        files::append_file(
-            "/mnt/etc/lightdm/lightdm.conf",
-            "[SeatDefaults]\ngreeter-session=lightdm-gtk-greeter\n",
-        ),
-        "Add lightdm greeter",
-    );
-    enable_dm("lightdm");
 }
 
 fn install_kde() {
     install(vec![
-        "xorg",
-        "plasma",
-        "plasma-wayland-session",
-        "kde-utilities",
-        "kde-system",
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-alsa",
-        "pipewire-jack",
-        "wireplumber",
-        "sddm",
+        "athena-kde-config",
     ]);
-    enable_dm("sddm");
 }
 
 fn install_gnome() {
     install(vec![
-        "xorg",
-        "gnome",
-        "sushi",
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-alsa",
-        "pipewire-jack",
-        "wireplumber",
-        "gdm",
+        "athena-gnome-config",
     ]);
-    enable_dm("gdm");
 }
 
 fn install_onyx() {
@@ -371,13 +229,4 @@ fn install_onyx() {
         "wireplumber",
         "gdm",
     ]);
-    enable_dm("gdm");
-}
-
-fn enable_dm(dm: &str) {
-    log::debug!("Enabling {}", dm);
-    exec_eval(
-        exec_chroot("systemctl", vec![String::from("enable"), String::from(dm)]),
-        format!("Enable {}", dm).as_str(),
-    );
 }

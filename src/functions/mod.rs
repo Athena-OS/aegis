@@ -1,6 +1,8 @@
 pub mod base;
 pub mod desktops;
 pub mod themes;
+pub mod displaymanagers;
+pub mod shells;
 pub mod locale;
 pub mod network;
 pub mod partition;

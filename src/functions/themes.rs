@@ -9,7 +9,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
         ThemeSetup::Graphite => install_graphite(),
         ThemeSetup::Cyborg => install_cyborg(),
         ThemeSetup::Sweet => install_sweet(),
-        ThemeSetup::XXE => install_xxe(),
+        ThemeSetup::Xxe => install_xxe(),
         ThemeSetup::HackTheBox => install_htb(),
         ThemeSetup::None => log::debug!("No theme setup selected"),
     }
@@ -21,7 +21,7 @@ fn install_akame() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"red-blood\",",
         ),
@@ -29,7 +29,7 @@ fn install_akame() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'redwine'",
         ),
@@ -43,7 +43,7 @@ fn install_samurai() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Tokyo Night Storm\",",
         ),
@@ -51,7 +51,7 @@ fn install_samurai() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'sky'",
         ),
@@ -65,7 +65,7 @@ fn install_graphite() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Just Black\",",
         ),
@@ -73,7 +73,7 @@ fn install_graphite() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'snow'",
         ),
@@ -87,7 +87,7 @@ fn install_cyborg() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Gruvbox Material Dark\",",
         ),
@@ -95,7 +95,7 @@ fn install_cyborg() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'gold'",
         ),
@@ -109,7 +109,7 @@ fn install_sweet() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Radical\",",
         ),
@@ -117,7 +117,7 @@ fn install_sweet() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'violet'",
         ),
@@ -131,7 +131,7 @@ fn install_xxe() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Gruvbox Material Dark\",",
         ),
@@ -139,7 +139,7 @@ fn install_xxe() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'gold'",
         ),
@@ -153,7 +153,7 @@ fn install_htb() {
     ]);
     files_eval(
         files::sed_file(
-            "/etc/skel/.config/VSCodium/User/settings.json",
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
             "\"workbench.colorTheme\": \"Hack The Box\",",
         ),
@@ -161,7 +161,7 @@ fn install_htb() {
     );
     files_eval(
         files::sed_file(
-            "/etc/skel/.tmux.conf",
+            "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
             "set -g @tmux_power_theme 'forest'",
         ),
