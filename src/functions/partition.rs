@@ -40,13 +40,30 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
             exec("mkfs.xfs", vec![String::from(blockdevice)]),
             format!("Formatting {blockdevice} as xfs").as_str(),
         ),
-        "btrfs" => exec_eval(
-            exec(
-                "mkfs.btrfs",
-                vec![String::from("-f"), String::from(blockdevice)],
-            ),
-            format!("Formatting {blockdevice} as btrfs").as_str(),
-        ),
+        "btrfs" => {
+            exec_eval(
+                exec(
+                    "mkfs.btrfs",
+                    vec![String::from("-f"), String::from(blockdevice)],
+                ),
+                format!("Formatting {blockdevice} as btrfs").as_str(),
+            );
+            install(vec![
+                "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
+            ]);
+            enable_fsservice("grub-btrfsd");
+            exec_eval(
+                exec_chroot(
+                    "sed",
+                    vec![
+                        String::from("-in"),
+                        String::from("'/^HOOKS*/ s/\"$/ grub-btrfs-overlayfs\"/g'"),
+                        String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
+                    ],
+                ),
+                "install grub as efi without --removable",
+            );
+        }
         "ext2" => exec_eval(
             exec("mkfs.ext2", vec![String::from(blockdevice)]),
             format!("Formatting {blockdevice} as ext2").as_str(),
@@ -732,5 +749,13 @@ pub fn umount(mountpoint: &str) {
     exec_eval(
         exec("umount", vec![String::from(mountpoint)]),
         format!("unmount {}", mountpoint).as_str(),
+    );
+}
+
+fn enable_fsservice(fsservice: &str) {
+    log::debug!("Enabling {}", fsservice);
+    exec_eval(
+        exec_chroot("systemctl", vec![String::from("enable"), String::from(fsservice)]),
+        format!("Enable {}", fsservice).as_str(),
     );
 }
