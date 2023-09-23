@@ -61,7 +61,7 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
                         String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
                     ],
                 ),
-                "install grub as efi without --removable",
+                "Enable BTRFS services",
             );
         }
         "ext2" => exec_eval(

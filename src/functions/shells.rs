@@ -21,11 +21,14 @@ fn install_fish() {
     install(vec![
         "athena-fish",
     ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.local/share/applications/*",
-            r"Bash",
-            r"Fish",
+    exec_eval(
+        exec_chroot(
+            "sed",
+            vec![
+                String::from("-in"),
+                String::from("'s/Bash/Fish/g'"),
+                String::from("/etc/skel/.local/share/applications/*"), //In chroot we don't need to specify /mnt
+            ],
         ),
         "Apply FISH shell on .desktop user files",
     );
@@ -48,11 +51,14 @@ fn install_zsh() {
     install(vec![
         "athena-zsh",
     ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.local/share/applications/*",
-            r"Bash",
-            r"Zsh",
+    exec_eval(
+        exec_chroot(
+            "sed",
+            vec![
+                String::from("-in"),
+                String::from("'s/Bash/Zsh/g'"),
+                String::from("/etc/skel/.local/share/applications/*"), //In chroot we don't need to specify /mnt
+            ],
         ),
         "Apply ZSH shell on .desktop user files",
     );
