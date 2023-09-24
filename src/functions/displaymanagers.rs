@@ -39,7 +39,6 @@ fn install_lightdm() {
         ),
         "Apply LightDM",
     );
-    files::remove_file("/mnt/etc/gdm");
     enable_dm("lightdm");
 }
 
@@ -55,7 +54,6 @@ fn install_sddm() {
         ),
         "Add astronaut theme",
     );
-    files::remove_file("/mnt/etc/gdm");
     enable_dm("sddm");
 }
 
