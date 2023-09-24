@@ -1,47 +1,167 @@
 use crate::functions::partition::umount;
 use log::{error, info};
-use std::io::{BufRead, BufReader};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 pub fn install(pkgs: Vec<&str>) {
-    let mut pacstrap_cmd = Command::new("pacstrap")
-        .arg("/mnt")
-        .args(&pkgs)
-        .stdout(Stdio::piped()) // Capture stdout
-        .stderr(Stdio::piped()) // Capture stderr
-        .spawn()
-        .expect("Failed to start pacstrap");
+    // Create an Arc<Mutex<bool>> for the retry flag
+    let retry = Arc::new(Mutex::new(true));
+    let mut retry_counter = 0; // Initialize retry counter
+    
+    while *retry.lock().unwrap() && retry_counter < 15 { // retry_counter should be the number of mirrors in mirrorlist
+        let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a thread
 
-    let stdout_handle = pacstrap_cmd.stdout.take().unwrap();
-    let stderr_handle = pacstrap_cmd.stderr.take().unwrap();
+        let mut pacstrap_cmd = Command::new("pacstrap")
+            .arg("/mnt")
+            .args(&pkgs)
+            .stdout(Stdio::piped()) // Capture stdout
+            .stderr(Stdio::piped()) // Capture stderr
+            .spawn()
+            .expect("Failed to start pacstrap");
 
-    let stdout_thread = thread::spawn(move || {
-        let reader = BufReader::new(stdout_handle);
-        for line in reader.lines() {
-            let line = line.expect("Failed to read stdout");
-            info!("{}", line);
+        let stdout_handle = pacstrap_cmd.stdout.take().unwrap();
+        let stderr_handle = pacstrap_cmd.stderr.take().unwrap();
+
+        let stdout_thread = thread::spawn(move || {
+            let reader = BufReader::new(stdout_handle);
+            for line in reader.lines() {
+                let line = line.expect("Failed to read stdout");
+                info!("{}", line);
+            }
+        });
+
+        let exit_status = pacstrap_cmd.wait().expect("Failed to wait for pacstrap");
+
+        let stderr_thread = thread::spawn(move || {
+            let reader = BufReader::new(stderr_handle);
+            for line in reader.lines() {
+                if !(*retry_clone.lock().unwrap()) {
+                    break; // Exit the for loop early if *retry is false. It means we updated the mirrorlist, we can proceed to retry pacstrap
+                }
+                let line = line.expect("Failed to read stderr");
+                error!(
+                    "pacstrap stderr (exit code {}): {}",
+                    exit_status.code().unwrap_or(-1),
+                    line
+                );
+
+                // Check if the error message contains "failed retrieving file" and "mirror"
+                if line.contains("failed retrieving file") && line.contains("mirror") {
+                    // Extract the mirror name from the error message
+                    if let Some(mirror_name) = extract_mirror_name(&line) {
+                        // Check if the mirror is in one of the mirrorlist files
+                        if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name) {
+                            // Move the "Server" line within the mirrorlist file
+                            if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
+                                error!(
+                                    "Failed to move 'Server' line in {}: {}",
+                                    mirrorlist_file,
+                                    err
+                                );
+                            } else {
+                                // Update the retry flag within the Mutex
+                                println!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
+                                let mut retry = retry_clone.lock().unwrap();
+                                *retry = false;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Wait for the stdout and stderr threads to finish
+        stdout_thread.join().expect("stdout thread panicked");
+        stderr_thread.join().expect("stderr thread panicked");
+
+        if !exit_status.success() {
+            // Handle the error here, e.g., by logging it
+            error!("pacstrap failed with exit code: {}", exit_status.code().unwrap_or(-1));
         }
-    });
 
-    let stderr_thread = thread::spawn(move || {
-        let reader = BufReader::new(stderr_handle);
-        for line in reader.lines() {
-            let line = line.expect("Failed to read stderr");
-            error!("pacstrap stderr: {}", line);
-        }
-    });
-
-    let exit_status = pacstrap_cmd.wait().expect("Failed to wait for pacstrap");
-
-    // Wait for the stdout and stderr threads to finish
-    stdout_thread.join().expect("stdout thread panicked");
-    stderr_thread.join().expect("stderr thread panicked");
-
-    if !exit_status.success() {
-        // Handle the error here, e.g., by logging it
-        error!("pacstrap failed with exit code: {}", exit_status.code().unwrap_or(-1));
+        // Increment the retry counter
+        retry_counter += 1;
     }
 
     umount("/mnt/dev");
+}
+
+// Function to extract the mirror name from the error message
+fn extract_mirror_name(error_message: &str) -> Option<String> {
+    // Split the error message by whitespace to get individual words
+    let words: Vec<&str> = error_message.split_whitespace().collect();
+
+    // Iterate through the words to find the word "from" and the subsequent word
+    if let Some(from_index) = words.iter().position(|&word| word == "from") {
+        if let Some(mirror_name) = words.get(from_index + 1) {
+            return Some(mirror_name.to_string());
+        }
+    }
+
+    None // Return None if no mirror name is found
+}
+
+// Function to find the mirrorlist file containing the mirror
+fn find_mirrorlist_file(mirror_name: &str) -> Option<String> {
+    // Define the paths to the mirrorlist files
+    let mirrorlist_paths = [
+        "/etc/pacman.d/mirrorlist",
+        "/etc/pacman.d/chaotic-mirrorlist",
+        "/etc/pacman.d/blackarch-mirrorlist",
+    ];
+
+    // Iterate through the mirrorlist file paths
+    for &mirrorlist_path in &mirrorlist_paths {
+        // Read the content of the mirrorlist file
+        if let Ok(content) = fs::read_to_string(mirrorlist_path) {
+            // Check if the mirror name is contained in the file content
+            if content.contains(mirror_name) {
+                return Some(mirrorlist_path.to_string());
+            }
+        }
+    }
+
+    None // Return None if the mirror name is not found in any mirrorlist file
+}
+
+// Function to move the "Server" line in the mirrorlist file
+fn move_server_line(mirrorlist_path: &str, mirror_name: &str) -> io::Result<()> {
+    // Read the content of the mirrorlist file
+    let mut lines: Vec<String> = Vec::new();
+    let file = File::open(mirrorlist_path)?;
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        let line = line?;
+        lines.push(line);
+    }
+
+    // Find the index of the last line starting with "Server"
+    let last_server_index = lines.iter().rposition(|line| line.trim().starts_with("Server"));
+
+    if let Some(last_server_index) = last_server_index {
+        // Find the mirror URL line
+        if let Some(mirror_url_index) = lines.iter().position(|line| line.contains(mirror_name)) {
+            // Extract the mirror URL line
+            let mirror_url_line = lines.remove(mirror_url_index);
+
+            // Insert the mirror URL line after the last "Server" line
+            let insert_index = last_server_index;
+            lines.insert(insert_index, mirror_url_line);
+
+            // Write the modified content back to the mirrorlist file
+            let mut file = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(mirrorlist_path)?;
+
+            for line in lines {
+                writeln!(file, "{}", line)?;
+            }
+        }
+    }
+
+    Ok(())
 }

@@ -5,6 +5,8 @@ use log::warn;
 use std::path::PathBuf;
 
 pub fn install_base_packages(kernel: String) {
+
+    fastest_mirrors();
     std::fs::create_dir_all("/mnt/etc").unwrap();
     let kernel_to_install = if kernel.is_empty() {
         "linux-lts"
@@ -200,6 +202,24 @@ pub fn install_base_packages(kernel: String) {
         ),
         "Enable CUPS",
     );*/
+}
+
+fn fastest_mirrors() {
+    println!("Running reflector to sort for fastest mirrors");
+    exec_eval(
+        exec(
+            "reflector",
+            vec![
+                String::from("--latest"),
+                String::from("15"),
+                String::from("--sort"),
+                String::from("rate"),
+                String::from("--save"),
+                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment
+            ],
+        ),
+        "Generate fastest Arch Linux mirrors",
+    );
 }
 
 pub fn genfstab() {

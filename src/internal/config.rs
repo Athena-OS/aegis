@@ -370,7 +370,7 @@ pub fn read_config(configpath: PathBuf) {
         let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
         files_eval(
             sed_file(
-                &file_path,
+                file_path,
                 "gnome-terminal --",
                 &(config.terminal.clone()+" "+if config.terminal == "gnome-terminal" { "--" } else { "-e" }),
             ),
