@@ -8,12 +8,13 @@ use std::thread;
 
 pub fn install(pkgs: Vec<&str>) {
     // Create an Arc<Mutex<bool>> for the retry flag
-    let retry = Arc::new(Mutex::new(true));
-    let mut retry_counter = 0; // Initialize retry counter
+    let mut retry = Arc::new(Mutex::new(true)); //Just to enter the first time in the while loop
     
+    let mut retry_counter = 0; // Initialize retry counter
     while *retry.lock().unwrap() && retry_counter < 15 { // retry_counter should be the number of mirrors in mirrorlist
-        let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a thread
-
+        retry = Arc::new(Mutex::new(false));
+        let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a threadzz
+        //println!("[ DEBUG ] Beginning retry {}", *retry.lock().unwrap());
         let mut pacstrap_cmd = Command::new("pacstrap")
             .arg("/mnt")
             .args(&pkgs)
@@ -38,8 +39,8 @@ pub fn install(pkgs: Vec<&str>) {
         let stderr_thread = thread::spawn(move || {
             let reader = BufReader::new(stderr_handle);
             for line in reader.lines() {
-                if !(*retry_clone.lock().unwrap()) {
-                    break; // Exit the for loop early if *retry is false. It means we updated the mirrorlist, we can proceed to retry pacstrap
+                if *retry_clone.lock().unwrap() {
+                    break; // Exit the for loop early if *retry is true. It means we updated the mirrorlist, we can proceed to retry pacstrap
                 }
                 let line = line.expect("Failed to read stderr");
                 error!(
@@ -65,7 +66,8 @@ pub fn install(pkgs: Vec<&str>) {
                                 // Update the retry flag within the Mutex
                                 println!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
                                 let mut retry = retry_clone.lock().unwrap();
-                                *retry = false;
+                                *retry = true;
+                                //println!("[ DEBUG ] Unstable mirror retry {}", *retry);
                             }
                         }
                     }
@@ -84,6 +86,8 @@ pub fn install(pkgs: Vec<&str>) {
 
         // Increment the retry counter
         retry_counter += 1;
+
+        //println!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
     }
 
     umount("/mnt/dev");
