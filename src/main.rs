@@ -11,7 +11,8 @@ fn main() {
     human_panic::setup_panic!();
     let cli = Cli::parse();
     println!("verbose: {}", cli.verbose);
-    logging::init(cli.verbose);
+    let log_file_path = "/tmp/"; //athena-aegis.log will be created in this dir
+    logging::init(cli.verbose, log_file_path);
     match cli.command {
         Command::Partition(args) => {
             let mut partitions = args.partitions;
