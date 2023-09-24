@@ -14,7 +14,7 @@ pub fn install(pkgs: Vec<&str>) {
     while *retry.lock().unwrap() && retry_counter < 15 { // retry_counter should be the number of mirrors in mirrorlist
         retry = Arc::new(Mutex::new(false));
         let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a threadzz
-        //println!("[ DEBUG ] Beginning retry {}", *retry.lock().unwrap());
+        //log::info!("[ DEBUG ] Beginning retry {}", *retry.lock().unwrap());
         let mut pacstrap_cmd = Command::new("pacstrap")
             .arg("/mnt")
             .args(&pkgs)
@@ -64,10 +64,10 @@ pub fn install(pkgs: Vec<&str>) {
                                 );
                             } else {
                                 // Update the retry flag within the Mutex
-                                println!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
+                                log::info!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
                                 let mut retry = retry_clone.lock().unwrap();
                                 *retry = true;
-                                //println!("[ DEBUG ] Unstable mirror retry {}", *retry);
+                                //log::info!("[ DEBUG ] Unstable mirror retry {}", *retry);
                             }
                         }
                     }
@@ -87,7 +87,7 @@ pub fn install(pkgs: Vec<&str>) {
         // Increment the retry counter
         retry_counter += 1;
 
-        //println!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
+        //log::info!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
     }
 
     umount("/mnt/dev");

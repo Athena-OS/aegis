@@ -24,15 +24,15 @@ fn install_fish() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.local/share/applications/shell.desktop",
-            r"Bash",
-            r"Fish",
+            "Bash",
+            "Fish",
         ),
         "Apply FISH shell on .desktop shell file",
     );
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.bashrc",
-            r"export SHELL=.*",
+            "export SHELL=.*",
             r"export SHELL=\$(which fish)",
         ),
         "Apply FISH shell",
@@ -51,15 +51,15 @@ fn install_zsh() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.local/share/applications/shell.desktop",
-            r"Bash",
-            r"Zsh",
+            "Bash",
+            "Zsh",
         ),
         "Apply ZSH shell on .desktop shell file",
     );
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.bashrc",
-            r"export SHELL=.*",
+            "export SHELL=.*",
             r"export SHELL=\$(which zsh)",
         ),
         "Apply ZSH shell",

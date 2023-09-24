@@ -19,8 +19,8 @@ fn install_gdm() {
     files_eval(
         files::sed_file(
             "/mnt/etc/gdm/custom.conf",
-            r".*WaylandEnable=.*",
-            r"WaylandEnable=false",
+            ".*WaylandEnable=.*",
+            "WaylandEnable=false",
         ),
         "Apply GDM",
     );
@@ -34,7 +34,7 @@ fn install_lightdm() {
     files_eval(
         files::sed_file(
             "/mnt/etc/lightdm/lightdm-webkit2-greeter.conf",
-            r"^webkit_theme .*",
+            "^webkit_theme .*",
             r"c\webkit_theme = lightdm-webkit-theme-aether",
         ),
         "Apply LightDM",
