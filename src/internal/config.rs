@@ -19,7 +19,6 @@ struct Config {
     desktop: String,
     theme: String,
     displaymanager: String,
-    shell: String,
     browser: String,
     terminal: String,
     timeshift: bool,
@@ -168,6 +167,13 @@ pub fn read_config(configpath: PathBuf) {
         log::info!("Setting use password : {}", config.users[i].password);
         log::info!("Enabling root for user : {}", config.users[i].hasroot);
         log::info!("Setting user shell : {}", config.users[i].shell);
+
+        match config.users[i].shell.to_lowercase().as_str() {
+            "bash" => shells::install_shell_setup(ShellSetup::Bash),
+            "fish" => shells::install_shell_setup(ShellSetup::Fish),
+            "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
+            _ => log::info!("No shell setup selected!"),
+        }
         users::new_user(
             config.users[i].name.as_str(),
             config.users[i].hasroot,
@@ -259,17 +265,7 @@ pub fn read_config(configpath: PathBuf) {
         "sddm" => displaymanagers::install_dm_setup(DMSetup::Sddm),
         _ => log::info!("No display manager setup selected!"),
     }
-    println!();
-    log::info!("Installing shell : {:?}", config.shell);
-    /*if let Some(shell) = &config.shell {
-        shells::install_shell_setup(*shell);
-    }*/
-    match config.shell.to_lowercase().as_str() {
-        "bash" => shells::install_shell_setup(ShellSetup::Bash),
-        "fish" => shells::install_shell_setup(ShellSetup::Fish),
-        "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
-        _ => log::info!("No shell setup selected!"),
-    }
+
     println!();
     log::info!("Installing browser : {:?}", config.browser);
     /*if let Some(browser) = &config.browser {
