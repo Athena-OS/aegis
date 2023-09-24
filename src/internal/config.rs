@@ -365,16 +365,8 @@ pub fn read_config(configpath: PathBuf) {
     );
     //
     if config.desktop == "gnome" {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/profile.d/gnome-init.sh",
-                "gnome-terminal",
-                &config.terminal,
-            ),
-            "Set terminal call on gnome-init file",
-        );
         let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
-        if let Err(err) = update_file(file_path, &config.terminal, if config.terminal == "gnometerminal" { "--" } else { "-e" }) {
+        if let Err(err) = update_file(file_path, &config.terminal, if config.terminal == "gnome-terminal" { "--" } else { "-e" }) {
             eprintln!("Error updating {}: {}", file_path, err);
         }
 
