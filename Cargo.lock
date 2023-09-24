@@ -97,7 +97,6 @@ dependencies = [
  "flexi_logger",
  "human-panic",
  "log",
- "regex",
  "serde",
  "serde_json",
  "toml 0.8.0",
