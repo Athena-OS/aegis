@@ -28,7 +28,7 @@ pub fn init(verbosity: u8, log_file_path: &str) {
         .log_to_file(
             FileSpec::default()
                 .basename(log_file_path)
-                .suffix("txt") // log file extension. I don't use .log because does not apply color code
+                .suffix("txt") // log file extension. Not using .log because does not apply ANSI color code
                 .suppress_timestamp(),
         )
         .duplicate_to_stderr(Duplicate::All) // Duplicate logs to stderr for console output
