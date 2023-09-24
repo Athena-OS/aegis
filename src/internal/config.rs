@@ -371,7 +371,7 @@ pub fn read_config(configpath: PathBuf) {
                 "gnome-terminal",
                 &config.terminal,
             ),
-            "Set terminal call on gnome-config file",
+            "Set terminal call on gnome-init file",
         );
         let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
         if let Err(err) = update_file(file_path, &config.terminal, if config.terminal == "gnometerminal" { "--" } else { "-e" }) {
