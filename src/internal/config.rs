@@ -2,10 +2,10 @@ use crate::args;
 use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
 use crate::functions::*;
 use crate::internal::*;
+use crate::internal::files::sed_file;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, Write};
-use std::path::{Path,PathBuf};
+use std::fs;
+use std::path::{PathBuf};
 
 
 #[derive(Serialize, Deserialize)]
@@ -278,8 +278,8 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                        r#"{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}"#,
-                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
+                        "{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}",
+                        "{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}",
                     ),
                     "Apply Browser info on dconf shell",
                 );
@@ -291,8 +291,8 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
-                        r#"{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}"#,
+                        "{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}",
+                        "{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}",
                     ),
                     "Apply Browser info on dconf shell",
                 );
@@ -304,8 +304,8 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                        r#"{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}"#,
-                        r#"{\\\"name\\\":\\\"Mullvad\\\",\\\"icon\\\":\\\"\/usr\/share\/icons\/hicolor\/scalable\/apps\/mullvad-browser.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"mullvad-browser\\\"},\\\"angle\\\":-1}"#,
+                        "{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}",
+                        "{\\\"name\\\":\\\"Mullvad\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/mullvad-browser.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"mullvad-browser\\\"},\\\"angle\\\":-1}",
                     ),
                     "Apply Browser info on dconf shell",
                 );
@@ -339,18 +339,24 @@ pub fn read_config(configpath: PathBuf) {
 
     for file in desktop_files {
         let file_path = format!("{}/{}", skel_path, file);
-        if let Err(err) = update_file(&file_path, &config.terminal, if config.terminal == "gnome-terminal" { "--" } else { "-e" }) {
-            eprintln!("Error updating {}: {}", file_path, err);
-        }
+        files_eval(
+            sed_file(
+                &file_path,
+                "gnome-terminal --",
+                &(config.terminal.clone()+" "+if config.terminal == "gnome-terminal" { "--" } else { "-e" }),
+            ),
+            "Set terminal call on desktop files",
+        );
     }
     files_eval(
-        files::sed_file(
+        sed_file(
             "/mnt/etc/skel/.local/share/applications/shell.desktop",
             "gnome-terminal",
             &config.terminal,
         ),
         "Set terminal call on shell.desktop file",
     );
+    //
     files_eval(
         files::sed_file(
             "/mnt/usr/share/athena-welcome/athena-welcome.py",
@@ -362,9 +368,14 @@ pub fn read_config(configpath: PathBuf) {
     //
     if config.desktop == "gnome" {
         let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
-        if let Err(err) = update_file(file_path, &config.terminal, if config.terminal == "gnome-terminal" { "--" } else { "-e" }) {
-            eprintln!("Error updating {}: {}", file_path, err);
-        }
+        files_eval(
+            sed_file(
+                &file_path,
+                "gnome-terminal --",
+                &(config.terminal.clone()+" "+if config.terminal == "gnome-terminal" { "--" } else { "-e" }),
+            ),
+            "Set terminal call on dconf shell",
+        );
 
         files_eval(
             files::sed_file(
@@ -472,35 +483,6 @@ fn disable_xsession(session: &str) {
 fn disable_wsession(session: &str) {
     log::debug!("Disabling {}", session);
     files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
-}
-
-fn update_file(filename: &str, bin: &str, arg_cmd: &str) -> io::Result<()> {
-    let file_path = Path::new(filename);
-    let tmp_path = Path::new("/tmp").join(file_path.file_name().unwrap());
-
-    let input = File::open(file_path)?;
-    let output = File::create(&tmp_path)?;
-
-    let reader = BufReader::new(input);
-    let mut writer = io::BufWriter::new(output);
-
-    for line in reader.lines() {
-        let line = line?;
-        let modified_line = line
-            .replace("alacritty -e", &format!("{} {}", bin, arg_cmd))
-            .replace("cool-retro-term -e", &format!("{} {}", bin, arg_cmd))
-            .replace("foot -e", &format!("{} {}", bin, arg_cmd))
-            .replace("gnome-terminal --", &format!("{} {}", bin, arg_cmd))
-            .replace("kitty -e", &format!("{} {}", bin, arg_cmd))
-            .replace("konsole -e", &format!("{} {}", bin, arg_cmd))
-            .replace("urxvt -e", &format!("{} {}", bin, arg_cmd))
-            .replace("xterm -e", &format!("{} {}", bin, arg_cmd));
-        writeln!(writer, "{}", modified_line)?;
-    }
-
-    fs::rename(&tmp_path, file_path)?;
-
-    Ok(())
 }
 
 fn get_filenames_in_directory(directory_path: &str) -> Vec<String> {
