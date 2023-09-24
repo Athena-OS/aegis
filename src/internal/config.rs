@@ -179,7 +179,7 @@ pub fn read_config(configpath: PathBuf) {
             config.users[i].hasroot,
             config.users[i].password.as_str(),
             false,
-            bash, //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
+            "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
         );
         println!("---------");
     }
