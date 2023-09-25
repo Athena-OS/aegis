@@ -133,10 +133,8 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         PackageManager::Pacman => {
             exec_eval(
                 exec(
-                    "arch-chroot",
-                    vec![
-                        String::from("/mnt"),
-                    ],
+                    "exit",
+                    vec![],
                 ),
                 "Chroot on mount point",
             );
