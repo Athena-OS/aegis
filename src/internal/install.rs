@@ -139,7 +139,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                 "Chroot on mount point",
             );
         },
-        PackageManager::Pacstrap => umount("/mnt/dev"),
+        PackageManager::Pacstrap => umount("/mnt"),
         _ => (),
     }
 }
