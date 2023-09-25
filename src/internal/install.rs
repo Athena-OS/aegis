@@ -1,7 +1,4 @@
 use crate::args::PackageManager;
-use crate::functions::partition::umount;
-use crate::internal::exec_eval;
-use crate::internal::exec::exec;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
@@ -10,18 +7,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
-
-    if pkgmanager == PackageManager::Pacman {
-        exec_eval(
-            exec(
-                "arch-chroot",
-                vec![
-                    String::from("/mnt"),
-                ],
-            ),
-            "Chroot on mount point",
-        );
-    }
 
     // Create an Arc<Mutex<bool>> for the retry flag
     let mut retry = Arc::new(Mutex::new(true)); //Just to enter the first time in the while loop
@@ -38,6 +23,8 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         match pkgmanager {
             PackageManager::Pacman => {
                 pkgmanager_cmd = Command::new("pacman")
+                    .arg("-r")
+                    .arg("/mnt")
                     .arg("-Syyu")
                     .arg("--needed")
                     .arg("--noconfirm")
@@ -127,20 +114,6 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         retry_counter += 1;
 
         //log::info!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
-    }
-
-    match pkgmanager {
-        PackageManager::Pacman => {
-            exec_eval(
-                exec(
-                    "exit",
-                    vec![],
-                ),
-                "Chroot on mount point",
-            );
-        },
-        PackageManager::Pacstrap => umount("/mnt"),
-        _ => (),
     }
 }
 
