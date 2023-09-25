@@ -1,11 +1,11 @@
-use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PackageManager};
 use crate::functions::partition::mount;
 use crate::functions::*;
 use crate::internal::exec::*;
 use crate::internal::*;
 use std::path::PathBuf;
 pub fn install_bootloader_efi(efidir: PathBuf) {
-    install::install(vec![
+    install::install(PackageManager::Pacman, vec![
         "grub",
         "efibootmgr",
         "grub-btrfs",
@@ -163,7 +163,7 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
     shells::install_shell_setup(ShellSetup::Zsh);
     browsers::install_browser_setup(BrowserSetup::Firefox);
     terminals::install_terminal_setup(TerminalSetup::Alacritty);
-    install(vec!["gparted", "nix"]);
+    install(PackageManager::Pacman, vec!["gparted", "nix"]);
     exec_eval(
         exec(
             "cp",

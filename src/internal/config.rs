@@ -1,5 +1,5 @@
 use crate::args;
-use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
+use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
 use crate::functions::*;
 use crate::internal::*;
 use crate::internal::files::sed_file;
@@ -407,7 +407,7 @@ pub fn read_config(configpath: PathBuf) {
     for i in 0..config.extra_packages.len() {
         extra_packages.push(config.extra_packages[i].as_str());
     }
-    install(extra_packages);
+    install(PackageManager::Pacman, extra_packages);
     log::info!("Setup unakite");
     if config.partition.mode == PartitionMode::Auto
         && !config.partition.efi

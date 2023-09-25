@@ -1,4 +1,5 @@
 use crate::args::ThemeSetup;
+use crate::args::PackageManager;
 use crate::internal::*;
 
 pub fn install_theme_setup(theme_setup: ThemeSetup) {
@@ -16,7 +17,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
 }
 
 fn install_akame() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-akame-theme",
     ]);
     files_eval(
@@ -38,7 +39,7 @@ fn install_akame() {
 }
 
 fn install_samurai() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-blue-eyes-theme",
     ]);
     files_eval(
@@ -60,7 +61,7 @@ fn install_samurai() {
 }
 
 fn install_graphite() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-graphite-theme",
     ]);
     files_eval(
@@ -82,7 +83,7 @@ fn install_graphite() {
 }
 
 fn install_cyborg() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-gruvbox-theme",
     ]);
     files_eval(
@@ -104,7 +105,7 @@ fn install_cyborg() {
 }
 
 fn install_sweet() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-sweet-dark-theme",
     ]);
     files_eval(
@@ -126,7 +127,7 @@ fn install_sweet() {
 }
 
 fn install_xxe() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-xxe-theme",
     ]);
     files_eval(
@@ -148,7 +149,7 @@ fn install_xxe() {
 }
 
 fn install_htb() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-htb-theme",
     ]);
     files_eval(

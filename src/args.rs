@@ -7,12 +7,25 @@ use std::path::PathBuf;
 #[command(author=env!("CARGO_PKG_AUTHORS"))]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = env!("CARGO_PKG_DESCRIPTION"), long_about = None)]
+
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
+}
+
+#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
+pub enum PackageManager {
+    #[value(name = "pacman")]
+    Pacman,
+
+    #[value(name = "pacstrap")]
+    Pacstrap,
+
+    #[value(name = "None/DIY")]
+    None,
 }
 
 #[derive(Debug, Subcommand)]

@@ -1,3 +1,4 @@
+use crate::args::PackageManager;
 use crate::internal::exec::*;
 use crate::internal::files::append_file;
 use crate::internal::*;
@@ -26,9 +27,13 @@ pub fn install_base_packages(kernel: String) {
             }
         }
     };
-    install::install(vec![
+    install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
+    ]);
+
+    install::install(PackageManager::Pacman, vec![
+        // System Arch
         kernel_to_install,
         format!("{kernel_to_install}-headers").as_str(),
         "linux-firmware",
@@ -184,7 +189,8 @@ pub fn install_base_packages(kernel: String) {
         "athena-welcome",
         "htb-toolkit",
         "nist-feed",
-    ]);
+    ]); 
+
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
 
     exec_eval(
@@ -236,7 +242,7 @@ pub fn genfstab() {
 }
 
 pub fn install_bootloader_efi(efidir: PathBuf) {
-    install::install(vec![
+    install::install(PackageManager::Pacman, vec![
         "grub",
         "efibootmgr",
         "os-prober",
@@ -286,7 +292,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
 }
 
 pub fn install_bootloader_legacy(device: PathBuf) {
-    install::install(vec![
+    install::install(PackageManager::Pacman, vec![
         "grub",
         "athena-grub-theme",
         "os-prober",
@@ -319,7 +325,7 @@ pub fn install_bootloader_legacy(device: PathBuf) {
 }
 
 pub fn setup_timeshift() {
-    install(vec!["timeshift", "timeshift-autosnap", "grub-btrfs"]);
+    install(PackageManager::Pacman, vec!["timeshift", "timeshift-autosnap", "grub-btrfs"]);
     exec_eval(
         exec_chroot("timeshift", vec![String::from("--btrfs")]),
         "setup timeshift",
@@ -327,15 +333,15 @@ pub fn setup_timeshift() {
 }
 
 pub fn setup_snapper() {
-    install(vec!["snap-pac", "snap-pac-grub", "snapper-support"]);
+    install(PackageManager::Pacman, vec!["snap-pac", "snap-pac-grub", "snapper-support"]);
 }
 
 pub fn install_homemgr() {
-    install(vec!["nix"]);
+    install(PackageManager::Pacman, vec!["nix"]);
 }
 
 pub fn install_flatpak() {
-    install(vec!["flatpak"]);
+    install(PackageManager::Pacman, vec!["flatpak"]);
     exec_eval(
         exec_chroot(
             "flatpak",
@@ -351,31 +357,31 @@ pub fn install_flatpak() {
 }
 
 pub fn install_cuda() {
-    install(vec!["cuda"]);
+    install(PackageManager::Pacman, vec!["cuda"]);
 }
 
 pub fn install_spotify() {
-    install(vec!["spotify"]);
+    install(PackageManager::Pacman, vec!["spotify"]);
 }
 
 pub fn install_cherrytree() {
-    install(vec!["cherrytree"]);
+    install(PackageManager::Pacman, vec!["cherrytree"]);
 }
 
 pub fn install_flameshot() {
-    install(vec!["flameshot"]);
+    install(PackageManager::Pacman, vec!["flameshot"]);
 }
 
 pub fn install_busybox() {
-    install(vec!["busybox"]);
+    install(PackageManager::Pacman, vec!["busybox"]);
 }
 
 pub fn install_toybox() {
-    install(vec!["toybox"]);
+    install(PackageManager::Pacman, vec!["toybox"]);
 }
 
 pub fn install_zram() {
-    install(vec!["zram-generator"]);
+    install(PackageManager::Pacman, vec!["zram-generator"]);
     files::create_file("/mnt/etc/systemd/zram-generator.conf");
     files_eval(
         files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]"),

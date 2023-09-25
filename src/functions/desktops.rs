@@ -1,4 +1,5 @@
 use crate::args::DesktopSetup;
+use crate::args::PackageManager;
 use crate::internal::exec::*;
 use crate::internal::*;
 
@@ -26,7 +27,7 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
 }
 
 fn install_networkmanager() {
-    install(vec!["networkmanager"]);
+    install(PackageManager::Pacman, vec!["networkmanager"]);
     exec_eval(
         exec_chroot(
             "systemctl",
@@ -37,19 +38,19 @@ fn install_networkmanager() {
 }
 
 fn install_hyprland() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-hyprland-config",
     ]);
 }
 
 fn install_bspwm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-bspwm-config",
     ]);
 }
 
 fn install_awesome() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "awesome",
         "dex",
@@ -63,7 +64,7 @@ fn install_awesome() {
 }
 
 fn install_herbstluftwm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "herbstluftwm",
         "dmenu",
@@ -77,7 +78,7 @@ fn install_herbstluftwm() {
 }
 
 fn install_i3() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "i3-wm",
         "dmenu",
@@ -105,7 +106,7 @@ fn install_i3() {
 }
 
 fn install_sway() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg-xwayland",
         "sway",
         "bemenu",
@@ -137,7 +138,7 @@ fn install_sway() {
 }
 
 fn install_lxqt() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "lxqt",
         "breeze-icons",
@@ -153,7 +154,7 @@ fn install_lxqt() {
 }
 
 fn install_enlightenment() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "enlightenment",
         "terminology",
@@ -169,25 +170,25 @@ fn install_enlightenment() {
 }
 
 fn install_xfce() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-xfce-config",
     ]);
 }
 
 fn install_mate() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-mate-config",
     ]);
 }
 
 fn install_cinnamon() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-cinnamon-config",
     ]);
 }
 
 fn install_budgie() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "budgie-desktop",
         "gnome",
@@ -206,19 +207,19 @@ fn install_budgie() {
 }
 
 fn install_kde() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-kde-config",
     ]);
 }
 
 fn install_gnome() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-gnome-config",
     ]);
 }
 
 fn install_onyx() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xorg",
         "onyx",
         "sushi",

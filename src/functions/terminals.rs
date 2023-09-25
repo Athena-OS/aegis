@@ -1,4 +1,5 @@
 use crate::args::TerminalSetup;
+use crate::args::PackageManager;
 use crate::internal::*;
 
 pub fn install_terminal_setup(terminal_setup: TerminalSetup) {
@@ -20,67 +21,67 @@ pub fn install_terminal_setup(terminal_setup: TerminalSetup) {
 }
 
 fn install_alacritty() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-alacritty-config",
     ]);
 }
 
 fn install_coolretroterm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "cool-retro-term",
     ]);
 }
 
 fn install_foot() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "foot",
     ]);
 }
 
 fn install_gnometerminal() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "gnome-terminal",
     ]);
 }
 
 fn install_kitty() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-kitty-config",
     ]);
 }
 
 fn install_konsole() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "konsole",
     ]);
 }
 
 fn install_terminator() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "terminator",
     ]);
 }
 
 fn install_terminology() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "terminology",
     ]);
 }
 
 fn install_urxvt() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "rxvt-unicode",
     ]);
 }
 
 fn install_xfce() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xfce4-terminal",
     ]);
 }
 
 fn install_xterm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "xterm",
     ]);
 }

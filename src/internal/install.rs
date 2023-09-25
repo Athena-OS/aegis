@@ -1,4 +1,7 @@
+use crate::args::PackageManager;
 use crate::functions::partition::umount;
+use crate::internal::exec_eval;
+use crate::internal::exec::exec;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
@@ -6,7 +9,20 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-pub fn install(pkgs: Vec<&str>) {
+pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
+
+    if pkgmanager == PackageManager::Pacman {
+        exec_eval(
+            exec(
+                "arch-chroot",
+                vec![
+                    String::from("/mnt"),
+                ],
+            ),
+            "Chroot on mount point",
+        );
+    }
+
     // Create an Arc<Mutex<bool>> for the retry flag
     let mut retry = Arc::new(Mutex::new(true)); //Just to enter the first time in the while loop
     
@@ -15,16 +31,38 @@ pub fn install(pkgs: Vec<&str>) {
         retry = Arc::new(Mutex::new(false));
         let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a threadzz
         //log::info!("[ DEBUG ] Beginning retry {}", *retry.lock().unwrap());
-        let mut pacstrap_cmd = Command::new("pacstrap")
-            .arg("/mnt")
-            .args(&pkgs)
-            .stdout(Stdio::piped()) // Capture stdout
-            .stderr(Stdio::piped()) // Capture stderr
+        let mut pkgmanager_cmd = Command::new("true")
             .spawn()
-            .expect("Failed to start pacstrap");
+            .expect("Failed to initiialize by 'true'"); // Note that the Command type below will spawn child process, so the return type is Child, not Command. It means we need to initialize a Child type element, and we can do by .spawn().expect() over the Command type. 'true' in bash is like a NOP command
+        let mut pkgmanager_name = String::new();
+        match pkgmanager {
+            PackageManager::Pacman => {
+                pkgmanager_cmd = Command::new("pacman")
+                    .arg("-Syyu")
+                    .arg("--needed")
+                    .arg("--noconfirm")
+                    .args(&pkgs)
+                    .stdout(Stdio::piped()) // Capture stdout
+                    .stderr(Stdio::piped()) // Capture stderr
+                    .spawn()
+                    .expect("Failed to start pacstrap");
+                pkgmanager_name = String::from("pacman");
+            },
+            PackageManager::Pacstrap => {
+                pkgmanager_cmd = Command::new("pacstrap")
+                    .arg("/mnt")
+                    .args(&pkgs)
+                    .stdout(Stdio::piped()) // Capture stdout
+                    .stderr(Stdio::piped()) // Capture stderr
+                    .spawn()
+                    .expect("Failed to start pacstrap");
+                pkgmanager_name = String::from("pacstrap");
+            },
+            PackageManager::None => log::debug!("No package manager selected"),
+        };
 
-        let stdout_handle = pacstrap_cmd.stdout.take().unwrap();
-        let stderr_handle = pacstrap_cmd.stderr.take().unwrap();
+        let stdout_handle = pkgmanager_cmd.stdout.take().unwrap();
+        let stderr_handle = pkgmanager_cmd.stderr.take().unwrap();
 
         let stdout_thread = thread::spawn(move || {
             let reader = BufReader::new(stdout_handle);
@@ -34,17 +72,18 @@ pub fn install(pkgs: Vec<&str>) {
             }
         });
 
-        let exit_status = pacstrap_cmd.wait().expect("Failed to wait for pacstrap");
+        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait for the package manager");
 
         let stderr_thread = thread::spawn(move || {
             let reader = BufReader::new(stderr_handle);
             for line in reader.lines() {
                 if *retry_clone.lock().unwrap() {
-                    break; // Exit the for loop early if *retry is true. It means we updated the mirrorlist, we can proceed to retry pacstrap
+                    break; // Exit the for loop early if *retry is true. It means we updated the mirrorlist, we can proceed to retry the install command
                 }
                 let line = line.expect("Failed to read stderr");
                 error!(
-                    "pacstrap stderr (exit code {}): {}",
+                    "{} stderr (exit code {}): {}",
+                    pkgmanager_name,
                     exit_status.code().unwrap_or(-1),
                     line
                 );
@@ -81,7 +120,7 @@ pub fn install(pkgs: Vec<&str>) {
 
         if !exit_status.success() {
             // Handle the error here, e.g., by logging it
-            error!("pacstrap failed with exit code: {}", exit_status.code().unwrap_or(-1));
+            error!("The package manager failed with exit code: {}", exit_status.code().unwrap_or(-1));
         }
 
         // Increment the retry counter
@@ -90,7 +129,21 @@ pub fn install(pkgs: Vec<&str>) {
         //log::info!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
     }
 
-    umount("/mnt/dev");
+    match pkgmanager {
+        PackageManager::Pacman => {
+            exec_eval(
+                exec(
+                    "arch-chroot",
+                    vec![
+                        String::from("/mnt"),
+                    ],
+                ),
+                "Chroot on mount point",
+            );
+        },
+        PackageManager::Pacstrap => umount("/mnt/dev"),
+        _ => (),
+    }
 }
 
 // Function to extract the mirror name from the error message

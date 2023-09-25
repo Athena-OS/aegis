@@ -1,4 +1,5 @@
 use crate::args::BrowserSetup;
+use crate::args::PackageManager;
 use crate::internal::*;
 
 pub fn install_browser_setup(browser_setup: BrowserSetup) {
@@ -12,19 +13,19 @@ pub fn install_browser_setup(browser_setup: BrowserSetup) {
 }
 
 fn install_firefox() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-firefox-config",
     ]);
 }
 
 fn install_brave() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-brave-config",
     ]);
 }
 
 fn install_mullvad() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-mullvad-config",
     ]);
 }

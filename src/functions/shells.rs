@@ -1,4 +1,5 @@
 use crate::args::ShellSetup;
+use crate::args::PackageManager;
 use crate::internal::*;
 
 pub fn install_shell_setup(shell_setup: ShellSetup) {
@@ -12,13 +13,13 @@ pub fn install_shell_setup(shell_setup: ShellSetup) {
 }
 
 fn install_bash() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "bash", "bash-completion", "blesh-git",
     ]);
 }
 
 fn install_fish() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-fish",
     ]);
     files_eval(
@@ -45,7 +46,7 @@ fn install_fish() {
 }
 
 fn install_zsh() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-zsh",
     ]);
     files_eval(

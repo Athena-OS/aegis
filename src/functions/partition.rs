@@ -1,4 +1,5 @@
 use crate::args;
+use crate::args::PackageManager;
 use crate::args::PartitionMode;
 use crate::internal::exec::*;
 use crate::internal::*;
@@ -48,7 +49,7 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
                 ),
                 format!("Formatting {blockdevice} as btrfs").as_str(),
             );
-            install(vec![
+            install(PackageManager::Pacman, vec![
                 "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
             ]);
             enable_fsservice("grub-btrfsd");

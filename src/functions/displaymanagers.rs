@@ -1,4 +1,5 @@
 use crate::args::DMSetup;
+use crate::args::PackageManager;
 use crate::internal::exec::*;
 use crate::internal::*;
 
@@ -13,7 +14,7 @@ pub fn install_dm_setup(dm_setup: DMSetup) {
 }
 
 fn install_gdm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-gdm-config",
     ]);
     files_eval(
@@ -28,7 +29,7 @@ fn install_gdm() {
 }
 
 fn install_lightdm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "athena-lightdm-webkit-theme-aether",
     ]);
     files_eval(
@@ -43,7 +44,7 @@ fn install_lightdm() {
 }
 
 fn install_sddm() {
-    install(vec![
+    install(PackageManager::Pacman, vec![
         "sddm-theme-astronaut",
     ]);
     files::create_file("/mnt/etc/sddm.conf");
