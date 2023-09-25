@@ -22,9 +22,9 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         let mut pkgmanager_name = String::new();
         match pkgmanager {
             PackageManager::Pacman => {
-                pkgmanager_cmd = Command::new("pacman")
-                    .arg("-r")
+                pkgmanager_cmd = Command::new("arch-chroot")
                     .arg("/mnt")
+                    .arg("pacman")
                     .arg("-Syyu")
                     .arg("--needed")
                     .arg("--noconfirm")

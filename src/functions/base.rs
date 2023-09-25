@@ -32,6 +32,11 @@ pub fn install_base_packages(kernel: String) {
         "base",
     ]);
 
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
+    files::copy_file("/etc/pacman.d/athena-mirrorlist", "/mnt/etc/pacman.d/athena-mirrorlist");
+    files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
+    files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
+
     install::install(PackageManager::Pacman, vec![
         // System Arch
         kernel_to_install,
@@ -190,8 +195,6 @@ pub fn install_base_packages(kernel: String) {
         "htb-toolkit",
         "nist-feed",
     ]); 
-
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
 
     exec_eval(
         exec_chroot(
