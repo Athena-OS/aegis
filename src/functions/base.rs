@@ -197,6 +197,7 @@ pub fn install_base_packages(kernel: String) {
     ]);
 
     hardware::cpu_gpu_check(kernel_to_install);
+    hardware::virt_check();
 
     enable_service("bluetooth");
     enable_service("cronie");
