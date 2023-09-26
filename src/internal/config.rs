@@ -2,7 +2,7 @@ use crate::args;
 use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
 use crate::functions::*;
 use crate::internal::*;
-use crate::internal::files::sed_file;
+use crate::internal::files::{rename_file, sed_file};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{PathBuf};
@@ -161,32 +161,6 @@ pub fn read_config(configpath: PathBuf) {
         base::install_zram();
     }
     println!();
-    println!("---------");
-    for i in 0..config.users.len() {
-        log::info!("Creating user : {}", config.users[i].name);
-        log::info!("Setting use password : {}", config.users[i].password);
-        log::info!("Enabling root for user : {}", config.users[i].hasroot);
-        log::info!("Setting user shell : {}", config.users[i].shell);
-
-        match config.users[i].shell.to_lowercase().as_str() {
-            "bash" => shells::install_shell_setup(ShellSetup::Bash),
-            "fish" => shells::install_shell_setup(ShellSetup::Fish),
-            "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
-            _ => log::info!("No shell setup selected!"),
-        }
-        users::new_user(
-            config.users[i].name.as_str(),
-            config.users[i].hasroot,
-            config.users[i].password.as_str(),
-            false,
-            "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
-        );
-        println!("---------");
-    }
-    println!();
-    log::info!("Setting root password : {}", config.rootpass);
-    users::root_pass(config.rootpass.as_str());
-    println!();
     log::info!("Installing desktop : {:?}", config.desktop);
     /*if let Some(desktop) = &config.desktop {
         desktops::install_desktop_setup(*desktop);
@@ -196,7 +170,15 @@ pub fn read_config(configpath: PathBuf) {
         "kde" => desktops::install_desktop_setup(DesktopSetup::Kde),
         "plasma" => desktops::install_desktop_setup(DesktopSetup::Kde),
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
-        "gnome" => desktops::install_desktop_setup(DesktopSetup::Gnome),
+        "gnome" => {
+            desktops::install_desktop_setup(DesktopSetup::Gnome);
+            rename_file("/mnt/usr/share/xsessions/gnome.desktop", "/mnt/usr/share/xsessions/gnome.desktop.disable");
+            rename_file("/mnt/usr/share/xsessions/gnome-classic.desktop", "/mnt/usr/share/xsessions/gnome-classic.desktop.disable");
+            rename_file("/mnt/usr/share/xsessions/gnome-classic-xorg.desktop", "/mnt/usr/share/xsessions/gnome-classic-xorg.desktop.disable");
+            rename_file("/mnt/usr/share/wayland-sessions/gnome.desktop", "/mnt/usr/share/wayland-sessions/gnome.desktop.disable");
+            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop.disable");
+            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic.desktop.disable");
+        },
         "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
         "xfce" => desktops::install_desktop_setup(DesktopSetup::Xfce),
         "budgie" => desktops::install_desktop_setup(DesktopSetup::Budgie),
@@ -472,6 +454,32 @@ pub fn read_config(configpath: PathBuf) {
     } else {
         log::info!("Unakite disabled");
     }
+    println!("---------");
+    for i in 0..config.users.len() {
+        log::info!("Creating user : {}", config.users[i].name);
+        log::info!("Setting use password : {}", config.users[i].password);
+        log::info!("Enabling root for user : {}", config.users[i].hasroot);
+        log::info!("Setting user shell : {}", config.users[i].shell);
+
+        match config.users[i].shell.to_lowercase().as_str() {
+            "bash" => shells::install_shell_setup(ShellSetup::Bash),
+            "fish" => shells::install_shell_setup(ShellSetup::Fish),
+            "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
+            _ => log::info!("No shell setup selected!"),
+        }
+        users::new_user(
+            config.users[i].name.as_str(),
+            config.users[i].hasroot,
+            config.users[i].password.as_str(),
+            false,
+            "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
+        );
+        println!("---------");
+    }
+    println!();
+    log::info!("Setting root password : {}", config.rootpass);
+    users::root_pass(config.rootpass.as_str());
+    println!();
     println!("Installation finished! You may reboot now!")
 }
 

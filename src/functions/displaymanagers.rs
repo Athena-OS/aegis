@@ -1,7 +1,7 @@
 use crate::args::DMSetup;
 use crate::args::PackageManager;
-use crate::internal::exec::*;
-use crate::internal::*;
+use crate::internal::{files, files_eval, install};
+use crate::internal::services::enable_service;
 
 pub fn install_dm_setup(dm_setup: DMSetup) {
     log::debug!("Installing {:?}", dm_setup);
@@ -25,7 +25,7 @@ fn install_gdm() {
         ),
         "Apply GDM",
     );
-    enable_dm("gdm");
+    enable_service("gdm");
 }
 
 fn install_lightdm() {
@@ -40,7 +40,7 @@ fn install_lightdm() {
         ),
         "Apply LightDM",
     );
-    enable_dm("lightdm");
+    enable_service("lightdm");
 }
 
 fn install_sddm() {
@@ -55,13 +55,5 @@ fn install_sddm() {
         ),
         "Add astronaut theme",
     );
-    enable_dm("sddm");
-}
-
-fn enable_dm(dm: &str) {
-    log::debug!("Enabling {}", dm);
-    exec_eval(
-        exec_chroot("systemctl", vec![String::from("enable"), String::from(dm)]),
-        format!("Enable {}", dm).as_str(),
-    );
+    enable_service("sddm");
 }

@@ -3,6 +3,7 @@ use crate::args::PackageManager;
 use crate::args::PartitionMode;
 use crate::internal::exec::*;
 use crate::internal::*;
+use crate::internal::services::enable_service;
 use std::path::{Path, PathBuf};
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
@@ -755,8 +756,5 @@ pub fn umount(mountpoint: &str) {
 
 fn enable_fsservice(fsservice: &str) {
     log::debug!("Enabling {}", fsservice);
-    exec_eval(
-        exec_chroot("systemctl", vec![String::from("enable"), String::from(fsservice)]),
-        format!("Enable {}", fsservice).as_str(),
-    );
+    enable_service("fsservice");
 }

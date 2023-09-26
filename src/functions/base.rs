@@ -1,13 +1,14 @@
 use crate::args::PackageManager;
 use crate::internal::exec::*;
 use crate::internal::files::append_file;
+use crate::internal::services::enable_service;
 use crate::internal::*;
 use log::warn;
 use std::path::PathBuf;
 
 pub fn install_base_packages(kernel: String) {
 
-    fastest_mirrors();
+    initialize_live_env();
     std::fs::create_dir_all("/mnt/etc").unwrap();
     let kernel_to_install = if kernel.is_empty() {
         "linux-lts"
@@ -30,12 +31,18 @@ pub fn install_base_packages(kernel: String) {
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
+        // Repositories
+        "athena-keyring",
+        "athena-mirrorlist",
+        "blackarch-keyring",
+        "blackarch-mirrorlist",
+        "chaotic-keyring",
+        "chaotic-mirrorlist",
     ]);
 
+    hardware::set_cores();
+
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
-    files::copy_file("/etc/pacman.d/athena-mirrorlist", "/mnt/etc/pacman.d/athena-mirrorlist");
-    files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
-    files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
 
     install::install(PackageManager::Pacman, vec![
         // System Arch
@@ -174,13 +181,6 @@ pub fn install_base_packages(kernel: String) {
         "xcp",
         "xmlstarlet",
         "zoxide",
-        // Repositories
-        "athena-keyring",
-        "athena-mirrorlist",
-        "blackarch-keyring",
-        "blackarch-mirrorlist",
-        "chaotic-keyring",
-        "chaotic-mirrorlist",
         // Athena
         "athena-cyber-hub",
         "athena-neofetch-config",
@@ -194,27 +194,58 @@ pub fn install_base_packages(kernel: String) {
         "athena-welcome",
         "htb-toolkit",
         "nist-feed",
-    ]); 
+    ]);
 
-    exec_eval(
-        exec_chroot(
-            "systemctl",
-            vec![String::from("enable"), String::from("bluetooth")],
-        ),
-        "Enable bluetooth",
-    );
+    hardware::cpu_gpu_check(kernel_to_install);
 
-    /*exec_eval(
-        exec_chroot(
-            "systemctl",
-            vec![String::from("enable"), String::from("cups")],
-        ),
-        "Enable CUPS",
-    );*/
+    enable_service("bluetooth");
+    enable_service("cronie");
+    enable_service("set-cfs-tweaks");
+    enable_service("ananicy");
+    enable_service("irqbalance");
+    enable_service("nohang");
+    enable_service("vnstat");
+    //enable_service("cups");
+
+    fastest_mirrors();
 }
 
-fn fastest_mirrors() {
-    println!("Running reflector to sort for fastest mirrors");
+fn initialize_live_env() {
+    log::info!("Upgrade keyrings on the host");
+    exec_eval(
+        exec(
+            "pacman",
+            vec![
+                String::from("-Syy"),
+                String::from("--noconfirm"),
+                String::from("--needed"),
+                String::from("archlinux-keyring"),
+                String::from("athena-keyring"),
+                String::from("blackarch-keyring"),
+                String::from("chaotic-keyring"),
+            ],
+        ),
+        "Update keyring packages",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--init"),
+            ],
+        ),
+        "Initialize keys",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--populate"),
+            ],
+        ),
+        "Populate keys",
+    );
+    log::info!("Running reflector to sort for fastest mirrors");
     exec_eval(
         exec(
             "reflector",
@@ -224,10 +255,51 @@ fn fastest_mirrors() {
                 String::from("--sort"),
                 String::from("rate"),
                 String::from("--save"),
-                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment
+                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
             ],
         ),
         "Generate fastest Arch Linux mirrors",
+    );
+}
+
+fn fastest_mirrors() {
+    log::info!("Getting fastest BlackLinux mirrors for your location");
+    exec_eval(
+        exec_chroot(
+            "mirroars",
+            vec![
+                String::from("-n"),
+                String::from("21"),
+                String::from("-m"),
+                String::from("15"),
+                String::from("-p"),
+                String::from("-t"),
+                String::from("-r"),
+                String::from("blackarch"),
+                String::from("/etc/pacman.d/blackarch-mirrorlist"), //In chroot we don't need to specify /mnt
+                String::from("-w"),
+            ],
+        ),
+        "Getting fastest mirrors from BlackArch",
+    );
+    log::info!("Getting fastest Chaotic AUR mirrors for your location");
+    exec_eval(
+        exec_chroot(
+            "mirroars",
+            vec![
+                String::from("-n"),
+                String::from("21"),
+                String::from("-m"),
+                String::from("15"),
+                String::from("-p"),
+                String::from("-t"),
+                String::from("-r"),
+                String::from("chaotic-aur"),
+                String::from("/etc/pacman.d/chaotic-mirrorlist"), //In chroot we don't need to specify /mnt
+                String::from("-w"),
+            ],
+        ),
+        "Getting fastest mirrors from Chaotic AUR",
     );
 }
 
