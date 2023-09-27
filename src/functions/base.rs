@@ -43,6 +43,7 @@ pub fn install_base_packages(kernel: String) {
     hardware::set_cores();
 
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
+    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 
     install::install(PackageManager::Pacman, vec![
         // System Arch
