@@ -34,14 +34,9 @@ fn install_fish() {
         files::sed_file(
             "/mnt/etc/skel/.bashrc",
             "export SHELL=.*",
-            r"export SHELL=\$(which fish)",
+            r"export SHELL=$(which fish)",
         ),
         "Apply FISH shell",
-    );
-    files::create_file("/mnt/etc/profile.d/shell.sh");
-    files_eval(
-        files::append_file("/mnt/etc/profile.d/shell.sh", r"export SHELL=\$(which fish)"),
-        "Add SHELL variable on profile.d script",
     );
 }
 
@@ -61,13 +56,8 @@ fn install_zsh() {
         files::sed_file(
             "/mnt/etc/skel/.bashrc",
             "export SHELL=.*",
-            r"export SHELL=\$(which zsh)",
+            r"export SHELL=$(which zsh)",
         ),
         "Apply ZSH shell",
-    );
-    files::create_file("/mnt/etc/profile.d/shell.sh");
-    files_eval(
-        files::append_file("/mnt/etc/profile.d/shell.sh", r"export SHELL=\$(which zsh)"),
-        "Add SHELL variable on profile.d script",
     );
 }

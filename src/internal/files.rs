@@ -1,6 +1,7 @@
 use crate::internal::*;
 use std::fs::{self, File, OpenOptions};
-use std::io::prelude::*;
+use std::io::{self, Write, Error, ErrorKind};
+use regex::Regex;
 
 pub fn create_file(path: &str) {
     let returncode = File::create(path);
@@ -63,10 +64,11 @@ pub fn append_file(path: &str, content: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn sed_file(path: &str, find: &str, replace: &str) -> std::io::Result<()> {
+pub fn sed_file(path: &str, find: &str, replace: &str) -> io::Result<()> {
     log::info!("Sed '{}' to '{}' in file {}", find, replace, path);
     let contents = fs::read_to_string(path)?;
-    let new_contents = contents.replace(find, replace);
+    let regex = Regex::new(find).map_err(|e| Error::new(ErrorKind::InvalidInput, e.to_string()))?;
+    let new_contents = regex.replace_all(&contents, replace);
     let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
     file.write_all(new_contents.as_bytes())?;
     Ok(())

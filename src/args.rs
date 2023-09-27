@@ -370,7 +370,7 @@ pub enum ThemeSetup {
     #[value(name = "xxe")]
     Xxe,
 
-    #[value(name = "htb")]
+    #[value(name = "hackthebox")]
     HackTheBox,
 
     #[value(name = "None/DIY")]

@@ -168,7 +168,6 @@ pub fn read_config(configpath: PathBuf) {
     match config.desktop.to_lowercase().as_str() {
         "onyx" => desktops::install_desktop_setup(DesktopSetup::Onyx),
         "kde" => desktops::install_desktop_setup(DesktopSetup::Kde),
-        "plasma" => desktops::install_desktop_setup(DesktopSetup::Kde),
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "gnome" => {
             desktops::install_desktop_setup(DesktopSetup::Gnome);
@@ -204,7 +203,7 @@ pub fn read_config(configpath: PathBuf) {
         "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
         "xxe" => themes::install_theme_setup(ThemeSetup::Xxe),
-        "htb" => themes::install_theme_setup(ThemeSetup::HackTheBox),
+        "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
         _ => log::info!("No theme setup selected!"),
     }
     println!();
