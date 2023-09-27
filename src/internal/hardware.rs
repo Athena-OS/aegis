@@ -10,7 +10,8 @@ pub fn virt_check() {
         .output()
         .expect("Failed to run systemd-detect-virt");
 
-    let result = String::from_utf8_lossy(&output.stdout);
+    let mut result = String::from_utf8_lossy(&output.stdout).to_string();
+    result.pop(); //Removing the \n char from string
 
     if result == "oracle" {
         install(PackageManager::Pacman, vec!["virtualbox-guest-utils"]);
