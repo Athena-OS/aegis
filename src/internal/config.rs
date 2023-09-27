@@ -167,7 +167,7 @@ pub fn read_config(configpath: PathBuf) {
     }*/
     match config.desktop.to_lowercase().as_str() {
         "onyx" => desktops::install_desktop_setup(DesktopSetup::Onyx),
-        "kde" => desktops::install_desktop_setup(DesktopSetup::Kde),
+        "kde plasma" => desktops::install_desktop_setup(DesktopSetup::Kde), //Note that the value on this match statement must fit the name in desktops.py of aegis-gui (then they are lowercase transformed)
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "gnome" => {
             desktops::install_desktop_setup(DesktopSetup::Gnome);
@@ -302,15 +302,15 @@ pub fn read_config(configpath: PathBuf) {
     }*/
     match config.terminal.to_lowercase().as_str() {
         "alacritty" => terminals::install_terminal_setup(TerminalSetup::Alacritty),
-        "cool-retro-term" => terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm),
+        "cool retro term" => terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm),
         "foot" => terminals::install_terminal_setup(TerminalSetup::Foot),
-        "gnome-terminal" => terminals::install_terminal_setup(TerminalSetup::GnomeTerminal),
+        "gnome terminal" => terminals::install_terminal_setup(TerminalSetup::GnomeTerminal),
         "kitty" => terminals::install_terminal_setup(TerminalSetup::Kitty),
         "konsole" => terminals::install_terminal_setup(TerminalSetup::Konsole),
         "terminator" => terminals::install_terminal_setup(TerminalSetup::Terminator),
         "terminology" => terminals::install_terminal_setup(TerminalSetup::Terminology),
         "urxvt" => terminals::install_terminal_setup(TerminalSetup::Urxvt),
-        "xfce4-terminal" => terminals::install_terminal_setup(TerminalSetup::Xfce),
+        "xfce" => terminals::install_terminal_setup(TerminalSetup::Xfce),
         "xterm" => terminals::install_terminal_setup(TerminalSetup::Xterm),
         _ => log::info!("No terminal setup selected!"),
     }
