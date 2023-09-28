@@ -24,6 +24,11 @@ fn main() {
                 args.unakite,
             );
         }
+        Command::Locale(args) => {
+            locale::set_locale(args.locales.join(" "));
+            locale::set_keyboard(&args.keyboard);
+            locale::set_timezone(&args.timezone);
+        }
         Command::InstallBase(args) => {
             base::install_base_packages(args.kernel);
         }
@@ -39,11 +44,6 @@ fn main() {
             BootloaderSubcommand::GrubLegacy { device } => {
                 base::install_bootloader_legacy(device);
             }
-        }
-        Command::Locale(args) => {
-            locale::set_locale(args.locales.join(" "));
-            locale::set_keyboard(&args.keyboard);
-            locale::set_timezone(&args.timezone);
         }
         Command::Networking(args) => {
             if args.ipv6 {

@@ -129,6 +129,15 @@ pub fn read_config(configpath: PathBuf) {
         &mut partitions,
         config.unakite.enable,
     );
+    println!();
+    // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
+    log::info!("Adding Locales : {:?}", config.locale.locale);
+    locale::set_locale(config.locale.locale.join(" "));
+    log::info!("Using keymap : {}", config.locale.keymap);
+    locale::set_keyboard(config.locale.keymap.as_str());
+    log::info!("Setting timezone : {}", config.locale.timezone);
+    locale::set_timezone(config.locale.timezone.as_str());
+    println!();
     base::install_base_packages(config.kernel);
     base::genfstab();
     println!();
@@ -139,13 +148,6 @@ pub fn read_config(configpath: PathBuf) {
     } else if config.bootloader.r#type == "grub-legacy" {
         base::install_bootloader_legacy(PathBuf::from(config.bootloader.location));
     }
-    println!();
-    log::info!("Adding Locales : {:?}", config.locale.locale);
-    log::info!("Using keymap : {}", config.locale.keymap);
-    log::info!("Setting timezone : {}", config.locale.timezone);
-    locale::set_locale(config.locale.locale.join(" "));
-    locale::set_keyboard(config.locale.keymap.as_str());
-    locale::set_timezone(config.locale.timezone.as_str());
     println!();
     log::info!("Hostname : {}", config.networking.hostname);
     log::info!("Enabling ipv6 : {}", config.networking.ipv6);
