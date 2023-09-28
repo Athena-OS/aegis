@@ -300,18 +300,52 @@ pub fn read_config(configpath: PathBuf) {
     /*if let Some(terminal) = &config.terminal {
         terminals::install_terminal_setup(*terminal);
     }*/
+    let mut terminal_choice = String::new();
     match config.terminal.to_lowercase().as_str() {
-        "alacritty" => terminals::install_terminal_setup(TerminalSetup::Alacritty),
-        "cool retro term" => terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm),
-        "foot" => terminals::install_terminal_setup(TerminalSetup::Foot),
-        "gnome terminal" => terminals::install_terminal_setup(TerminalSetup::GnomeTerminal),
-        "kitty" => terminals::install_terminal_setup(TerminalSetup::Kitty),
-        "konsole" => terminals::install_terminal_setup(TerminalSetup::Konsole),
-        "terminator" => terminals::install_terminal_setup(TerminalSetup::Terminator),
-        "terminology" => terminals::install_terminal_setup(TerminalSetup::Terminology),
-        "urxvt" => terminals::install_terminal_setup(TerminalSetup::Urxvt),
-        "xfce" => terminals::install_terminal_setup(TerminalSetup::Xfce),
-        "xterm" => terminals::install_terminal_setup(TerminalSetup::Xterm),
+        "alacritty" => {
+            terminal_choice = String::from("alacritty");
+            terminals::install_terminal_setup(TerminalSetup::Alacritty);
+        },
+        "cool retro term" => {
+            terminal_choice = String::from("cool-retro-term");
+            terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm);
+        },
+        "foot" => {
+            terminal_choice = String::from("foot");
+            terminals::install_terminal_setup(TerminalSetup::Foot);
+        },
+        "gnome terminal" => {
+            terminal_choice = String::from("gnome-terminal");
+            terminals::install_terminal_setup(TerminalSetup::GnomeTerminal);
+        },
+        "kitty" => {
+            terminal_choice = String::from("kitty");
+            terminals::install_terminal_setup(TerminalSetup::Kitty);
+        },
+        "konsole" => {
+            terminal_choice = String::from("konsole");
+            terminals::install_terminal_setup(TerminalSetup::Konsole);
+        },
+        "terminator" => {
+            terminal_choice = String::from("terminator");
+            terminals::install_terminal_setup(TerminalSetup::Terminator);
+        },
+        "terminology" => {
+            terminal_choice = String::from("terminology");
+            terminals::install_terminal_setup(TerminalSetup::Terminology);
+        },
+        "urxvt" => {
+            terminal_choice = String::from("urxvt");
+            terminals::install_terminal_setup(TerminalSetup::Urxvt);
+        },
+        "xfce" => {
+            terminal_choice = String::from("xfce4-terminal");
+            terminals::install_terminal_setup(TerminalSetup::Xfce);
+        },
+        "xterm" => {
+            terminal_choice = String::from("xterm");
+            terminals::install_terminal_setup(TerminalSetup::Xterm);
+        },
         _ => log::info!("No terminal setup selected!"),
     }
     // Update the .desktop files
@@ -324,7 +358,7 @@ pub fn read_config(configpath: PathBuf) {
             sed_file(
                 &file_path,
                 "gnome-terminal --",
-                &(config.terminal.clone()+" "+if config.terminal == "gnome-terminal" { "--" } else { "-e" }),
+                &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
             ),
             "Set terminal call on desktop files",
         );
@@ -333,7 +367,7 @@ pub fn read_config(configpath: PathBuf) {
         sed_file(
             "/mnt/etc/skel/.local/share/applications/shell.desktop",
             "gnome-terminal",
-            &config.terminal,
+            &terminal_choice,
         ),
         "Set terminal call on shell.desktop file",
     );
@@ -342,7 +376,7 @@ pub fn read_config(configpath: PathBuf) {
         files::sed_file(
             "/mnt/usr/share/athena-welcome/athena-welcome.py",
             "\"gnome-terminal\", \"--\"",
-            &("\"".to_owned()+&config.terminal+"\", \""+if config.terminal == "gnome-terminal" { "--" } else { "-e" }+"\""),
+            &("\"".to_owned()+&terminal_choice+"\", \""+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }+"\""),
         ),
         "Set terminal call on Athena Welcome",
     );
@@ -353,7 +387,7 @@ pub fn read_config(configpath: PathBuf) {
             sed_file(
                 file_path,
                 "gnome-terminal --",
-                &(config.terminal.clone()+" "+if config.terminal == "gnome-terminal" { "--" } else { "-e" }),
+                &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
             ),
             "Set terminal call on dconf shell",
         );
@@ -362,7 +396,7 @@ pub fn read_config(configpath: PathBuf) {
             files::sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
                 "gnome-terminal",
-                &config.terminal,
+                &terminal_choice,
             ),
             "Set terminal call on dconf file",
         );
