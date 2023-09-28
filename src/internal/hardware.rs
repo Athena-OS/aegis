@@ -79,7 +79,7 @@ pub fn set_cores() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/makepkg.conf",
-                "COMPRESSXZ=(xz -c -z -)",
+                "COMPRESSXZ=\\(xz -c -z -\\)",
                 "COMPRESSXZ=(xz -c -z - --threads=0)",
             ),
             "Changing the compression settings",
@@ -87,7 +87,7 @@ pub fn set_cores() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/makepkg.conf",
-                "COMPRESSZST=(zstd -c -z -q -)",
+                "COMPRESSZST=\\(zstd -c -z -q -\\)",
                 "COMPRESSZST=(zstd -c -z -q - --threads=0)",
             ),
             "Changing the compression settings",
