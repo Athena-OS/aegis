@@ -20,13 +20,13 @@ pub fn set_timezone(timezone: &str) {
 }
 
 pub fn set_locale(locale: String) {
-    files_eval(
-        files::append_file("/mnt/etc/locale.gen", "en_US.UTF-8 UTF-8"),
-        "add en_US.UTF-8 UTF-8 to locale.gen",
-    );
     files::create_file("/mnt/etc/locale.conf");
     files_eval(
         files::append_file("/mnt/etc/locale.conf", "LANG=en_US.UTF-8"),
+        "edit locale.conf",
+    );
+    files_eval(
+        files::append_file("/mnt/etc/locale.conf", "LC_ALL=en_US.UTF-8"),
         "edit locale.conf",
     );
     for i in (0..locale.split(' ').count()).step_by(2) {
