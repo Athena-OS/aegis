@@ -116,11 +116,12 @@ pub fn remount(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev: &str
 pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev: &str) {
     log::debug!("Setting up Unakite");
     remount(root, oldroot, efi, efidir, bootdev, true);
-    base::install_base_packages("linux-lts".to_string());
-    base::genfstab();
+    base::install_base_packages();
     locale::set_locale("en_US.UTF-8 UTF-8".to_string());
-    locale::set_timezone("Europe/Zurich"); // TODO: get the proper timezone
+    locale::set_timezone("Europe/Zurich");
     network::set_hostname("unakite");
+    base::install_packages("linux-lts".to_string());
+    base::genfstab();
     network::create_hosts();
     users::new_user(
         "unakite",

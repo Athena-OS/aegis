@@ -24,13 +24,16 @@ fn main() {
                 args.unakite,
             );
         }
+        Command::InstallBase => {
+            base::install_base_packages();
+        }
         Command::Locale(args) => {
             locale::set_locale(args.locales.join(" "));
             locale::set_keyboard(&args.keyboard);
             locale::set_timezone(&args.timezone);
         }
-        Command::InstallBase(args) => {
-            base::install_base_packages(args.kernel);
+        Command::InstallPackages(args) => {
+            base::install_packages(args.kernel);
         }
         Command::GenFstab => {
             base::genfstab();

@@ -6,10 +6,30 @@ use crate::internal::*;
 use log::warn;
 use std::path::PathBuf;
 
-pub fn install_base_packages(kernel: String) {
+pub fn install_base_packages() {
 
     initialize_live_env();
     std::fs::create_dir_all("/mnt/etc").unwrap();
+    install::install(PackageManager::Pacstrap, vec![
+        // Base Arch
+        "base",
+        // Repositories
+        "athena-keyring",
+        "athena-mirrorlist",
+        "blackarch-keyring",
+        "blackarch-mirrorlist",
+        "chaotic-keyring",
+        "chaotic-mirrorlist",
+    ]);
+
+    hardware::set_cores();
+
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
+    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
+}
+
+pub fn install_packages(kernel: String) {
+
     let kernel_to_install = if kernel.is_empty() {
         "linux-lts"
     } else {
@@ -28,22 +48,6 @@ pub fn install_base_packages(kernel: String) {
             }
         }
     };
-    install::install(PackageManager::Pacstrap, vec![
-        // Base Arch
-        "base",
-        // Repositories
-        "athena-keyring",
-        "athena-mirrorlist",
-        "blackarch-keyring",
-        "blackarch-mirrorlist",
-        "chaotic-keyring",
-        "chaotic-mirrorlist",
-    ]);
-
-    hardware::set_cores();
-
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
-    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 
     install::install(PackageManager::Pacman, vec![
         // System Arch

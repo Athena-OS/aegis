@@ -34,9 +34,13 @@ pub enum Command {
     #[command(name = "partition")]
     Partition(PartitionArgs),
 
-    /// Install base packages, optionally define a different kernel
+    /// Install base packages
     #[command(name = "install-base")]
-    InstallBase(InstallBaseArgs),
+    InstallBase,
+
+    /// Install packages, optionally define a different kernel
+    #[command(name = "install-packages")]
+    InstallPackages(InstallPackagesArgs),
 
     /// Generate fstab file for mounting partitions
     #[command(name = "genfstab")]
@@ -188,7 +192,7 @@ pub struct PartitionArgs {
 }
 
 #[derive(Debug, Args)]
-pub struct InstallBaseArgs {
+pub struct InstallPackagesArgs {
     #[clap(long)]
     pub kernel: String,
 }
