@@ -446,7 +446,6 @@ pub fn setup_snapper() {
     install(PackageManager::Pacman, vec![
         "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
     ]);
-    enable_service("grub-btrfsd");
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub-btrfs/config",
@@ -471,7 +470,27 @@ pub fn setup_snapper() {
         ),
         "Not show the total number of Grub Btrfs snapshots found",
     );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/conf.d/snapper",
+            "SNAPPER_CONFIGS=.*",
+            "SNAPPER_CONFIGS=\"root\"",
+        ),
+        "Not show the total number of Grub Btrfs snapshots found",
+    );
+    exec_eval(
+        exec_chroot(
+            "btrfs",
+            vec![
+                String::from("subvolume"),
+                String::from("create"),
+                String::from("/.snapshots"),
+            ],
+        ),
+        "create /.snapshots as btrfs subvolume",
+    );
     files::copy_file("/mnt/etc/snapper/config-templates/garuda", "/mnt/etc/snapper/configs/root");
+    enable_service("grub-btrfsd");
 }
 
 pub fn install_homemgr() {

@@ -63,20 +63,35 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
             ),
             "Add wheel group to sudoers",
         );
-        files_eval(
+        /*files_eval( // pwfeedback is used to show psw asterisks during sudo
             files::append_file("/mnt/etc/sudoers", "\nDefaults pwfeedback\n"),
             "Add pwfeedback to sudoers",
+        );*/
+        files_eval(
+            files::sed_file(
+                "/mnt/usr/share/accountsservice/user-templates/administrator",
+                "Icon=.*",
+                "Icon=/usr/share/pixmaps/faces/hackmyavatar.jpg",
+            ),
+            "set avatar for administrator",
+        );
+        files_eval(
+            files::sed_file(
+                "/mnt/usr/share/accountsservice/user-templates/standard",
+                "Icon=.*",
+                "Icon=/usr/share/pixmaps/faces/hackmyavatar.jpg",
+            ),
+            "set avatar for administrator",
         );
         files_eval(
             files::create_directory("/mnt/var/lib/AccountsService/users/"),
-            "Create /mnt/var/lib/AcountsService",
+            "Create /mnt/var/lib/AccountsService",
         );
         files::create_file(&format!("/mnt/var/lib/AccountsService/users/{}", username));
         files_eval(
             files::append_file(
                 &format!("/mnt/var/lib/AccountsService/users/{}", username),
-                r#"[User]
-                Session=onyx"#,
+                "[User]\nSession=gnome-xorg",
             ),
             format!("Populate AccountsService user file for {}", username).as_str(),
         )

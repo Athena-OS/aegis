@@ -23,7 +23,7 @@ pub fn virt_check() {
         enable_service("mnt-hgfs.mount");
 
         exec_eval(
-            exec_chroot(
+            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
                     String::from("-in"),
@@ -31,7 +31,7 @@ pub fn virt_check() {
                     String::from("/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/"),
                     String::from("-e"),
                     String::from("/^MODULES=([^)]*)/ {/vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/}"),
-                    String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
+                    String::from("/mnt/etc/mkinitcpio.conf"),
                 ],
             ),
             "Set vmware modules",
@@ -46,12 +46,12 @@ pub fn virt_check() {
         enable_service("hv_vss_daemon");
 
         exec_eval(
-            exec_chroot(
+            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
                     String::from("-in"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"),
-                    String::from("/etc/default/grub"), //In chroot we don't need to specify /mnt
+                    String::from("/mnt/etc/default/grub"),
                 ],
             ),
             "Set hyperv kernel parameter",
@@ -222,7 +222,7 @@ pub fn cpu_gpu_check(kernel: &str) {
         install(PackageManager::Pacman, vec!["opencl-nvidia", "gwe", "nvtop"]);
         
         exec_eval(
-            exec_chroot(
+            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
                     String::from("-in"),
@@ -230,19 +230,19 @@ pub fn cpu_gpu_check(kernel: &str) {
                     String::from("/^MODULES=()/ s/()/(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/"),
                     String::from("-e"),
                     String::from("/^MODULES=([^)]*)/ {/nvidia nvidia_modeset nvidia_uvm nvidia_drm/! s/)/ nvidia nvidia_modeset nvidia_uvm nvidia_drm)/}"),
-                    String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
+                    String::from("/mnt/etc/mkinitcpio.conf"),
                 ],
             ),
             "Set nvidia modules",
         );
 
         exec_eval(
-            exec_chroot(
+            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
                     String::from("-in"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g"),
-                    String::from("/etc/default/grub"), //In chroot we don't need to specify /mnt
+                    String::from("/etc/default/grub"),
                 ],
             ),
             "Enable NVIDIA GPU kernel paramater",
