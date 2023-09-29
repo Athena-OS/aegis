@@ -417,8 +417,8 @@ pub fn read_config(configpath: PathBuf) {
     }
     install(PackageManager::Pacman, extra_packages);
     println!();
-    log::info!("Enabling services...");
-    base::enable_services();
+    log::info!("Enabling system services...");
+    base::enable_system_services();
     println!("---------");
     for i in 0..config.users.len() {
         log::info!("Creating user : {}", config.users[i].name);

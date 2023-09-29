@@ -119,7 +119,7 @@ fn main() {
             terminals::install_terminal_setup(terminal);
         }
         Command::EnableServices => {
-            base::enable_services();
+            base::enable_system_services();
         }
     }
 }

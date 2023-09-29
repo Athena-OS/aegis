@@ -446,7 +446,7 @@ pub fn setup_snapper() {
     install(PackageManager::Pacman, vec![
         "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
     ]);
-    enable_fsservice("grub-btrfsd");
+    enable_service("grub-btrfsd");
     exec_eval(
         exec_chroot(
             "sed",
@@ -537,7 +537,7 @@ pub fn install_zram() {
     );
 }
 
-pub fn enable_services() {
+pub fn enable_system_services() {
     enable_service("bluetooth");
     enable_service("cronie");
     enable_service("set-cfs-tweaks");
