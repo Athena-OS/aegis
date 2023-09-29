@@ -21,7 +21,6 @@ fn main() {
                 args.mode,
                 args.efi,
                 &mut partitions,
-                args.unakite,
             );
         }
         Command::InstallBase => {

@@ -187,9 +187,6 @@ pub struct PartitionArgs {
     #[arg(long)]
     pub efi: bool,
 
-    #[arg(long)]
-    pub unakite: bool,
-
     /// The partitions to use for manual partitioning
     #[arg(required_if_eq("mode", "PartitionMode::Manual"), value_parser = parse_partitions)]
     pub partitions: Vec<Partition>,

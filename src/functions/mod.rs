@@ -8,5 +8,4 @@ pub mod terminals;
 pub mod locale;
 pub mod network;
 pub mod partition;
-pub mod unakite;
 pub mod users;
