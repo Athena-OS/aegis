@@ -447,17 +447,6 @@ pub fn setup_snapper() {
         "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
     ]);
     enable_service("grub-btrfsd");
-    exec_eval(
-        exec_chroot(
-            "sed",
-            vec![
-                String::from("-in"),
-                String::from("/^HOOKS*/ s/\"$/ grub-btrfs-overlayfs\"/g"),
-                String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
-            ],
-        ),
-        "Enable BTRFS services",
-    );
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub-btrfs/config",
@@ -482,6 +471,7 @@ pub fn setup_snapper() {
         ),
         "Not show the total number of Grub Btrfs snapshots found",
     );
+    files::copy_file("/mnt/etc/snapper/config-templates/garuda", "/mnt/etc/snapper/configs/root");
 }
 
 pub fn install_homemgr() {

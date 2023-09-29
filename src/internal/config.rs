@@ -422,7 +422,7 @@ pub fn read_config(configpath: PathBuf) {
     println!("---------");
     for i in 0..config.users.len() {
         log::info!("Creating user : {}", config.users[i].name);
-        log::info!("Setting use password : {}", config.users[i].password);
+        //log::info!("Setting use password : {}", config.users[i].password);
         log::info!("Enabling root for user : {}", config.users[i].hasroot);
         log::info!("Setting user shell : {}", config.users[i].shell);
 

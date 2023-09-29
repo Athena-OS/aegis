@@ -27,11 +27,14 @@ pub fn virt_check() {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("/^MODULES*/ s/\"$/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx\"/g"),
+                    String::from("-e"),
+                    String::from("/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/"),
+                    String::from("-e"),
+                    String::from("/^MODULES=([^)]*)/ {/vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/}"),
                     String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
                 ],
             ),
-            "Set vmware kernel parameter",
+            "Set vmware modules",
         );
     } else if result == "qemu" || result == "kvm" {
         install(PackageManager::Pacman, vec!["qemu-guest-agent"]);
@@ -223,12 +226,16 @@ pub fn cpu_gpu_check(kernel: &str) {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("/^MODULES*/ s/\"$/ nvidia nvidia_modeset nvidia_uvm nvidia_drm\"/g"),
+                    String::from("-e"),
+                    String::from("/^MODULES=()/ s/()/(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/"),
+                    String::from("-e"),
+                    String::from("/^MODULES=([^)]*)/ {/nvidia nvidia_modeset nvidia_uvm nvidia_drm/! s/)/ nvidia nvidia_modeset nvidia_uvm nvidia_drm)/}"),
                     String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
                 ],
             ),
-            "Enable NVIDIA GPU modules",
+            "Set nvidia modules",
         );
+
         exec_eval(
             exec_chroot(
                 "sed",
