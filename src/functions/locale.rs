@@ -68,4 +68,11 @@ pub fn set_keyboard(keyboard: &str) {
         ),
         "set keyboard layout",
     );
+    files_eval(
+        files::append_file(
+            "/mnt/etc/vconsole.conf",
+            "FONT=ter-v24n",
+        ),
+        "set console font",
+    );
 }
