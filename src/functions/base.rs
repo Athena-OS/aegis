@@ -443,7 +443,45 @@ pub fn setup_timeshift() {
 }
 
 pub fn setup_snapper() {
-    install(PackageManager::Pacman, vec!["snap-pac", "snap-pac-grub", "snapper-support"]);
+    install(PackageManager::Pacman, vec![
+        "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
+    ]);
+    enable_fsservice("grub-btrfsd");
+    exec_eval(
+        exec_chroot(
+            "sed",
+            vec![
+                String::from("-in"),
+                String::from("/^HOOKS*/ s/\"$/ grub-btrfs-overlayfs\"/g"),
+                String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
+            ],
+        ),
+        "Enable BTRFS services",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_LIMIT=.*",
+            "GRUB_BTRFS_LIMIT=\"5\"",
+        ),
+        "Set Grub Btrfs limit",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=.*",
+            "GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=\"false\"",
+        ),
+        "Not show Grub Btrfs snapshots found",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=.*",
+            "GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=\"false\"",
+        ),
+        "Not show the total number of Grub Btrfs snapshots found",
+    );
 }
 
 pub fn install_homemgr() {
