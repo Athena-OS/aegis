@@ -110,7 +110,7 @@ pub fn read_config(configpath: PathBuf) {
     }
     //////
     let config: Config = config.unwrap();
-    log::info!("Block device to use : /dev/{}", config.partition.device);
+    log::info!("Block device to use : {}", config.partition.device);
     log::info!("Partitioning mode : {:?}", config.partition.mode);
     log::info!("Partitioning for EFI : {}", config.partition.efi);
     let mut partitions: Vec<args::Partition> = Vec::new();
@@ -407,17 +407,17 @@ pub fn read_config(configpath: PathBuf) {
     }
     //////////
     println!();
-    log::info!("Enabling timeshift : {}", config.timeshift);
+    log::info!("Installing timeshift : {}", config.timeshift);
     if config.timeshift {
         base::setup_timeshift();
     }
     println!();
-    log::info!("Enabling snapper : {}", config.snapper);
+    log::info!("Installing snapper : {}", config.snapper);
     if config.snapper {
         base::setup_snapper();
     }
     println!();
-    log::info!("Enabling flatpak : {}", config.flatpak);
+    log::info!("Installing flatpak : {}", config.flatpak);
     if config.flatpak {
         base::install_flatpak();
     }
@@ -427,6 +427,10 @@ pub fn read_config(configpath: PathBuf) {
         extra_packages.push(config.extra_packages[i].as_str());
     }
     install(PackageManager::Pacman, extra_packages);
+    println!();
+    log::info!("Enabling services...");
+    base::enable_services();
+    println!();
     log::info!("Setup unakite");
     if config.partition.mode == PartitionMode::Auto
         && !config.partition.efi
@@ -514,7 +518,7 @@ pub fn read_config(configpath: PathBuf) {
         println!("---------");
     }
     println!();
-    log::info!("Setting root password : {}", config.rootpass);
+    //log::info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
     println!();
     println!("Installation finished! You may reboot now!")

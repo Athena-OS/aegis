@@ -27,7 +27,7 @@ pub fn virt_check() {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("'/^MODULES*/ s/\"$/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx\"/g'"),
+                    String::from("/^MODULES*/ s/\"$/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx\"/g"),
                     String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
                 ],
             ),
@@ -47,7 +47,7 @@ pub fn virt_check() {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("'/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g'"),
+                    String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"),
                     String::from("/etc/default/grub"), //In chroot we don't need to specify /mnt
                 ],
             ),
@@ -223,7 +223,7 @@ pub fn cpu_gpu_check(kernel: &str) {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("'/^MODULES*/ s/\"$/ nvidia nvidia_modeset nvidia_uvm nvidia_drm\"/g'"),
+                    String::from("/^MODULES*/ s/\"$/ nvidia nvidia_modeset nvidia_uvm nvidia_drm\"/g"),
                     String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
                 ],
             ),
@@ -234,7 +234,7 @@ pub fn cpu_gpu_check(kernel: &str) {
                 "sed",
                 vec![
                     String::from("-in"),
-                    String::from("'/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g'"),
+                    String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g"),
                     String::from("/etc/default/grub"), //In chroot we don't need to specify /mnt
                 ],
             ),

@@ -166,6 +166,10 @@ pub enum Command {
         #[arg(value_enum)]
         terminal: TerminalSetup,
     },
+
+    /// Enable services
+    #[command(name = "enable-services")]
+    EnableServices,
 }
 
 #[derive(Debug, Args)]

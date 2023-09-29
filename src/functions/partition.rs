@@ -12,10 +12,7 @@ mkfs.btrfs mkfs.ext2  mkfs.ext4  mkfs.minix mkfs.vfat mkfs.f2fs */
 pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
     match filesystem {
         "vfat" => exec_eval(
-            exec(
-                "mkfs.vfat",
-                vec![String::from("-F32"), String::from(blockdevice)],
-            ),
+            exec("mkfs.vfat", vec![String::from("-F32"), String::from(blockdevice)]),
             format!("Formatting {blockdevice} as vfat").as_str(),
         ),
         "bfs" => exec_eval(
@@ -44,27 +41,10 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
         ),
         "btrfs" => {
             exec_eval(
-                exec(
-                    "mkfs.btrfs",
-                    vec![String::from("-f"), String::from(blockdevice)],
-                ),
+                exec("mkfs.btrfs", vec![String::from("-f"), String::from(blockdevice)]),
                 format!("Formatting {blockdevice} as btrfs").as_str(),
             );
-            install(PackageManager::Pacman, vec![
-                "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
-            ]);
-            enable_fsservice("grub-btrfsd");
-            exec_eval(
-                exec_chroot(
-                    "sed",
-                    vec![
-                        String::from("-in"),
-                        String::from("'/^HOOKS*/ s/\"$/ grub-btrfs-overlayfs\"/g'"),
-                        String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
-                    ],
-                ),
-                "Enable BTRFS services",
-            );
+            install_btrfs_support();
         }
         "ext2" => exec_eval(
             exec("mkfs.ext2", vec![String::from(blockdevice)]),
@@ -128,6 +108,7 @@ pub fn partition(
             } else {
                 part_disk(&device, efi, unakite);
             }
+            install_btrfs_support(); // In Auto Partition Mode, BTRFS will be installed by default
         }
         PartitionMode::Manual => {
             log::debug!("Manual partitioning");
@@ -757,4 +738,46 @@ pub fn umount(mountpoint: &str) {
 fn enable_fsservice(fsservice: &str) {
     log::debug!("Enabling {}", fsservice);
     enable_service("fsservice");
+}
+
+fn install_btrfs_support() {
+    install(PackageManager::Pacman, vec![
+        "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools",
+    ]);
+    enable_fsservice("grub-btrfsd");
+    exec_eval(
+        exec_chroot(
+            "sed",
+            vec![
+                String::from("-in"),
+                String::from("/^HOOKS*/ s/\"$/ grub-btrfs-overlayfs\"/g"),
+                String::from("/etc/mkinitcpio.conf"), //In chroot we don't need to specify /mnt
+            ],
+        ),
+        "Enable BTRFS services",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_LIMIT=.*",
+            "GRUB_BTRFS_LIMIT=\"5\"",
+        ),
+        "Set Grub Btrfs limit",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=.*",
+            "GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=\"false\"",
+        ),
+        "Not show Grub Btrfs snapshots found",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub-btrfs/config",
+            "#GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=.*",
+            "GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=\"false\"",
+        ),
+        "Not show the total number of Grub Btrfs snapshots found",
+    );
 }

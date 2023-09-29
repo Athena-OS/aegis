@@ -39,13 +39,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
         ),
         "install unakite grub as efi without --removable",
     );
-    files_eval(
-        files::append_file(
-            "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
-        ),
-        "enable athena grub theme",
-    );
+    base::setting_grub_parameters();
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -165,6 +159,7 @@ pub fn setup_unakite(root: &str, oldroot: &str, efi: bool, efidir: &str, bootdev
     browsers::install_browser_setup(BrowserSetup::Firefox);
     terminals::install_terminal_setup(TerminalSetup::Alacritty);
     install(PackageManager::Pacman, vec!["gparted", "nix"]);
+    base::enable_services();
     exec_eval(
         exec(
             "cp",

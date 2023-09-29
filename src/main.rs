@@ -119,5 +119,8 @@ fn main() {
         Command::Terminals { terminal } => {
             terminals::install_terminal_setup(terminal);
         }
+        Command::EnableServices => {
+            base::enable_services();
+        }
     }
 }

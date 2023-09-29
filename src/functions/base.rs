@@ -1,6 +1,5 @@
 use crate::args::PackageManager;
 use crate::internal::exec::*;
-use crate::internal::files::append_file;
 use crate::internal::services::enable_service;
 use crate::internal::*;
 use log::warn;
@@ -8,20 +7,16 @@ use std::path::PathBuf;
 
 pub fn install_base_packages() {
 
-    initialize_live_env();
     std::fs::create_dir_all("/mnt/etc").unwrap();
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
         // Repositories
-        "athena-keyring",
         "athena-mirrorlist",
-        "blackarch-keyring",
         "blackarch-mirrorlist",
-        "chaotic-keyring",
         "chaotic-mirrorlist",
     ]);
-
+    initialize_keyrings();
     hardware::set_cores();
 
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
@@ -62,7 +57,6 @@ pub fn install_packages(kernel: String) {
         "nano",
         "sudo",
         "curl",
-        "archlinux-keyring",
         // Extra Base Arch
         "accountsservice",
         "alsa-utils",
@@ -204,19 +198,31 @@ pub fn install_packages(kernel: String) {
     hardware::cpu_gpu_check(kernel_to_install);
     hardware::virt_check();
 
-    enable_service("bluetooth");
-    enable_service("cronie");
-    enable_service("set-cfs-tweaks");
-    enable_service("ananicy");
-    enable_service("irqbalance");
-    enable_service("nohang");
-    enable_service("vnstat");
-    //enable_service("cups");
+    files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
+    files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
+
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/mkinitcpio.conf",
+            "#COMPRESSION=\"lz4\"",
+            "COMPRESSION=\"lz4\"",
+        ),
+        "set distributor name",
+    );
+
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/nsswitch.conf",
+            "hosts:.*",
+            "hosts: mymachines resolve [!UNAVAIL=return] files dns mdns wins myhostname",
+        ),
+        "set distributor name",
+    );
 
     fastest_mirrors();
 }
 
-fn initialize_live_env() {
+fn initialize_keyrings() {
     log::info!("Upgrade keyrings on the host");
     exec_eval(
         exec(
@@ -322,6 +328,41 @@ pub fn genfstab() {
     );
 }
 
+pub fn setting_grub_parameters() {
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub",
+            "GRUB_DISTRIBUTOR=.*",
+            "GRUB_DISTRIBUTOR=\"Athena OS\"",
+        ),
+        "set distributor name",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub",
+            "GRUB_CMDLINE_LINUX_DEFAULT=.*",
+            "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet loglevel=3 audit=0 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"",
+        ),
+        "set kernel parameters",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub",
+            "GRUB_THEME=.*",
+            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
+        ),
+        "enable athena grub theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub",
+            "#GRUB_DISABLE_OS_PROBER=.*",
+            "GRUB_DISABLE_OS_PROBER=false",
+        ),
+        "enable os prober",
+    );
+}
+
 pub fn install_bootloader_efi(efidir: PathBuf) {
     install::install(PackageManager::Pacman, vec![
         "grub",
@@ -356,13 +397,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
         ),
         "install grub as efi without --removable",
     );
-    files_eval(
-        append_file(
-            "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
-        ),
-        "enable athena grub theme",
-    );
+    setting_grub_parameters();
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -389,13 +424,7 @@ pub fn install_bootloader_legacy(device: PathBuf) {
         ),
         "install grub as legacy",
     );
-    files_eval(
-        append_file(
-            "/mnt/etc/default/grub",
-            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
-        ),
-        "enable athena grub theme",
-    );
+    setting_grub_parameters();
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -468,4 +497,15 @@ pub fn install_zram() {
         files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]"),
         "Write zram-generator config",
     );
+}
+
+pub fn enable_services() {
+    enable_service("bluetooth");
+    enable_service("cronie");
+    enable_service("set-cfs-tweaks");
+    enable_service("ananicy");
+    enable_service("irqbalance");
+    enable_service("nohang");
+    enable_service("vnstat");
+    //enable_service("cups");
 }
