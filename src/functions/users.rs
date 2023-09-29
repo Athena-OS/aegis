@@ -68,22 +68,6 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
             "Add pwfeedback to sudoers",
         );*/
         files_eval(
-            files::sed_file(
-                "/mnt/usr/share/accountsservice/user-templates/administrator",
-                "Icon=.*",
-                "Icon=/usr/share/pixmaps/faces/hackmyavatar.jpg",
-            ),
-            "set avatar for administrator",
-        );
-        files_eval(
-            files::sed_file(
-                "/mnt/usr/share/accountsservice/user-templates/standard",
-                "Icon=.*",
-                "Icon=/usr/share/pixmaps/faces/hackmyavatar.jpg",
-            ),
-            "set avatar for administrator",
-        );
-        files_eval(
             files::create_directory("/mnt/var/lib/AccountsService/users/"),
             "Create /mnt/var/lib/AccountsService",
         );
@@ -91,7 +75,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
         files_eval(
             files::append_file(
                 &format!("/mnt/var/lib/AccountsService/users/{}", username),
-                "[User]\nSession=gnome-xorg",
+                "[User]\nSession=gnome-xorg\nIcon=/usr/share/pixmaps/faces/hackmyavatar.jpg",
             ),
             format!("Populate AccountsService user file for {}", username).as_str(),
         )
