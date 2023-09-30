@@ -73,6 +73,10 @@ pub enum Command {
     #[command(name = "zramd")]
     Zram,
 
+    /// Set up hardened
+    #[command(name = "hardened")]
+    Hardened,
+
     /// Configure users and passwords
     #[command(name = "users")]
     Users {

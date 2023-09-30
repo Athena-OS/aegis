@@ -5,6 +5,7 @@ mod logging;
 
 use crate::args::{BootloaderSubcommand, Command, Cli, UsersSubcommand};
 use crate::functions::*;
+use crate::internal::secure;
 use clap::Parser;
 
 fn main() {
@@ -58,6 +59,10 @@ fn main() {
         }
         Command::Zram => {
             base::install_zram();
+        }
+        Command::Hardened => {
+            secure::secure_password_config();
+            secure::secure_ssh_config();
         }
         Command::Users { subcommand } => match subcommand {
             UsersSubcommand::NewUser(args) => {

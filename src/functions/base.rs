@@ -547,6 +547,7 @@ pub fn install_zram() {
 }
 
 pub fn enable_system_services() {
+    enable_service("auditd");
     enable_service("bluetooth");
     enable_service("cronie");
     enable_service("set-cfs-tweaks");

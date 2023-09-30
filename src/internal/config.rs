@@ -3,6 +3,7 @@ use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, T
 use crate::functions::*;
 use crate::internal::*;
 use crate::internal::files::{rename_file, sed_file};
+use crate::internal::secure;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{PathBuf};
@@ -25,6 +26,7 @@ struct Config {
     snapper: bool,
     flatpak: bool,
     zramd: bool,
+    hardened: bool,
     extra_packages: Vec<String>,
     kernel: String,
 }
@@ -152,6 +154,12 @@ pub fn read_config(configpath: PathBuf) {
     log::info!("Enabling zramd : {}", config.zramd);
     if config.zramd {
         base::install_zram();
+    }
+    println!();
+    log::info!("Hardening system : {}", config.hardened);
+    if config.hardened {
+        secure::secure_password_config();
+        secure::secure_ssh_config();
     }
     println!();
     log::info!("Installing desktop : {:?}", config.desktop);
