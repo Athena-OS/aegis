@@ -29,14 +29,14 @@ pub fn install_packages(kernel: String) {
         "linux-lts"
     } else {
         match kernel.as_str() {
-            "Linux" => "linux",
-            "Linux LTS" => "linux-lts",
-            "Linux Zen" => "linux-zen",
-            "Linux Hardened" => "linux-hardened",
-            "Linux Real-Time" => "linux-rt",
-            "Linux Real-Time LTS" => "linux-rt-lts",
-            "Linux Liquorix" => "linux-lqx",
-            "Linux Xanmod" => "linux-xanmod",
+            "linux" => "linux",
+            "linux lts" => "linux-lts",
+            "linux zen" => "linux-zen",
+            "linux hardened" => "linux-hardened",
+            "linux real-time" => "linux-rt",
+            "linux real-time lts" => "linux-rt-lts",
+            "linux liquorix" => "linux-lqx",
+            "linux xanmod" => "linux-xanmod",
             _ => {
                 warn!("Unknown kernel: {}, using default instead", kernel);
                 "linux-lts"
