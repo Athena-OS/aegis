@@ -21,6 +21,7 @@ pub fn install_base_packages() {
     hardware::set_cores();
 
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
+    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 }
 
@@ -256,12 +257,8 @@ fn initialize_keyrings() {
         ),
         "Populate keys",
     );
-}
-
-fn fastest_mirrors() {
-    log::info!("Running reflector to sort for fastest mirrors");
     exec_eval(
-        exec(
+        exec( // It is done on the live system
             "reflector",
             vec![
                 String::from("--latest"),
@@ -274,6 +271,9 @@ fn fastest_mirrors() {
         ),
         "Generate fastest Arch Linux mirrors",
     );
+}
+
+fn fastest_mirrors() {
     log::info!("Getting fastest BlackLinux mirrors for your location");
     exec_eval(
         exec_chroot(
