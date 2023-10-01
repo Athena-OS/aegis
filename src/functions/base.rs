@@ -370,6 +370,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
     ]);
     let efidir = std::path::Path::new("/mnt").join(efidir);
     let efi_str = efidir.to_str().unwrap();
+    log::info!("EFI bootloader installing at {}", efi_str);
     if !std::path::Path::new(&format!("/mnt{efi_str}")).exists() {
         crash(format!("The efidir {efidir:?} doesn't exist"), 1);
     }
@@ -379,7 +380,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=tofill"),
+                String::from("--bootloader-id=Athena"),
                 String::from("--removable"),
             ],
         ),
@@ -391,7 +392,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=tofill"),
+                String::from("--bootloader-id=Athena"),
             ],
         ),
         "install grub as efi without --removable",
@@ -416,6 +417,7 @@ pub fn install_bootloader_legacy(device: PathBuf) {
         crash(format!("The device {device:?} does not exist"), 1);
     }
     let device = device.to_string_lossy().to_string();
+    log::info!("Legacy bootloader installing at {}", device);
     exec_eval(
         exec_chroot(
             "grub-install",
