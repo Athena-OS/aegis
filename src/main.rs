@@ -12,7 +12,7 @@ fn main() {
     human_panic::setup_panic!();
     let cli = Cli::parse();
     println!("verbose: {}", cli.verbose);
-    let log_file_path = "/tmp/athena-install";
+    let log_file_path = "/tmp/aegis";
     logging::init(cli.verbose, log_file_path);
     match cli.command {
         Command::Partition(args) => {
