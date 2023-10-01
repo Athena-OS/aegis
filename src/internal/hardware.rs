@@ -20,7 +20,7 @@ pub fn virt_check() {
         install(PackageManager::Pacman, vec!["open-vm-tools", "xf86-video-vmware"]);
         enable_service("vmware-vmblock-fuse");
         enable_service("vmtoolsd");
-        enable_service("mnt-hgfs.mount");
+        //enable_service("mnt-hgfs.mount");
 
         exec_eval(
             exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
