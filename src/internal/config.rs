@@ -453,6 +453,8 @@ pub fn read_config(configpath: PathBuf) {
     //log::info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
     println!();
+    log::info!("Installation log file copied to /var/log/aegis.log");
+    files::copy_file("/tmp/athena-install", "/mnt/var/log/aegis.log");
     println!("Installation finished! You may reboot now!")
 }
 

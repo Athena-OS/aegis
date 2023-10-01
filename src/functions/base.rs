@@ -17,6 +17,7 @@ pub fn install_base_packages() {
         "chaotic-mirrorlist",
     ]);
     initialize_keyrings();
+    fastest_mirrors();
     hardware::set_cores();
 
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
@@ -218,8 +219,6 @@ pub fn install_packages(kernel: String) {
         ),
         "set distributor name",
     );
-
-    fastest_mirrors();
 }
 
 fn initialize_keyrings() {
@@ -257,6 +256,9 @@ fn initialize_keyrings() {
         ),
         "Populate keys",
     );
+}
+
+fn fastest_mirrors() {
     log::info!("Running reflector to sort for fastest mirrors");
     exec_eval(
         exec(
@@ -272,9 +274,6 @@ fn initialize_keyrings() {
         ),
         "Generate fastest Arch Linux mirrors",
     );
-}
-
-fn fastest_mirrors() {
     log::info!("Getting fastest BlackLinux mirrors for your location");
     exec_eval(
         exec_chroot(
