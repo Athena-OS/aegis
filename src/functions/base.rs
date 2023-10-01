@@ -185,7 +185,7 @@ pub fn install_packages(kernel: String) {
         // Athena
         "athena-cyber-hub",
         "athena-neofetch-config",
-        "athena-nvchad",
+        "athena-nvim-config",
         "athena-powershell-config",
         "athena-system-config",
         "athena-theme-tweak",
