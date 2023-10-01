@@ -380,7 +380,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=Athena"),
+                String::from("--bootloader-id=GRUB"),
                 String::from("--removable"),
             ],
         ),
@@ -392,7 +392,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=Athena"),
+                String::from("--bootloader-id=GRUB"),
             ],
         ),
         "install grub as efi without --removable",
