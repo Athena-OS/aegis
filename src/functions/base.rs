@@ -94,6 +94,7 @@ pub fn install_packages(kernel: String) {
         "sof-firmware",
         "squashfs-tools",
         "syslinux",
+        "testdisk",
         "timelineproject-hg",
         "usbutils",
         "wireless_tools",
