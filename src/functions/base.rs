@@ -555,7 +555,7 @@ pub fn enable_system_services() {
     enable_service("set-cfs-tweaks");
     enable_service("ananicy");
     enable_service("irqbalance");
-    enable_service("nohang");
+    //enable_service("nohang");
     enable_service("vnstat");
     //enable_service("cups");
 }
