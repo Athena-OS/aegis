@@ -172,7 +172,7 @@ pub fn install_packages(kernel: String) {
         "tidy",
         "tk",
         "toilet-fonts",
-        "tor-browser",
+        "torbrowser-launcher",
         "tree",
         "ufw",
         "unzip",
