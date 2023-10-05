@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 pub fn install_base_packages() {
 
-    initialize_keyrings();
+    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors.
     std::fs::create_dir_all("/mnt/etc").unwrap();
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
@@ -16,8 +16,11 @@ pub fn install_base_packages() {
         "athena-mirrorlist",
         "blackarch-mirrorlist",
         "chaotic-mirrorlist",
+        "mirroars",
     ]);
     fastest_mirrors();
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Chaotic AUR package
+    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
 }
 
 pub fn install_packages(kernel: String) {
@@ -196,8 +199,6 @@ pub fn install_packages(kernel: String) {
     hardware::cpu_gpu_check(kernel_to_install);
     hardware::virt_check();
     
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
-    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
     files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
     files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
