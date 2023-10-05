@@ -18,11 +18,6 @@ pub fn install_base_packages() {
     ]);
     initialize_keyrings();
     fastest_mirrors();
-    hardware::set_cores();
-
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
-    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
-    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 }
 
 pub fn install_packages(kernel: String) {
@@ -196,10 +191,14 @@ pub fn install_packages(kernel: String) {
         "htb-toolkit",
         "nist-feed",
     ]);
-
+    
+    hardware::set_cores();
     hardware::cpu_gpu_check(kernel_to_install);
     hardware::virt_check();
-
+    
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf");
+    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
+    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
     files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
     files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
 
