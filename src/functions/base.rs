@@ -7,8 +7,10 @@ use std::path::PathBuf;
 
 pub fn install_base_packages() {
 
-    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors.
     std::fs::create_dir_all("/mnt/etc").unwrap();
+    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors.
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena, BlackArch and Chaotic AUR package
+    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
@@ -18,9 +20,7 @@ pub fn install_base_packages() {
         "chaotic-mirrorlist",
         "mirroars",
     ]);
-    fastest_mirrors();
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Chaotic AUR package
-    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist");
+    fastest_mirrors(); // Done on the target system
 }
 
 pub fn install_packages(kernel: String) {
@@ -225,6 +225,20 @@ pub fn install_packages(kernel: String) {
 fn initialize_keyrings() {
     log::info!("Upgrade keyrings on the host");
     exec_eval(
+        exec( // It is done on the live system
+            "reflector",
+            vec![
+                String::from("--latest"),
+                String::from("15"),
+                String::from("--sort"),
+                String::from("rate"),
+                String::from("--save"),
+                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
+            ],
+        ),
+        "Generate fastest Arch Linux mirrors",
+    );
+    exec_eval(
         exec(
             "pacman",
             vec![
@@ -256,20 +270,6 @@ fn initialize_keyrings() {
             ],
         ),
         "Populate keys",
-    );
-    exec_eval(
-        exec( // It is done on the live system
-            "reflector",
-            vec![
-                String::from("--latest"),
-                String::from("15"),
-                String::from("--sort"),
-                String::from("rate"),
-                String::from("--save"),
-                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
-            ],
-        ),
-        "Generate fastest Arch Linux mirrors",
     );
 }
 
