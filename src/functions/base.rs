@@ -543,7 +543,7 @@ pub fn install_zram() {
     install(PackageManager::Pacman, vec!["zram-generator"]);
     files::create_file("/mnt/etc/systemd/zram-generator.conf");
     files_eval(
-        files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]"),
+        files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\nswap-priority = 100\nfs-type = swap"),
         "Write zram-generator config",
     );
 }
