@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 pub fn install_base_packages() {
 
+    initialize_keyrings();
     std::fs::create_dir_all("/mnt/etc").unwrap();
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
@@ -16,7 +17,6 @@ pub fn install_base_packages() {
         "blackarch-mirrorlist",
         "chaotic-mirrorlist",
     ]);
-    initialize_keyrings();
     fastest_mirrors();
 }
 
