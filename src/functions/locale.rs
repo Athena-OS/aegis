@@ -26,6 +26,10 @@ pub fn set_locale(locale: String) {
         "edit locale.conf",
     );
     files_eval(
+        files::append_file("/mnt/etc/locale.conf", "LANGUAGE=en_US.UTF-8"),
+        "edit locale.conf",
+    );
+    files_eval(
         files::append_file("/mnt/etc/locale.conf", "LC_ALL=en_US.UTF-8"),
         "edit locale.conf",
     );
