@@ -25,10 +25,11 @@ fn main() {
             );
         }
         Command::InstallBase => {
+            locale::set_locale_conf();
             base::install_base_packages();
         }
         Command::Locale(args) => {
-            locale::set_locale(args.locales.join(" ")); // locale.gen file comes grom glibc package that is in base group package
+            locale::set_locale_gen(args.locales.join(" ")); // locale.gen file comes grom glibc package that is in base group package
             locale::set_keyboard(&args.keyboard);
             locale::set_timezone(&args.timezone);
         }
