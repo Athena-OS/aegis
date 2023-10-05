@@ -123,9 +123,6 @@ pub fn read_config(configpath: PathBuf) {
     println!();
     base::install_base_packages();
     println!();
-    base::install_packages(config.kernel);
-    base::genfstab();
-    println!();
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     log::info!("Adding Locales : {:?}", config.locale.locale);
     locale::set_locale(config.locale.locale.join(" "));
@@ -133,6 +130,9 @@ pub fn read_config(configpath: PathBuf) {
     locale::set_keyboard(config.locale.keymap.as_str());
     log::info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
+    println!();
+    base::install_packages(config.kernel);
+    base::genfstab();
     println!();
     log::info!("Installing bootloader : {}", config.bootloader.r#type);
     log::info!("Installing bootloader to : {}", config.bootloader.location);

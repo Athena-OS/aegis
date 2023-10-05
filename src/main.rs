@@ -27,16 +27,16 @@ fn main() {
         Command::InstallBase => {
             base::install_base_packages();
         }
+        Command::Locale(args) => {
+            locale::set_locale(args.locales.join(" ")); // locale.gen file comes grom glibc package that is in base group package
+            locale::set_keyboard(&args.keyboard);
+            locale::set_timezone(&args.timezone);
+        }
         Command::InstallPackages(args) => {
             base::install_packages(args.kernel);
         }
         Command::GenFstab => {
             base::genfstab();
-        }
-        Command::Locale(args) => {
-            locale::set_locale(args.locales.join(" "));
-            locale::set_keyboard(&args.keyboard);
-            locale::set_timezone(&args.timezone);
         }
         Command::SetupTimeshift => base::setup_timeshift(),
         Command::SetupSnapper => base::setup_snapper(),
