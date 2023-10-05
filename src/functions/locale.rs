@@ -19,7 +19,7 @@ pub fn set_timezone(timezone: &str) {
     );
 }
 
-pub fn set_locale_conf() {
+pub fn set_locale(locale: String) {
     files::create_file("/mnt/etc/locale.conf");
     files_eval(
         files::append_file("/mnt/etc/locale.conf", "LANG=en_US.UTF-8"),
@@ -29,9 +29,6 @@ pub fn set_locale_conf() {
         files::append_file("/mnt/etc/locale.conf", "LC_ALL=en_US.UTF-8"),
         "edit locale.conf",
     );
-}
-
-pub fn set_locale_gen(locale: String) {
     for i in (0..locale.split(' ').count()).step_by(2) {
         files_eval(
             files::append_file(

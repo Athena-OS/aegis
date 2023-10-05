@@ -121,13 +121,11 @@ pub fn read_config(configpath: PathBuf) {
         &mut partitions,
     );
     println!();
-    std::fs::create_dir_all("/mnt/etc").unwrap();
-    locale::set_locale_conf();
     base::install_base_packages();
     println!();
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     log::info!("Adding Locales : {:?}", config.locale.locale);
-    locale::set_locale_gen(config.locale.locale.join(" "));
+    locale::set_locale(config.locale.locale.join(" "));
     log::info!("Using keymap : {}", config.locale.keymap);
     locale::set_keyboard(config.locale.keymap.as_str());
     log::info!("Setting timezone : {}", config.locale.timezone);
