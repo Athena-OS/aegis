@@ -121,6 +121,7 @@ pub fn read_config(configpath: PathBuf) {
         &mut partitions,
     );
     println!();
+    std::fs::create_dir_all("/mnt/etc").unwrap();
     locale::set_locale_conf();
     base::install_base_packages();
     println!();
