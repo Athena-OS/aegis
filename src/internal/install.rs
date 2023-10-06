@@ -188,8 +188,7 @@ fn move_server_line(mirrorlist_path: &str, mirror_name: &str) -> io::Result<()> 
 
             // Insert the mirror URL line after the last "Server" line
             let insert_index = last_server_index;
-            lines.insert(insert_index, mirror_url_line);
-
+            lines.insert(insert_index, mirror_url_line.clone());
             // Write the modified content back to the mirrorlist file
             let mut file = OpenOptions::new()
                 .write(true)
@@ -199,6 +198,7 @@ fn move_server_line(mirrorlist_path: &str, mirror_name: &str) -> io::Result<()> 
             for line in lines {
                 writeln!(file, "{}", line)?;
             }
+            log::info!("'{}' moved at the end of {}", mirror_url_line, mirrorlist_path);
         }
     }
 
