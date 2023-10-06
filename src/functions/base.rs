@@ -13,6 +13,7 @@ pub fn install_base_packages() {
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
+        "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
         // Repositories
         "athena-mirrorlist",
         "blackarch-mirrorlist",
