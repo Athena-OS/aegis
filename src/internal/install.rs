@@ -91,7 +91,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                     // Extract the mirror name from the error message
                     if let Some(mirror_name) = extract_mirror_name(&line) {
                         // Check if the mirror is in one of the mirrorlist files
-                        if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name) {
+                        if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, &pkgmanager_name) {
                             // Move the "Server" line within the mirrorlist file
                             if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
                                 error!(
@@ -144,13 +144,23 @@ fn extract_mirror_name(error_message: &str) -> Option<String> {
 }
 
 // Function to find the mirrorlist file containing the mirror
-fn find_mirrorlist_file(mirror_name: &str) -> Option<String> {
+fn find_mirrorlist_file(mirror_name: &str, pkgmanager_name: &str) -> Option<String> {
     // Define the paths to the mirrorlist files
-    let mirrorlist_paths = [
-        "/etc/pacman.d/mirrorlist",
-        "/etc/pacman.d/chaotic-mirrorlist",
-        "/etc/pacman.d/blackarch-mirrorlist",
-    ];
+    let mut mirrorlist_paths: [&str; 3] = ["", "", ""];
+    if pkgmanager_name == "pacstrap" {
+        mirrorlist_paths = [
+            "/etc/pacman.d/mirrorlist",
+            "/etc/pacman.d/chaotic-mirrorlist",
+            "/etc/pacman.d/blackarch-mirrorlist",
+        ];
+    }
+    else if pkgmanager_name == "pacman" {
+        mirrorlist_paths = [
+            "/mnt/etc/pacman.d/mirrorlist",
+            "/mnt/etc/pacman.d/chaotic-mirrorlist",
+            "/mnt/etc/pacman.d/blackarch-mirrorlist",
+        ];
+    }
 
     // Iterate through the mirrorlist file paths
     for &mirrorlist_path in &mirrorlist_paths {

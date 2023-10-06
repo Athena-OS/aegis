@@ -8,7 +8,7 @@ use std::path::PathBuf;
 pub fn install_base_packages() {
 
     std::fs::create_dir_all("/mnt/etc").unwrap();
-    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors.
+    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses reflector too
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena, BlackArch and Chaotic AUR package
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
