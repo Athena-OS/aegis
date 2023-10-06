@@ -1,5 +1,5 @@
 use crate::args::PackageManager;
-use log::{error, info};
+use log::{error, info, warn};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
@@ -68,12 +68,23 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                     break; // Exit the for loop early if *retry is true. It means we updated the mirrorlist, we can proceed to retry the install command
                 }
                 let line = line.expect("Failed to read stderr");
-                error!(
-                    "{} stderr (exit code {}): {}",
-                    pkgmanager_name,
-                    exit_status.code().unwrap_or(-1),
-                    line
-                );
+                let exit_code = exit_status.code().unwrap_or(-1);
+                if exit_code == 0 {
+                    warn!(
+                        "{} warn (exit code {}): {}",
+                        pkgmanager_name,
+                        exit_code,
+                        line
+                    );
+                }
+                else {
+                    error!(
+                        "{} err (exit code {}): {}",
+                        pkgmanager_name,
+                        exit_code,
+                        line
+                    );
+                }
 
                 // Check if the error message contains "failed retrieving file" and "mirror"
                 if line.contains("failed retrieving file") && line.contains("from") {
