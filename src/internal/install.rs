@@ -87,7 +87,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                 }
 
                 // Check if the error message contains "failed retrieving file" and "mirror"
-                if line.contains("failed retrieving file") && line.contains("from") {
+                if (line.contains("failed retrieving file") && line.contains("from")) || (line.contains("signature from") && line.contains("is invalid")) {
                     // Extract the mirror name from the error message
                     if let Some(mirror_name) = extract_mirror_name(&line) {
                         // Check if the mirror is in one of the mirrorlist files
