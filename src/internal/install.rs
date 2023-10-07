@@ -32,7 +32,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                     .stdout(Stdio::piped()) // Capture stdout
                     .stderr(Stdio::piped()) // Capture stderr
                     .spawn()
-                    .expect("Failed to start pacstrap");
+                    .expect("Failed to start pacman");
                 pkgmanager_name = String::from("pacman");
             },
             PackageManager::Pacstrap => {
