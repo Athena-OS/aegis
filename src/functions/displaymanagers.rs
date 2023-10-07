@@ -30,16 +30,8 @@ fn install_gdm() {
 
 fn install_lightdm() {
     install(PackageManager::Pacman, vec![
-        "athena-lightdm-webkit-theme-aether",
+        "athena-lightdm-neon-theme",
     ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/lightdm/lightdm-webkit2-greeter.conf",
-            "^webkit_theme .*",
-            r"c\webkit_theme = lightdm-webkit-theme-aether",
-        ),
-        "Apply LightDM",
-    );
     enable_service("lightdm");
 }
 
