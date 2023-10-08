@@ -275,7 +275,7 @@ fn initialize_keyrings() {
 }
 
 fn fastest_mirrors() {
-    log::info!("Getting fastest BlackLinux mirrors for your location");
+    log::info!("Getting fastest BlackArch mirrors for your location");
     exec_eval(
         exec_chroot(
             "mirroars",
