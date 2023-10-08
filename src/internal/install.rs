@@ -87,7 +87,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                 }
 
                 // Check if the error message contains "failed retrieving file" and "mirror"
-                if (line.contains("failed retrieving file") && line.contains("from")) || (line.contains("signature from") && line.contains("is invalid")) {
+                if line.contains("failed retrieving file") && line.contains("from") {
                     // Extract the mirror name from the error message
                     if let Some(mirror_name) = extract_mirror_name(&line) {
                         // Check if the mirror is in one of the mirrorlist files
@@ -107,6 +107,54 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                                 //log::info!("[ DEBUG ] Unstable mirror retry {}", *retry);
                             }
                         }
+                    }
+                }
+                else if line.contains("signature from") && line.contains("is invalid") {
+                    let package_name = extract_package_name(&line);
+                    let repository = get_repository_name(&package_name);
+                    println!("Package {} found in repository: {}", package_name, repository);
+                    let mut mirrorlist_filename = String::new();
+                    if pkgmanager_name == "pacstrap" {
+                        if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
+                            mirrorlist_filename = String::from("/etc/pacman.d/mirrorlist");
+                        }
+                        if repository == "blackarch" {
+                            mirrorlist_filename = String::from("/etc/pacman.d/blackarch-mirrorlist");
+                        }
+                        if repository == "chaotic-aur" {
+                            mirrorlist_filename = String::from("/etc/pacman.d/chaotic-mirrorlist");
+                        }
+                    }
+                    else if pkgmanager_name == "pacman" {
+                        if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
+                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/mirrorlist");
+                        }
+                        if repository == "blackarch" {
+                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/blackarch-mirrorlist");
+                        }
+                        if repository == "chaotic-aur" {
+                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
+                        }
+                    }
+                    
+                    match get_first_mirror_name(&mirrorlist_filename) {
+                        Ok(mirror_name) => {
+                            println!("Mirror Name: {}", mirror_name);
+                            if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
+                                error!(
+                                    "Failed to move 'Server' line in {}: {}",
+                                    mirrorlist_filename,
+                                    err
+                                );
+                            } else {
+                                // Update the retry flag within the Mutex
+                                log::info!("Detected invalid signature key in mirror: {}. Retrying by a new one...", mirror_name);
+                                let mut retry = retry_clone.lock().unwrap();
+                                *retry = true;
+                                //log::info!("[ DEBUG ] Invalid signature key in mirror retry {}", *retry);
+                            }
+                        }
+                        Err(err) => eprintln!("Error: {}", err),
                     }
                 }
             }
@@ -213,4 +261,68 @@ fn move_server_line(mirrorlist_path: &str, mirror_name: &str) -> io::Result<()> 
     }
 
     Ok(())
+}
+
+fn get_first_mirror_name(filename: &str) -> Result<String, io::Error> {
+    let file = File::open(filename)?;
+    
+    for line in BufReader::new(file).lines() {
+        let line = line?; // Unwrap the Result to get the line directly
+        if let Some(equals_index) = line.find('=') {
+            let trimmed_line = line[..equals_index].trim();
+            if trimmed_line == "Server" {
+                let mirror_url = line[equals_index + 1..].trim();
+                return Ok(mirror_url.to_string());
+            }
+        }
+    }
+    
+    Err(io::Error::new(io::ErrorKind::NotFound, "Mirror not found"))
+}
+
+fn extract_package_name(input: &str) -> String {
+    let error_prefix = "error:";
+    let colon = ':';
+
+    if let Some(error_idx) = input.find(error_prefix) {
+        let remaining_text = &input[error_idx + error_prefix.len()..];
+        if let Some(colon_idx) = remaining_text.find(colon) {
+            let package_name = &remaining_text[..colon_idx].trim();
+            return package_name.to_string();
+        }
+    }
+    String::new() // Return an empty string if package name is not found
+}
+
+fn get_repository_name(package_name: &str) -> String {
+    // Run the `pacman -Si` command and capture its output
+    let output = Command::new("pacman")
+        .arg("-Si")
+        .arg(package_name)
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            // Convert the stdout bytes to a string
+            let stdout = String::from_utf8(output.stdout);
+            match stdout {
+                Ok(stdout) => {
+                    // Find the "Repository" field in the output
+                    if let Some(repository_line) = stdout.lines().find(|line| line.starts_with("Repository")) {
+                        // Split the line by ':' and extract the repository name
+                        let parts: Vec<&str> = repository_line.split(':').collect();
+                        if parts.len() >= 2 {
+                            return parts[1].trim().to_string();
+                        }
+                    }
+                }
+                Err(_) => eprintln!("Failed to convert stdout to string"),
+            }
+        }
+        Ok(_) => eprintln!("Package not found"),
+        Err(_) => eprintln!("Failed to execute command"),
+    }
+
+    // Return an empty string if an error occurred
+    String::new()
 }
