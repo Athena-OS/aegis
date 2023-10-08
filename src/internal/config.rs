@@ -227,7 +227,7 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/lightdm/lightdm.conf",
-                        "^#user-session=.*",
+                        "#user-session=.*",
                         "user-session=gnome-xorg",
                     ),
                     "Apply GNOME User Session on LightDM",
@@ -237,7 +237,7 @@ pub fn read_config(configpath: PathBuf) {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/lightdm/lightdm.conf",
-                        "^#user-session=.*",
+                        "#user-session=.*",
                         "user-session=hyprland",
                     ),
                     "Apply Hyprland User Session on LightDM",
