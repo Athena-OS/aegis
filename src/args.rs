@@ -313,8 +313,26 @@ pub enum DesktopSetup {
     #[value(name = "onyx")]
     Onyx,
 
-    #[value(name = "gnome")]
-    Gnome,
+    #[value(name = "gnome-akame")]
+    GnomeAkame,
+
+    #[value(name = "gnome-cyborg")]
+    GnomeCyborg,
+
+    #[value(name = "gnome-graphite")]
+    GnomeGraphite,
+
+    #[value(name = "gnome-hackthebox")]
+    GnomeHackTheBox,
+
+    #[value(name = "gnome-samurai")]
+    GnomeSamurai,
+
+    #[value(name = "gnome-sweet")]
+    GnomeSweet,
+
+    #[value(name = "gnome-xxe")]
+    GnomeXxe,
 
     #[value(name = "kde", aliases = ["plasma"])]
     Kde,

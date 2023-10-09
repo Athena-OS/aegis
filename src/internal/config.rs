@@ -1,8 +1,8 @@
 use crate::args;
-use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
+use crate::args::{DesktopSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
 use crate::functions::*;
 use crate::internal::*;
-use crate::internal::files::{rename_file, sed_file};
+use crate::internal::files::{sed_file};
 use crate::internal::secure;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -18,7 +18,6 @@ struct Config {
     users: Vec<Users>,
     rootpass: String,
     desktop: String,
-    theme: String,
     displaymanager: String,
     browser: String,
     terminal: String,
@@ -170,14 +169,26 @@ pub fn read_config(configpath: PathBuf) {
         "onyx" => desktops::install_desktop_setup(DesktopSetup::Onyx),
         "kde plasma" => desktops::install_desktop_setup(DesktopSetup::Kde), //Note that the value on this match statement must fit the name in desktops.py of aegis-gui (then they are lowercase transformed)
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
-        "gnome" => {
-            desktops::install_desktop_setup(DesktopSetup::Gnome);
-            rename_file("/mnt/usr/share/xsessions/gnome.desktop", "/mnt/usr/share/xsessions/gnome.desktop.disable");
-            rename_file("/mnt/usr/share/xsessions/gnome-classic.desktop", "/mnt/usr/share/xsessions/gnome-classic.desktop.disable");
-            rename_file("/mnt/usr/share/xsessions/gnome-classic-xorg.desktop", "/mnt/usr/share/xsessions/gnome-classic-xorg.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome.desktop", "/mnt/usr/share/wayland-sessions/gnome.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic.desktop.disable");
+        "gnome akame" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeAkame);
+        },
+        "gnome cyborg" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeCyborg);
+        },
+        "gnome graphite" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeGraphite);
+        },
+        "gnome hack the box" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeHackTheBox);
+        },
+        "gnome samurai" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeSamurai);
+        },
+        "gnome sweet" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeSweet);
+        },
+        "gnome xxe" => {
+            desktops::install_desktop_setup(DesktopSetup::GnomeXxe);
         },
         "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
         "xfce" => desktops::install_desktop_setup(DesktopSetup::Xfce),
@@ -191,21 +202,6 @@ pub fn read_config(configpath: PathBuf) {
         "bspwm" => desktops::install_desktop_setup(DesktopSetup::Bspwm),
         "none/diy" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => log::info!("No desktop setup selected!"),
-    }
-    println!();
-    log::info!("Installing theme : {:?}", config.theme);
-    /*if let Some(theme) = &config.theme {
-        themes::install_theme_setup(*theme);
-    }*/
-    match config.theme.to_lowercase().as_str() {
-        "akame" => themes::install_theme_setup(ThemeSetup::Akame),
-        "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
-        "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
-        "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
-        "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
-        "xxe" => themes::install_theme_setup(ThemeSetup::Xxe),
-        "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
-        _ => log::info!("No theme setup selected!"),
     }
     println!();
     log::info!("Installing display manager : {:?}", config.displaymanager);
@@ -223,7 +219,7 @@ pub fn read_config(configpath: PathBuf) {
         },
         "lightdm" => {
             displaymanagers::install_dm_setup(DMSetup::LightDM);
-            if config.desktop == "gnome" {
+            if config.desktop.contains("gnome") {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/lightdm/lightdm.conf",
@@ -256,7 +252,7 @@ pub fn read_config(configpath: PathBuf) {
     match config.browser.to_lowercase().as_str() {
         "firefox" => {
             browsers::install_browser_setup(BrowserSetup::Firefox);
-            if config.desktop == "gnome" {
+            if config.desktop.contains("gnome") {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
@@ -269,7 +265,7 @@ pub fn read_config(configpath: PathBuf) {
         },
         "brave" => {
             browsers::install_browser_setup(BrowserSetup::Brave);
-            if config.desktop == "gnome" {
+            if config.desktop.contains("gnome") {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
@@ -282,7 +278,7 @@ pub fn read_config(configpath: PathBuf) {
         }
         "mullvad" => {
             browsers::install_browser_setup(BrowserSetup::Mullvad);
-            if config.desktop == "gnome" {
+            if config.desktop.contains("gnome") {
                 files_eval(
                     files::sed_file(
                         "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
@@ -382,7 +378,7 @@ pub fn read_config(configpath: PathBuf) {
         "Set terminal call on Athena Welcome",
     );
     //
-    if config.desktop == "gnome" {
+    if config.desktop.contains("gnome") {
         let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
         files_eval(
             sed_file(
