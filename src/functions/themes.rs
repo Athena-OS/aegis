@@ -40,7 +40,7 @@ fn install_akame() {
 
 fn install_samurai() {
     install(PackageManager::Pacman, vec![
-        "athena-blue-eyes-theme",
+        "athena-samurai-theme",
     ]);
     files_eval(
         files::sed_file(
@@ -106,7 +106,7 @@ fn install_cyborg() {
 
 fn install_sweet() {
     install(PackageManager::Pacman, vec![
-        "athena-sweet-dark-theme",
+        "athena-sweetdark-theme",
     ]);
     files_eval(
         files::sed_file(
