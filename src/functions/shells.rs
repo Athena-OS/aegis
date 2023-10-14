@@ -24,7 +24,7 @@ fn install_fish() {
     ]);
     files_eval(
         files::sed_file(
-            "/mnt/etc/skel/.local/share/applications/shell.desktop",
+            "/mnt/usr/share/applications/shell.desktop",
             "Bash",
             "Fish",
         ),
@@ -46,7 +46,7 @@ fn install_zsh() {
     ]);
     files_eval(
         files::sed_file(
-            "/mnt/etc/skel/.local/share/applications/shell.desktop",
+            "/mnt/usr/share/applications/shell.desktop",
             "Bash",
             "Zsh",
         ),

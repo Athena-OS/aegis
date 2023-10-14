@@ -1,7 +1,5 @@
 use crate::args::DesktopSetup;
-use crate::args::ThemeSetup;
 use crate::args::PackageManager;
-use crate::themes;
 use crate::internal::{files, files_eval, install};
 use crate::internal::services::enable_service;
 
@@ -9,34 +7,7 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
     log::debug!("Installing {:?}", desktop_setup);
     match desktop_setup {
         DesktopSetup::Onyx => install_onyx(),
-        DesktopSetup::GnomeAkame => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Akame);
-        }
-        DesktopSetup::GnomeCyborg => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Cyborg);
-        }
-        DesktopSetup::GnomeGraphite => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Graphite);
-        }
-        DesktopSetup::GnomeHackTheBox => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::HackTheBox);
-        }
-        DesktopSetup::GnomeSamurai => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Samurai);
-        }
-        DesktopSetup::GnomeSweet => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Sweet);
-        }
-        DesktopSetup::GnomeXxe => {
-            install_gnome();
-            themes::install_theme_setup(ThemeSetup::Xxe);
-        }
+        DesktopSetup::Gnome => install_gnome(),
         DesktopSetup::Kde => install_kde(),
         DesktopSetup::Budgie => install_budgie(),
         DesktopSetup::Cinnamon => install_cinnamon(),
