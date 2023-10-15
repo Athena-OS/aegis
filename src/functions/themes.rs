@@ -6,12 +6,13 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
     log::debug!("Installing {:?}", theme_setup);
     match theme_setup {
         ThemeSetup::Akame => install_akame(),
-        ThemeSetup::Samurai => install_samurai(),
-        ThemeSetup::Graphite => install_graphite(),
         ThemeSetup::Cyborg => install_cyborg(),
+        ThemeSetup::Everblush => install_everblush(),
+        ThemeSetup::Graphite => install_graphite(),
+        ThemeSetup::HackTheBox => install_htb(),
+        ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
         ThemeSetup::Xxe => install_xxe(),
-        ThemeSetup::HackTheBox => install_htb(),
         ThemeSetup::None => log::debug!("No theme setup selected"),
     }
 }
@@ -38,9 +39,9 @@ fn install_akame() {
     );
 }
 
-fn install_samurai() {
+fn install_everblush() {
     install(PackageManager::Pacman, vec![
-        "athena-samurai-theme",
+        "athena-everblush-theme",
     ]);
     files_eval(
         files::sed_file(
@@ -57,6 +58,28 @@ fn install_samurai() {
             "set -g @tmux_power_theme 'sky'",
         ),
         "Apply Sky Tmux theme",
+    );
+}
+
+fn install_cyborg() {
+    install(PackageManager::Pacman, vec![
+        "athena-gruvbox-theme",
+    ]);
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
+            "\"workbench.colorTheme\":.*",
+            "\"workbench.colorTheme\": \"Gruvbox Material Dark\",",
+        ),
+        "Apply Gruvbox Material Dark VSCodium theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.tmux.conf",
+            "set -g @tmux_power_theme.*",
+            "set -g @tmux_power_theme 'gold'",
+        ),
+        "Apply Gold Tmux theme",
     );
 }
 
@@ -82,25 +105,47 @@ fn install_graphite() {
     );
 }
 
-fn install_cyborg() {
+fn install_htb() {
     install(PackageManager::Pacman, vec![
-        "athena-gruvbox-theme",
+        "athena-htb-theme",
     ]);
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
             "\"workbench.colorTheme\":.*",
-            "\"workbench.colorTheme\": \"Gruvbox Material Dark\",",
+            "\"workbench.colorTheme\": \"Hack The Box\",",
         ),
-        "Apply Gruvbox Material Dark VSCodium theme",
+        "Apply Hack The Box VSCodium theme",
     );
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.tmux.conf",
             "set -g @tmux_power_theme.*",
-            "set -g @tmux_power_theme 'gold'",
+            "set -g @tmux_power_theme 'forest'",
         ),
-        "Apply Gold Tmux theme",
+        "Apply Forest Tmux theme",
+    );
+}
+
+fn install_samurai() {
+    install(PackageManager::Pacman, vec![
+        "athena-samurai-theme",
+    ]);
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
+            "\"workbench.colorTheme\":.*",
+            "\"workbench.colorTheme\": \"Tokyo Night Storm\",",
+        ),
+        "Apply Tokyo Night Storm VSCodium theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.tmux.conf",
+            "set -g @tmux_power_theme.*",
+            "set -g @tmux_power_theme 'sky'",
+        ),
+        "Apply Sky Tmux theme",
     );
 }
 
@@ -145,27 +190,5 @@ fn install_xxe() {
             "set -g @tmux_power_theme 'gold'",
         ),
         "Apply Gold Tmux theme",
-    );
-}
-
-fn install_htb() {
-    install(PackageManager::Pacman, vec![
-        "athena-htb-theme",
-    ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
-            "\"workbench.colorTheme\":.*",
-            "\"workbench.colorTheme\": \"Hack The Box\",",
-        ),
-        "Apply Hack The Box VSCodium theme",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.tmux.conf",
-            "set -g @tmux_power_theme.*",
-            "set -g @tmux_power_theme 'forest'",
-        ),
-        "Apply Forest Tmux theme",
     );
 }

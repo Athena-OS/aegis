@@ -364,23 +364,26 @@ pub enum ThemeSetup {
     #[value(name = "akame")]
     Akame,
 
-    #[value(name = "samurai")]
-    Samurai,
+    #[value(name = "cyborg")]
+    Cyborg,
+
+    #[value(name = "everblush")]
+    Everblush,
 
     #[value(name = "graphite")]
     Graphite,
 
-    #[value(name = "cyborg")]
-    Cyborg,
+    #[value(name = "hackthebox")]
+    HackTheBox,
+
+    #[value(name = "samurai")]
+    Samurai,
 
     #[value(name = "sweet")]
     Sweet,
 
     #[value(name = "xxe")]
     Xxe,
-
-    #[value(name = "hackthebox")]
-    HackTheBox,
 
     #[value(name = "None/DIY")]
     None,

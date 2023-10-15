@@ -200,12 +200,13 @@ pub fn read_config(configpath: PathBuf) {
     }*/
     match config.theme.to_lowercase().as_str() {
         "akame" => themes::install_theme_setup(ThemeSetup::Akame),
-        "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
-        "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
         "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
+        "everblush" => themes::install_theme_setup(ThemeSetup::Everblush),
+        "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
+        "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
+        "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
         "xxe" => themes::install_theme_setup(ThemeSetup::Xxe),
-        "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
         _ => log::info!("No theme setup selected!"),
     }
     println!();
