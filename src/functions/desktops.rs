@@ -12,7 +12,8 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
         DesktopSetup::Budgie => install_budgie(),
         DesktopSetup::Cinnamon => install_cinnamon(),
         DesktopSetup::Mate => install_mate(),
-        DesktopSetup::Xfce => install_xfce(),
+        DesktopSetup::XfceWell => install_xfce_well(),
+        DesktopSetup::XfcePicom => install_xfce_picom(),
         DesktopSetup::Enlightenment => install_enlightenment(),
         DesktopSetup::Lxqt => install_lxqt(),
         DesktopSetup::Sway => install_sway(),
@@ -163,9 +164,15 @@ fn install_enlightenment() {
     ]);
 }
 
-fn install_xfce() {
+fn install_xfce_well() {
     install(PackageManager::Pacman, vec![
         "athena-xfce-config",
+    ]);
+}
+
+fn install_xfce_picom() {
+    install(PackageManager::Pacman, vec![
+        "athena-xfce-picom-config",
     ]);
 }
 

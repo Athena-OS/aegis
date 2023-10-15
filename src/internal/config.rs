@@ -180,7 +180,8 @@ pub fn read_config(configpath: PathBuf) {
             rename_file("/mnt/usr/share/wayland-sessions/gnome-classic.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic.desktop.disable");
         },
         "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
-        "xfce" => desktops::install_desktop_setup(DesktopSetup::Xfce),
+        "xfce well" => desktops::install_desktop_setup(DesktopSetup::XfceWell),
+        "xfce picom" => desktops::install_desktop_setup(DesktopSetup::XfcePicom),
         "budgie" => desktops::install_desktop_setup(DesktopSetup::Budgie),
         "enlightenment" => desktops::install_desktop_setup(DesktopSetup::Enlightenment),
         "lxqt" => desktops::install_desktop_setup(DesktopSetup::Lxqt),
@@ -493,7 +494,7 @@ fn lightdm_set_session(setdesktop: &str) {
             "Apply GNOME User Session on LightDM",
         );
     }
-    if setdesktop == "xfce" {
+    if setdesktop.contains("xfce") {
         files_eval(
             files::sed_file(
                 "/mnt/etc/lightdm/lightdm.conf",

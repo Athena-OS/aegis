@@ -328,8 +328,11 @@ pub enum DesktopSetup {
     #[value(name = "mate")]
     Mate,
 
-    #[value(name = "xfce")]
-    Xfce,
+    #[value(name = "xfce-well")]
+    XfceWell,
+
+    #[value(name = "xfce-picom")]
+    XfcePicom,
 
     #[value(name = "enlightenment")]
     Enlightenment,
