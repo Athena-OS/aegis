@@ -394,8 +394,11 @@ pub enum DMSetup {
     #[value(name = "gdm")]
     Gdm,
 
-    #[value(name = "lightdm")]
-    LightDM,
+    #[value(name = "lightdm-neon")]
+    LightDMNeon,
+
+    #[value(name = "lightdm-everblush")]
+    LightDMEverblush,
 
     #[value(name = "sddm")]
     Sddm,

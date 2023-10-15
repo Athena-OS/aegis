@@ -223,28 +223,13 @@ pub fn read_config(configpath: PathBuf) {
                 disable_wsession("gnome-wayland.desktop");
             }
         },
-        "lightdm" => {
-            displaymanagers::install_dm_setup(DMSetup::LightDM);
-            if config.desktop.contains("gnome") {
-                files_eval(
-                    files::sed_file(
-                        "/mnt/etc/lightdm/lightdm.conf",
-                        "#user-session=.*",
-                        "user-session=gnome-xorg",
-                    ),
-                    "Apply GNOME User Session on LightDM",
-                );
-            }
-            if config.desktop == "hyprland" {
-                files_eval(
-                    files::sed_file(
-                        "/mnt/etc/lightdm/lightdm.conf",
-                        "#user-session=.*",
-                        "user-session=hyprland",
-                    ),
-                    "Apply Hyprland User Session on LightDM",
-                );
-            }
+        "lightdm neon" => {
+            displaymanagers::install_dm_setup(DMSetup::LightDMNeon);
+            lightdm_set_session(&config.desktop);
+        },
+        "lightdm everblush" => {
+            displaymanagers::install_dm_setup(DMSetup::LightDMEverblush);
+            lightdm_set_session(&config.desktop);
         },
         "sddm" => displaymanagers::install_dm_setup(DMSetup::Sddm),
         _ => log::info!("No display manager setup selected!"),
@@ -495,4 +480,37 @@ fn get_filenames_in_directory(directory_path: &str) -> Vec<String> {
         .collect();
 
     file_names
+}
+
+fn lightdm_set_session(setdesktop: &str) {
+    if setdesktop.contains("gnome") {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/lightdm/lightdm.conf",
+                "#user-session=.*",
+                "user-session=gnome-xorg",
+            ),
+            "Apply GNOME User Session on LightDM",
+        );
+    }
+    if setdesktop == "xfce" {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/lightdm/lightdm.conf",
+                "#user-session=.*",
+                "user-session=xfce",
+            ),
+            "Apply Hyprland User Session on LightDM",
+        );
+    }
+    if setdesktop == "hyprland" {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/lightdm/lightdm.conf",
+                "#user-session=.*",
+                "user-session=hyprland",
+            ),
+            "Apply Hyprland User Session on LightDM",
+        );
+    }
 }
