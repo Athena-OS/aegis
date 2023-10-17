@@ -63,7 +63,7 @@ fn install_everblush() {
 
 fn install_cyborg() {
     install(PackageManager::Pacman, vec![
-        "athena-gruvbox-theme",
+        "athena-cyborg-theme",
     ]);
     files_eval(
         files::sed_file(
