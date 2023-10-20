@@ -339,6 +339,7 @@ pub fn read_config(configpath: PathBuf) {
         },
         _ => log::info!("No terminal setup selected!"),
     }
+    //////////
     files_eval(
         files::sed_file(
             "/mnt/usr/local/bin/shell-rocket",
@@ -366,16 +367,6 @@ pub fn read_config(configpath: PathBuf) {
     );
     //
     if config.desktop.contains("gnome") {
-        let file_path = "/mnt/usr/share/athena-gnome-config/dconf-shell.ini";
-        files_eval(
-            sed_file(
-                file_path,
-                "gnome-terminal --",
-                &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
-            ),
-            "Set terminal call on dconf shell",
-        );
-
         files_eval(
             files::sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
