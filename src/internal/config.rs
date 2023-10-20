@@ -356,6 +356,14 @@ pub fn read_config(configpath: PathBuf) {
         );
     }
     files_eval(
+        files::sed_file(
+            "/mnt/usr/local/bin/shell-rocket",
+            "\"gnome-terminal\", \"--\"",
+            &("\"".to_owned()+&terminal_choice+"\", \""+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }+"\""),
+        ),
+        "Set terminal call on Athena Welcome",
+    );
+    files_eval(
         sed_file(
             "/mnt/usr/share/applications/shell.desktop",
             "gnome-terminal",
