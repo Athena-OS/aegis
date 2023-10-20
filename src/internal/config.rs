@@ -5,7 +5,6 @@ use crate::internal::*;
 use crate::internal::files::sed_file;
 use crate::internal::secure;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::{PathBuf};
 
 
@@ -340,21 +339,6 @@ pub fn read_config(configpath: PathBuf) {
         },
         _ => log::info!("No terminal setup selected!"),
     }
-    // Update the .desktop files
-    let application_path = "/mnt/usr/share/applications";
-    let desktop_files = get_filenames_in_directory(application_path);
-
-    for file in desktop_files {
-        let file_path = format!("{}/{}", application_path, file);
-        files_eval(
-            sed_file(
-                &file_path,
-                "gnome-terminal --",
-                &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
-            ),
-            "Set terminal call on desktop files",
-        );
-    }
     files_eval(
         files::sed_file(
             "/mnt/usr/local/bin/shell-rocket",
@@ -465,33 +449,6 @@ fn disable_xsession(session: &str) {
 fn disable_wsession(session: &str) {
     log::debug!("Disabling {}", session);
     files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
-}
-
-fn get_filenames_in_directory(directory_path: &str) -> Vec<String> {
-    let dir_entries = match fs::read_dir(directory_path) {
-        Ok(entries) => entries,
-        Err(_) => {
-            eprintln!("Error reading directory");
-            return Vec::new();
-        }
-    };
-
-    let file_names: Vec<String> = dir_entries
-        .filter_map(|entry| {
-            match entry {
-                Ok(dir_entry) => {
-                    if dir_entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                        Some(dir_entry.file_name().to_string_lossy().to_string())
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => None,
-            }
-        })
-        .collect();
-
-    file_names
 }
 
 fn lightdm_set_session(setdesktop: &str) {
