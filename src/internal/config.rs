@@ -222,12 +222,9 @@ pub fn read_config(configpath: PathBuf) {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
                 disable_xsession("gnome.desktop");
                 disable_xsession("gnome-xorg.desktop");
-                disable_xsession("gnome-classic.desktop");
-                disable_xsession("gnome-classic-xorg.desktop");
                 disable_wsession("gnome.desktop");
                 disable_wsession("gnome-wayland.desktop");
-                disable_wsession("gnome-classic.desktop");
-                disable_wsession("gnome-classic-wayland.desktop");
+                // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
             }
         },
         "lightdm neon" => {
