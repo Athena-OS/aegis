@@ -2,7 +2,7 @@ use crate::args;
 use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
 use crate::functions::*;
 use crate::internal::*;
-use crate::internal::files::{rename_file, sed_file};
+use crate::internal::files::sed_file;
 use crate::internal::secure;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -172,12 +172,12 @@ pub fn read_config(configpath: PathBuf) {
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "gnome" => {
             desktops::install_desktop_setup(DesktopSetup::Gnome);
-            rename_file("/mnt/usr/share/xsessions/gnome.desktop", "/mnt/usr/share/xsessions/gnome.desktop.disable");
-            rename_file("/mnt/usr/share/xsessions/gnome-classic.desktop", "/mnt/usr/share/xsessions/gnome-classic.desktop.disable");
-            rename_file("/mnt/usr/share/xsessions/gnome-classic-xorg.desktop", "/mnt/usr/share/xsessions/gnome-classic-xorg.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome.desktop", "/mnt/usr/share/wayland-sessions/gnome.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic-wayland.desktop.disable");
-            rename_file("/mnt/usr/share/wayland-sessions/gnome-classic.desktop", "/mnt/usr/share/wayland-sessions/gnome-classic.desktop.disable");
+            disable_xsession("gnome.desktop");
+            disable_xsession("gnome-classic.desktop");
+            disable_xsession("gnome-classic-xorg.desktop");
+            disable_wsession("gnome.desktop");
+            disable_wsession("gnome-classic.desktop");
+            disable_wsession("gnome-classic-wayland.desktop");
         },
         "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
         "xfce well" => desktops::install_desktop_setup(DesktopSetup::XfceWell),
@@ -218,10 +218,16 @@ pub fn read_config(configpath: PathBuf) {
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => {
             displaymanagers::install_dm_setup(DMSetup::Gdm);
-            if config.desktop == "hyprland" {
+            if config.desktop == "hyprland" || config.desktop.contains("xfce") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
+                disable_xsession("gnome.desktop");
                 disable_xsession("gnome-xorg.desktop");
+                disable_xsession("gnome-classic.desktop");
+                disable_xsession("gnome-classic-xorg.desktop");
+                disable_wsession("gnome.desktop");
                 disable_wsession("gnome-wayland.desktop");
+                disable_wsession("gnome-classic.desktop");
+                disable_wsession("gnome-classic-wayland.desktop");
             }
         },
         "lightdm neon" => {
