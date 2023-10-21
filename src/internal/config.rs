@@ -342,7 +342,7 @@ pub fn read_config(configpath: PathBuf) {
     //////////
     files_eval(
         sed_file(
-            "/home/athena/shell-rocket",
+            "/usr/local/bin/shell-rocket",
             "gnome-terminal --",
             &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
         ),
