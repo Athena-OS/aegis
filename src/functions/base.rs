@@ -52,6 +52,7 @@ pub fn install_packages(kernel: String) {
         "linux-firmware",
         "systemd-sysvcompat",
         "networkmanager",
+        "network-manager-applet",
         "man-db",
         "man-pages",
         "texinfo",
