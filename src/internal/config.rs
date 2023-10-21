@@ -341,12 +341,12 @@ pub fn read_config(configpath: PathBuf) {
     }
     //////////
     files_eval(
-        files::sed_file(
-            "/mnt/usr/local/bin/shell-rocket",
-            "\"gnome-terminal\", \"--\"",
-            &("\"".to_owned()+&terminal_choice+"\", \""+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }+"\""),
+        sed_file(
+            "/home/athena/shell-rocket",
+            "gnome-terminal --",
+            &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
         ),
-        "Set terminal call on Athena Welcome",
+        "Set terminal on shell rocket",
     );
     files_eval(
         sed_file(
@@ -356,19 +356,9 @@ pub fn read_config(configpath: PathBuf) {
         ),
         "Set terminal call on shell.desktop file",
     );
-    //
-    files_eval(
-        files::sed_file(
-            "/mnt/usr/share/athena-welcome/athena-welcome.py",
-            "\"gnome-terminal\", \"--\"",
-            &("\"".to_owned()+&terminal_choice+"\", \""+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }+"\""),
-        ),
-        "Set terminal call on Athena Welcome",
-    );
-    //
     if config.desktop.contains("gnome") {
         files_eval(
-            files::sed_file(
+            sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
                 "gnome-terminal",
                 &terminal_choice,
