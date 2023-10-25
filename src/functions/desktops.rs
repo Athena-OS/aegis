@@ -209,7 +209,7 @@ fn install_budgie() {
 
 fn install_kde() {
     install(PackageManager::Pacman, vec![
-        "athena-kde-config",
+        "athena-kde-macos",
     ]);
 }
 
