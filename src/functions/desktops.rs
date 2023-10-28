@@ -178,7 +178,7 @@ fn install_xfce_picom() {
 
 fn install_mate() {
     install(PackageManager::Pacman, vec![
-        "athena-mate-config",
+        "athena-mate-base",
     ]);
 }
 
