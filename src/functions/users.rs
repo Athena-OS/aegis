@@ -49,7 +49,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 "usermod",
                 vec![
                     String::from("-aG"),
-                    String::from("wheel,rfkill,sys,lp"),
+                    String::from("wheel,rfkill,sys,lp,input"),
                     String::from(username),
                 ],
             ),
