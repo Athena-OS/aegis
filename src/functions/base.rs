@@ -227,6 +227,34 @@ pub fn install_packages(kernel: String) {
 fn initialize_keyrings() {
     log::info!("Upgrade keyrings on the host");
     exec_eval(
+        exec(
+            "rm",
+            vec![
+                String::from("-rf"),
+                String::from("/etc/pacman.d/gnupg"),
+            ],
+        ),
+        "Removing keys",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--init"),
+            ],
+        ),
+        "Initialize keys",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--populate"),
+            ],
+        ),
+        "Populate keys",
+    );
+    exec_eval(
         exec( // It is done on the live system
             "reflector",
             vec![
@@ -254,24 +282,6 @@ fn initialize_keyrings() {
             ],
         ),
         "Update keyring packages",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--init"),
-            ],
-        ),
-        "Initialize keys",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--populate"),
-            ],
-        ),
-        "Populate keys",
     );
 }
 
