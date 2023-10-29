@@ -172,7 +172,7 @@ fn install_xfce_well() {
 
 fn install_xfce_picom() {
     install(PackageManager::Pacman, vec![
-        "athena-xfce-picom-config",
+        "athena-xfce-picom",
     ]);
 }
 
@@ -184,7 +184,7 @@ fn install_mate() {
 
 fn install_cinnamon() {
     install(PackageManager::Pacman, vec![
-        "athena-cinnamon-config",
+        "athena-cinnamon-base",
     ]);
 }
 
