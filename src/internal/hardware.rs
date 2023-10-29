@@ -26,7 +26,8 @@ pub fn virt_check() {
             exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
-                    String::from("-in"),
+                    String::from("-i"),
+                    String::from("-n"),
                     String::from("-e"),
                     String::from("/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/"),
                     String::from("-e"),
@@ -49,7 +50,8 @@ pub fn virt_check() {
             exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
-                    String::from("-in"),
+                    String::from("-i"),
+                    String::from("-n"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"),
                     String::from("/mnt/etc/default/grub"),
                 ],
@@ -225,7 +227,8 @@ pub fn cpu_gpu_check(kernel: &str) {
             exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
-                    String::from("-in"),
+                    String::from("-i"),
+                    String::from("-n"),
                     String::from("-e"),
                     String::from("/^MODULES=()/ s/()/(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/"),
                     String::from("-e"),
@@ -240,16 +243,18 @@ pub fn cpu_gpu_check(kernel: &str) {
             exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
                 "sed",
                 vec![
-                    String::from("-in"),
+                    String::from("-i"),
+                    String::from("-n"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g"),
-                    String::from("/etc/default/grub"),
+                    String::from("/mnt/etc/default/grub"),
                 ],
             ),
             "Enable NVIDIA GPU kernel paramater",
         );
         
+        // Removed nvidia-exec because it seems to break envycontrol and optimus-manager
         if gpudetect.contains("Intel") || gpudetect.contains("AMD") || gpudetect.contains("ATI") {
-            install(PackageManager::Pacman, vec!["envycontrol", "nvidia-exec"]);
+            install(PackageManager::Pacman, vec!["envycontrol"]);
         }
     }
 }
