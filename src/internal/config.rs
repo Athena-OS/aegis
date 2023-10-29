@@ -217,7 +217,7 @@ pub fn read_config(configpath: PathBuf) {
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => {
             displaymanagers::install_dm_setup(DMSetup::Gdm);
-            if config.desktop == "hyprland" || config.desktop.contains("xfce") {
+            if ! config.desktop.contains("gnome") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
                 disable_xsession("gnome.desktop");
                 disable_xsession("gnome-xorg.desktop");
