@@ -447,16 +447,6 @@ pub fn install_bootloader_legacy(device: PathBuf) {
     );
 }
 
-/*
-pub fn setup_timeshift() {
-    install(PackageManager::Pacman, vec!["timeshift", "timeshift-autosnap", "grub-btrfs"]);
-    exec_eval(
-        exec_chroot("timeshift", vec![String::from("--btrfs")]),
-        "setup timeshift",
-    )
-}
-*/
-
 pub fn setup_snapper() {
     install(PackageManager::Pacman, vec![
         "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",

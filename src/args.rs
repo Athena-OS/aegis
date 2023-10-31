@@ -45,12 +45,6 @@ pub enum Command {
     /// Generate fstab file for mounting partitions
     #[command(name = "genfstab")]
     GenFstab,
-
-    /*
-    /// Setup Timeshift
-    #[command(name = "setup-timeshift")]
-    SetupTimeshift,
-    */
     
     /// Setup Snapper
     #[command(name = "setup-snapper")]
