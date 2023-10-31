@@ -46,10 +46,12 @@ pub enum Command {
     #[command(name = "genfstab")]
     GenFstab,
 
+    /*
     /// Setup Timeshift
     #[command(name = "setup-timeshift")]
     SetupTimeshift,
-
+    */
+    
     /// Setup Snapper
     #[command(name = "setup-snapper")]
     SetupSnapper,

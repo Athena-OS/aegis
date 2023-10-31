@@ -38,7 +38,7 @@ fn main() {
         Command::GenFstab => {
             base::genfstab();
         }
-        Command::SetupTimeshift => base::setup_timeshift(),
+        /*Command::SetupTimeshift => base::setup_timeshift(),*/
         Command::SetupSnapper => base::setup_snapper(),
         Command::Bootloader { subcommand } => match subcommand {
             BootloaderSubcommand::GrubEfi { efidir } => {

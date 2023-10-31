@@ -21,7 +21,7 @@ struct Config {
     displaymanager: String,
     browser: String,
     terminal: String,
-    timeshift: bool,
+    //timeshift: bool,
     snapper: bool,
     flatpak: bool,
     zramd: bool,
@@ -367,11 +367,13 @@ pub fn read_config(configpath: PathBuf) {
         );
     }
     //////////
+    /*
     println!();
     log::info!("Installing timeshift : {}", config.timeshift);
     if config.timeshift {
         base::setup_timeshift();
     }
+    */
     println!();
     log::info!("Installing snapper : {}", config.snapper);
     if config.snapper {
