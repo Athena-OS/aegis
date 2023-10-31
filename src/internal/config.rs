@@ -342,7 +342,7 @@ pub fn read_config(configpath: PathBuf) {
     //////////
     files_eval(
         sed_file(
-            "/mnt/usr/local/bin/shell-rocket",
+            "/mnt/usr/bin/shell-rocket",
             "gnome-terminal --",
             &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
         ),
