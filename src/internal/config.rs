@@ -174,6 +174,7 @@ pub fn read_config(configpath: PathBuf) {
             disable_xsession("gnome-classic.desktop");
             disable_xsession("gnome-classic-xorg.desktop");
             disable_wsession("gnome.desktop");
+            disable_wsession("gnome-wayland.desktop");
             disable_wsession("gnome-classic.desktop");
             disable_wsession("gnome-classic-wayland.desktop");
         },
