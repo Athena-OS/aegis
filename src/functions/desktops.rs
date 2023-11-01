@@ -1,7 +1,6 @@
 use crate::args::DesktopSetup;
 use crate::args::PackageManager;
 use crate::internal::{files, files_eval, install};
-use crate::internal::services::enable_service;
 
 pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
     log::debug!("Installing {:?}", desktop_setup);
@@ -24,12 +23,6 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
         DesktopSetup::Hyprland => install_hyprland(),
         DesktopSetup::None => log::debug!("No desktop setup selected"),
     }
-    install_networkmanager();
-}
-
-fn install_networkmanager() {
-    install(PackageManager::Pacman, vec!["networkmanager"]);
-    enable_service("NetworkManager");
 }
 
 fn install_hyprland() {

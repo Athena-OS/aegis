@@ -45,6 +45,7 @@ pub fn install_packages(kernel: String) {
         }
     };
 
+    
     install::install(PackageManager::Pacman, vec![
         // System Arch
         kernel_to_install,
@@ -555,6 +556,7 @@ pub fn enable_system_services() {
     enable_service("auditd");
     enable_service("bluetooth");
     enable_service("cronie");
+    enable_service("NetworkManager");
     enable_service("set-cfs-tweaks");
     enable_service("ananicy");
     enable_service("irqbalance");
