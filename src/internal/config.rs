@@ -343,7 +343,7 @@ pub fn read_config(configpath: PathBuf) {
     files_eval(
         sed_file(
             "/mnt/usr/bin/shell-rocket",
-            "gnome-terminal --",
+            "alacritty -e",
             &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
         ),
         "Set terminal on shell rocket",
@@ -351,7 +351,7 @@ pub fn read_config(configpath: PathBuf) {
     files_eval(
         sed_file(
             "/mnt/usr/share/applications/shell.desktop",
-            "gnome-terminal",
+            "alacritty",
             &terminal_choice,
         ),
         "Set terminal call on shell.desktop file",
@@ -360,7 +360,7 @@ pub fn read_config(configpath: PathBuf) {
         files_eval(
             sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                "gnome-terminal",
+                "alacritty",
                 &terminal_choice,
             ),
             "Set terminal call on dconf file",
