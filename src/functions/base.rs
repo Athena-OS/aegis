@@ -8,7 +8,7 @@ use std::path::PathBuf;
 pub fn install_base_packages() {
 
     std::fs::create_dir_all("/mnt/etc").unwrap();
-    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses reflector too
+    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors too
     files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena, BlackArch and Chaotic AUR package
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
@@ -18,7 +18,7 @@ pub fn install_base_packages() {
         "athena-mirrorlist",
         "blackarch-mirrorlist",
         "chaotic-mirrorlist",
-        "mirroars",
+        "rate-mirrors",
     ]);
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
     fastest_mirrors(); // Done on the target system
@@ -257,14 +257,15 @@ fn initialize_keyrings() {
     );
     exec_eval(
         exec( // It is done on the live system
-            "reflector",
+            "rate-mirrors",
             vec![
-                String::from("--latest"),
-                String::from("15"),
-                String::from("--sort"),
-                String::from("rate"),
+                String::from("--concurrency"),
+                String::from("40"),
+                String::from("--disable-comments"),
+                String::from("--allow-root"),
                 String::from("--save"),
                 String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
+                String::from("arch"),
             ],
         ),
         "Generate fastest Arch Linux mirrors",
@@ -290,18 +291,15 @@ fn fastest_mirrors() {
     log::info!("Getting fastest BlackArch mirrors for your location");
     exec_eval(
         exec_chroot(
-            "mirroars",
+            "rate-mirrors",
             vec![
-                String::from("-n"),
-                String::from("21"),
-                String::from("-m"),
-                String::from("15"),
-                String::from("-p"),
-                String::from("-t"),
-                String::from("-r"),
-                String::from("blackarch"),
+                String::from("--concurrency"),
+                String::from("40"),
+                String::from("--disable-comments"),
+                String::from("--allow-root"),
+                String::from("--save"),
                 String::from("/etc/pacman.d/blackarch-mirrorlist"), //In chroot we don't need to specify /mnt
-                String::from("-w"),
+                String::from("blackarch"),
             ],
         ),
         "Getting fastest mirrors from BlackArch",
@@ -309,18 +307,15 @@ fn fastest_mirrors() {
     log::info!("Getting fastest Chaotic AUR mirrors for your location");
     exec_eval(
         exec_chroot(
-            "mirroars",
+            "rate-mirrors",
             vec![
-                String::from("-n"),
-                String::from("21"),
-                String::from("-m"),
-                String::from("15"),
-                String::from("-p"),
-                String::from("-t"),
-                String::from("-r"),
-                String::from("chaotic-aur"),
+                String::from("--concurrency"),
+                String::from("40"),
+                String::from("--disable-comments"),
+                String::from("--allow-root"),
+                String::from("--save"),
                 String::from("/etc/pacman.d/chaotic-mirrorlist"), //In chroot we don't need to specify /mnt
-                String::from("-w"),
+                String::from("chaotic-aur"),
             ],
         ),
         "Getting fastest mirrors from Chaotic AUR",
