@@ -56,15 +56,14 @@ pub fn set_locale(locale: String) {
 }
 
 pub fn set_keyboard(keyboard: &str) {
-    exec_eval(
-        exec_chroot(
-            "localectl",
-            vec![
-                "set-keymap".to_string(),
-                keyboard.to_string(),
-            ],
+    // Setting keyboard layout for virtual console (TTY)
+    files::create_file("/mnt/etc/vconsole.conf");
+    files_eval(
+        files::append_file(
+            "/mnt/etc/vconsole.conf",
+            format!("KEYMAP={}", keyboard).as_str(),
         ),
-        "Set keyboard layout",
+        "set keyboard layout for virtual console",
     );
     files_eval(
         files::append_file(
@@ -72,5 +71,15 @@ pub fn set_keyboard(keyboard: &str) {
             "FONT=ter-v24n",
         ),
         "set console font",
+    );
+    // Setting keyboard layout for X (GUI) environment (note: Wayland keyboard layout is managed by the used compositors)
+    files::copy_file("/etc/X11/xorg.conf.d/00-keyboard.conf", "/mnt/etc/X11/xorg.conf.d/00-keyboard.conf");
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/X11/xorg.conf.d/00-keyboard.conf",
+            "\"us\"",
+            format!("\"{}\"", keyboard).as_str(),
+        ),
+        "set keyboard layout for X environment",
     );
 }
