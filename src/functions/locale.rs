@@ -57,12 +57,15 @@ pub fn set_locale(locale: String) {
 
 pub fn set_keyboard(keyboard: &str) {
     files::create_file("/mnt/etc/vconsole.conf");
-    files_eval(
-        files::append_file(
-            "/mnt/etc/vconsole.conf",
-            format!("KEYMAP={}", keyboard).as_str(),
+    exec_eval(
+        exec_chroot(
+            "localectl",
+            vec![
+                "set-keymap",
+                keyboard,
+            ],
         ),
-        "set keyboard layout",
+        "Set keyboard layout",
     );
     files_eval(
         files::append_file(
