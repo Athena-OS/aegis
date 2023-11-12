@@ -196,23 +196,23 @@ pub fn install_packages(kernel: String) {
         "htb-toolkit",
         "nist-feed",
     ]);
-    files::copy_file("/etc/mkinitcpio.conf", "/mnt/etc/mkinitcpio.conf");
+
+    hardware::set_cores();
+    hardware::cpu_gpu_check(kernel_to_install);
+    hardware::virt_check();
+
     exec_eval(
         exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
             "sed",
             vec![
                 String::from("-i"),
-                String::from("-n"),
+                String::from("-e"),
                 String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms block keyboard sd-vconsole lvm2 filesystems fsck)/g"),
                 String::from("/mnt/etc/mkinitcpio.conf"),
             ],
         ),
         "Set mkinitcpio hooks",
     );
-
-    hardware::set_cores();
-    hardware::cpu_gpu_check(kernel_to_install);
-    hardware::virt_check();
     
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
     files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
@@ -224,7 +224,7 @@ pub fn install_packages(kernel: String) {
             "#COMPRESSION=\"lz4\"",
             "COMPRESSION=\"lz4\"",
         ),
-        "set distributor name",
+        "Set compression algorithm",
     );
 
     files_eval(
@@ -233,7 +233,7 @@ pub fn install_packages(kernel: String) {
             "hosts:.*",
             "hosts: mymachines resolve [!UNAVAIL=return] files dns mdns wins myhostname",
         ),
-        "set distributor name",
+        "Set nsswitch configuration",
     );
 }
 

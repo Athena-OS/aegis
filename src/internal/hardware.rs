@@ -27,7 +27,6 @@ pub fn virt_check() {
                 "sed",
                 vec![
                     String::from("-i"),
-                    String::from("-n"),
                     String::from("-e"),
                     String::from("/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/"),
                     String::from("-e"),
@@ -51,7 +50,7 @@ pub fn virt_check() {
                 "sed",
                 vec![
                     String::from("-i"),
-                    String::from("-n"),
+                    String::from("-e"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"),
                     String::from("/mnt/etc/default/grub"),
                 ],
@@ -228,7 +227,6 @@ pub fn cpu_gpu_check(kernel: &str) {
                 "sed",
                 vec![
                     String::from("-i"),
-                    String::from("-n"),
                     String::from("-e"),
                     String::from("/^MODULES=()/ s/()/(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/"),
                     String::from("-e"),
@@ -244,7 +242,7 @@ pub fn cpu_gpu_check(kernel: &str) {
                 "sed",
                 vec![
                     String::from("-i"),
-                    String::from("-n"),
+                    String::from("-e"),
                     String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g"),
                     String::from("/mnt/etc/default/grub"),
                 ],
