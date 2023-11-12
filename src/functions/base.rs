@@ -144,7 +144,6 @@ pub fn install_packages(kernel: String) {
         "hexedit",
         //"hw-probe, //HW probing
         "imagemagick",
-        "jdk-openjdk",
         "jq",
         "lib32-glibc",
         "lolcat",
