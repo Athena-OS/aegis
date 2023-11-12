@@ -280,7 +280,7 @@ fn initialize_keyrings() {
                 String::from("arch"),
             ],
         ),
-        "Generate fastest Arch Linux mirrors",
+        "Set fastest Arch Linux mirrors",
     );
     exec_eval(
         exec(
@@ -314,7 +314,7 @@ fn fastest_mirrors() {
                 String::from("blackarch"),
             ],
         ),
-        "Getting fastest mirrors from BlackArch",
+        "Set fastest mirrors from BlackArch",
     );
     log::info!("Getting fastest Chaotic AUR mirrors for your location");
     exec_eval(
@@ -330,7 +330,7 @@ fn fastest_mirrors() {
                 String::from("chaotic-aur"),
             ],
         ),
-        "Getting fastest mirrors from Chaotic AUR",
+        "Set fastest mirrors from Chaotic AUR",
     );
 }
 
