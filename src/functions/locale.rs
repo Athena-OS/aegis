@@ -73,6 +73,7 @@ pub fn set_keyboard(keyboard: &str) {
         "set console font",
     );
     // Setting keyboard layout for X (GUI) environment (note: Wayland keyboard layout is managed by the used compositors)
+    files_eval(files::create_directory("/mnt/etc/X11/xorg.conf.d"), "create /mnt/etc/X11/xorg.conf.d");
     files::copy_file("/etc/X11/xorg.conf.d/00-keyboard.conf", "/mnt/etc/X11/xorg.conf.d/00-keyboard.conf");
     files_eval(
         files::sed_file(

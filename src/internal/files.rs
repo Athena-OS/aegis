@@ -74,6 +74,6 @@ pub fn sed_file(path: &str, find: &str, replace: &str) -> io::Result<()> {
     Ok(())
 }
 
-pub fn create_directory(path: &str) -> std::io::Result<()> {
+pub fn create_directory(path: &str) -> std::io::Result<()> { // Create all missing dirs in the specified path
     std::fs::create_dir_all(path)
 }
