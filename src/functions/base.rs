@@ -196,7 +196,20 @@ pub fn install_packages(kernel: String) {
         "htb-toolkit",
         "nist-feed",
     ]);
-    
+    files::copy_file("/etc/mkinitcpio.conf", "/mnt/etc/mkinitcpio.conf");
+    exec_eval(
+        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
+            "sed",
+            vec![
+                String::from("-i"),
+                String::from("-n"),
+                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms block keyboard sd-vconsole lvm2 filesystems fsck)/g"),
+                String::from("/mnt/etc/mkinitcpio.conf"),
+            ],
+        ),
+        "Set mkinitcpio hooks",
+    );
+
     hardware::set_cores();
     hardware::cpu_gpu_check(kernel_to_install);
     hardware::virt_check();
