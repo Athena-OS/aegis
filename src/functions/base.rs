@@ -387,6 +387,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
         "grub",
         "efibootmgr",
         "os-prober",
+        "athena-grub-theme",
     ]);
     let efidir = std::path::Path::new("/mnt").join(efidir);
     let efi_str = efidir.to_str().unwrap();
@@ -430,8 +431,8 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
 pub fn install_bootloader_legacy(device: PathBuf) {
     install::install(PackageManager::Pacman, vec![
         "grub",
-        "athena-grub-theme",
         "os-prober",
+        "athena-grub-theme",
     ]);
     if !device.exists() {
         crash(format!("The device {device:?} does not exist"), 1);
