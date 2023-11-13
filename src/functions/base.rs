@@ -367,14 +367,6 @@ pub fn setting_grub_parameters() {
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub",
-            "GRUB_THEME=.*",
-            "GRUB_THEME=\"/boot/grub/themes/athena/theme.txt\"",
-        ),
-        "enable athena grub theme",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub",
             "#GRUB_DISABLE_OS_PROBER=.*",
             "GRUB_DISABLE_OS_PROBER=false",
         ),
