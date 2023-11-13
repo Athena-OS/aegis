@@ -559,7 +559,6 @@ pub fn enable_system_services() {
     enable_service("cronie");
     enable_service("irqbalance");
     enable_service("NetworkManager");
-    enable_service("ntpd");
     enable_service("set-cfs-tweaks");
     enable_service("systemd-timesyncd");
     enable_service("vnstat");
