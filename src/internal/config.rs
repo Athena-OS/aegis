@@ -219,6 +219,13 @@ pub fn read_config(configpath: PathBuf) {
             displaymanagers::install_dm_setup(DMSetup::Gdm);
             if ! config.desktop.contains("gnome") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
+                disable_xsession("gnome.desktop");
+                disable_xsession("gnome-xorg.desktop");
+                disable_wsession("gnome.desktop");
+                disable_wsession("gnome-wayland.desktop");
+                // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
+            }
+            else {
                 files_eval(
                     files::sed_file(
                         "/mnt/etc/gdm/custom.conf",
@@ -227,11 +234,6 @@ pub fn read_config(configpath: PathBuf) {
                     ),
                     "Disable Wayland in GNOME",
                 );
-                disable_xsession("gnome.desktop");
-                disable_xsession("gnome-xorg.desktop");
-                disable_wsession("gnome.desktop");
-                disable_wsession("gnome-wayland.desktop");
-                // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
             }
         },
         "lightdm neon" => {
