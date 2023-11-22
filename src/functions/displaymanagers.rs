@@ -18,14 +18,6 @@ fn install_gdm() {
     install(PackageManager::Pacman, vec![
         "athena-gdm-config",
     ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/gdm/custom.conf",
-            ".*WaylandEnable=.*",
-            "WaylandEnable=false",
-        ),
-        "Apply GDM",
-    );
     enable_service("gdm");
 }
 

@@ -219,6 +219,14 @@ pub fn read_config(configpath: PathBuf) {
             displaymanagers::install_dm_setup(DMSetup::Gdm);
             if ! config.desktop.contains("gnome") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
+                files_eval(
+                    files::sed_file(
+                        "/mnt/etc/gdm/custom.conf",
+                        ".*WaylandEnable=.*",
+                        "WaylandEnable=false",
+                    ),
+                    "Disable Wayland in GNOME",
+                );
                 disable_xsession("gnome.desktop");
                 disable_xsession("gnome-xorg.desktop");
                 disable_wsession("gnome.desktop");
