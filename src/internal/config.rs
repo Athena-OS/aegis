@@ -2,6 +2,7 @@ use crate::args;
 use crate::args::{DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode, PackageManager};
 use crate::functions::*;
 use crate::internal::*;
+use crate::internal::exec::*;
 use crate::internal::files::sed_file;
 use crate::internal::secure;
 use serde::{Deserialize, Serialize};
@@ -350,11 +351,15 @@ pub fn read_config(configpath: PathBuf) {
         _ => log::info!("No terminal setup selected!"),
     }
     //////////
-    files_eval(
-        sed_file(
-            "/mnt/usr/bin/shell-rocket",
-            "alacritty -e",
-            &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" }),
+    exec_eval(
+        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
+            "sed",
+            vec![
+                String::from("-i"),
+                String::from("-e"),
+                format!("s/^TERMINAL_EXEC=.*/TERMINAL_EXEC=\"{}\"/g", &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" })),
+                String::from("/mnt/usr/bin/shell-rocket"),
+            ],
         ),
         "Set terminal on shell rocket",
     );
