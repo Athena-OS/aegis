@@ -62,6 +62,7 @@ pub fn install_packages(kernel: String) {
         "curl",
         // Extra Base Arch
         "accountsservice",
+        "alacritty",
         "alsa-utils",
         "arch-install-scripts",
         "broadcom-wl-dkms",
