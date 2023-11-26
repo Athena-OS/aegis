@@ -39,7 +39,6 @@ pub fn virt_check() {
     } else if result == "qemu" || result == "kvm" {
         install(PackageManager::Pacman, vec!["qemu-guest-agent", "spice-vdagent"]);
         enable_service("qemu-guest-agent");
-        enable_service("spice-vdagentd");
     } else if result == "microsoft" {
         install(PackageManager::Pacman, vec!["hyperv", "xf86-video-fbdev"]);
         enable_service("hv_fcopy_daemon");

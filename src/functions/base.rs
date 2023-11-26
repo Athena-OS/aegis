@@ -129,7 +129,6 @@ pub fn install_packages(kernel: String) {
         "cron",
         "cyberchef-electron",
         "downgrade",
-        "edex-ui-bin",
         "eog",
         "espeakup",
         "figlet",
