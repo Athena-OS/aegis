@@ -180,7 +180,6 @@ pub fn install_packages(kernel: String) {
         "wget",
         "which",
         "xclip",
-        "xcp",
         "xmlstarlet",
         // Athena
         "athena-cyber-hub",
