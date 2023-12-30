@@ -19,6 +19,10 @@ pub fn install_base_packages() {
         "blackarch-mirrorlist",
         "chaotic-mirrorlist",
         "rate-mirrors",
+        "archlinux-keyring",
+        "athena-keyring",
+        "blackarch-keyring",
+        "chaotic-keyring",
     ]);
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
     fastest_mirrors(); // Done on the target system
@@ -282,21 +286,6 @@ fn initialize_keyrings() {
             ],
         ),
         "Set fastest Arch Linux mirrors",
-    );
-    exec_eval(
-        exec(
-            "pacman",
-            vec![
-                String::from("-Syy"),
-                String::from("--noconfirm"),
-                String::from("--needed"),
-                String::from("archlinux-keyring"),
-                String::from("athena-keyring"),
-                String::from("blackarch-keyring"),
-                String::from("chaotic-keyring"),
-            ],
-        ),
-        "Update keyring packages",
     );
 }
 
