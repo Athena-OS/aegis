@@ -4,7 +4,6 @@ use crate::internal::services::enable_service;
 use crate::internal::*;
 use log::warn;
 use std::path::PathBuf;
-use std::process::Command;
 
 pub fn install_base_packages() {
 
@@ -540,7 +539,8 @@ pub fn enable_system_services() {
 }
 
 pub fn strap_blackarch() {
-    let mut command = Command::new("bash");
-    command.arg("strap.sh");
-    command.output().expect("Failed to execute command");
+    exec_eval(
+        exec_chroot("bash", vec![String::from("strap.sh")]),
+        "Strap BlackArch",
+    );
 }
