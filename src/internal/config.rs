@@ -401,7 +401,11 @@ pub fn read_config(configpath: PathBuf) {
     println!();
     log::info!("Enabling system services...");
     base::enable_system_services();
+    //////////
+    log::info!("Enabling BlackArch...");
+    base::strap_blackarch();
     println!("---------");
+    //////////
     for i in 0..config.users.len() {
         log::info!("Creating user : {}", config.users[i].name);
         //log::info!("Setting use password : {}", config.users[i].password);

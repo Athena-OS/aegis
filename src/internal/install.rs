@@ -118,9 +118,6 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                         if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
                             mirrorlist_filename = String::from("/etc/pacman.d/mirrorlist");
                         }
-                        if repository == "blackarch" {
-                            mirrorlist_filename = String::from("/etc/pacman.d/blackarch-mirrorlist");
-                        }
                         if repository == "chaotic-aur" {
                             mirrorlist_filename = String::from("/etc/pacman.d/chaotic-mirrorlist");
                         }
@@ -128,9 +125,6 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                     else if pkgmanager_name == "pacman" {
                         if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
                             mirrorlist_filename = String::from("/mnt/etc/pacman.d/mirrorlist");
-                        }
-                        if repository == "blackarch" {
-                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/blackarch-mirrorlist");
                         }
                         if repository == "chaotic-aur" {
                             mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
@@ -194,19 +188,17 @@ fn extract_mirror_name(error_message: &str) -> Option<String> {
 // Function to find the mirrorlist file containing the mirror
 fn find_mirrorlist_file(mirror_name: &str, pkgmanager_name: &str) -> Option<String> {
     // Define the paths to the mirrorlist files
-    let mut mirrorlist_paths: [&str; 3] = ["", "", ""];
+    let mut mirrorlist_paths: [&str; 2] = ["", ""];
     if pkgmanager_name == "pacstrap" {
         mirrorlist_paths = [
             "/etc/pacman.d/mirrorlist",
             "/etc/pacman.d/chaotic-mirrorlist",
-            "/etc/pacman.d/blackarch-mirrorlist",
         ];
     }
     else if pkgmanager_name == "pacman" {
         mirrorlist_paths = [
             "/mnt/etc/pacman.d/mirrorlist",
             "/mnt/etc/pacman.d/chaotic-mirrorlist",
-            "/mnt/etc/pacman.d/blackarch-mirrorlist",
         ];
     }
 

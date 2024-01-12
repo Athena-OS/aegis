@@ -4,24 +4,23 @@ use crate::internal::services::enable_service;
 use crate::internal::*;
 use log::warn;
 use std::path::PathBuf;
+use std::process::Command;
 
 pub fn install_base_packages() {
 
     std::fs::create_dir_all("/mnt/etc").unwrap();
     initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors too
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena, BlackArch and Chaotic AUR package
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
     install::install(PackageManager::Pacstrap, vec![
         // Base Arch
         "base",
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
         // Repositories
         "athena-mirrorlist",
-        "blackarch-mirrorlist",
         "chaotic-mirrorlist",
         "rate-mirrors",
         "archlinux-keyring",
         "athena-keyring",
-        "blackarch-keyring",
         "chaotic-keyring",
     ]);
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
@@ -290,22 +289,6 @@ fn initialize_keyrings() {
 }
 
 fn fastest_mirrors() {
-    log::info!("Getting fastest BlackArch mirrors for your location");
-    exec_eval(
-        exec_chroot(
-            "rate-mirrors",
-            vec![
-                String::from("--concurrency"),
-                String::from("40"),
-                String::from("--disable-comments"),
-                String::from("--allow-root"),
-                String::from("--save"),
-                String::from("/etc/pacman.d/blackarch-mirrorlist"), //In chroot we don't need to specify /mnt
-                String::from("blackarch"),
-            ],
-        ),
-        "Set fastest mirrors from BlackArch",
-    );
     log::info!("Getting fastest Chaotic AUR mirrors for your location");
     exec_eval(
         exec_chroot(
@@ -554,4 +537,10 @@ pub fn enable_system_services() {
     enable_service("vnstat");
     //enable_service("nohang");
     //enable_service("cups");
+}
+
+pub fn strap_blackarch() {
+    let mut command = Command::new("bash");
+    command.arg("strap.sh");
+    command.output().expect("Failed to execute command");
 }
