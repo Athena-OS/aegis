@@ -401,9 +401,6 @@ pub fn read_config(configpath: PathBuf) {
     println!();
     log::info!("Enabling system services...");
     base::enable_system_services();
-    //////////
-    log::info!("Enabling BlackArch...");
-    base::strap_blackarch();
     println!("---------");
     //////////
     for i in 0..config.users.len() {

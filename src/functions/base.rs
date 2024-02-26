@@ -537,13 +537,3 @@ pub fn enable_system_services() {
     //enable_service("nohang");
     //enable_service("cups");
 }
-
-pub fn strap_blackarch() {
-    files_eval(files::create_directory("/mnt/usr/share/aegis"), "create /mnt/usr/share/aegis");
-    files::copy_file("/usr/share/aegis/strap.sh", "/mnt/usr/share/aegis/strap.sh");
-    exec_eval(
-        exec_chroot("bash", vec![String::from("/usr/share/aegis/strap.sh")]),
-        "Strap BlackArch",
-    );
-    files::remove_file("/mnt/usr/share/aegis/strap.sh");
-}
