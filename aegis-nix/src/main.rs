@@ -65,7 +65,7 @@ fn main() {
             }
         },
         Command::InstallParams(args) => {
-            internal::install::install(args.cores, args.jobs, args.keep);
+            internal::install::install(args.cores, args.jobs);
         }
         Command::Config { config } => {
             internal::config::read_config(config);

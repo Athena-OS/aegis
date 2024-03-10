@@ -101,8 +101,8 @@ fn main() {
             base::install_toybox();
         }
         Command::InstallParams(args) => {
-            //internal::install::install(args.cores, args.jobs, args.keep);
-            println!("{} {} {}", args.cores, args.jobs, args.keep); //Just to delete the warning about unused args variable
+            //internal::install::install(args.cores, args.jobs);
+            println!("{} {}", args.cores, args.jobs); //Just to delete the warning about unused args variable
             todo!()
         }
         Command::Config { config } => {

@@ -2,23 +2,17 @@ use shared::{error, info};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
-pub fn install(cores: String, jobs: String, keep: bool) -> i32 {
+pub fn install(cores: String, jobs: String) -> i32 {
     // The init logging is called at the beginning of main.rs
 
-    let mut install_args = vec![
+    let install_nixos_args = format!("nixos-install --no-root-password --cores {} --max-jobs {} --keep-going", cores, jobs);
+    let install_args = vec![
         "-p",
-        "nixos-install",
-        "--no-root-password",
-        "--cores",
-        &cores,
-        "--max-jobs",
-        &jobs,
+        "nixos-install-tools",
+        "--command",
+        &install_nixos_args,
     ];
-
-    if keep {
-        install_args.push("--keep-going");
-    }
-
+    // nix-shell seems to work only if rust executable run as sudo
     let mut install_cmd = Command::new("nix-shell")
         .args(&install_args)
         .stdout(Stdio::piped())

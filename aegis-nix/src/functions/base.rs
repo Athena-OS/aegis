@@ -8,14 +8,49 @@ use shared::strings::crash;
 use std::path::PathBuf;
 
 pub fn install_nix_config() {
-    std::fs::create_dir_all("/mnt/etc").unwrap();
-    info!("Generate hardware configuration.");
+    info!("Set nix channels.");
     exec_eval(
         exec(
-            "nixos-generate-config",
+            "nix-channel",
             vec![
-                String::from("--root"),
-                String::from("/mnt"),
+                String::from("--add"),
+                String::from("https://nixos.org/channels/nixpkgs-unstable"),
+                String::from("nixpkgs"),
+            ],
+        ),
+        "Set nixpkgs nix channel",
+    );
+    exec_eval(
+        exec(
+            "nix-channel",
+            vec![
+                String::from("--add"),
+                String::from("https://github.com/nix-community/home-manager/archive/master.tar.gz"),
+                String::from("home-manager"),
+            ],
+        ),
+        "Set home-manager nix channel",
+    );
+    exec_eval(
+        exec(
+            "nix-channel",
+            vec![
+                String::from("--update"),
+            ],
+        ),
+        "Update nix channels",
+    );
+    std::fs::create_dir_all("/mnt/etc").unwrap();
+    info!("Generate hardware configuration.");
+    // nix-shell seems to work only if rust executable run as sudo
+    exec_eval(
+        exec(
+            "nix-shell",
+            vec![
+                String::from("-p"),
+                String::from("nixos-install-tools"),
+                String::from("--command"),
+                String::from("nixos-generate-config --root /mnt"),
             ],
         ),
         "Run nixos-generate-config",

@@ -320,9 +320,6 @@ pub struct InstallArgs {
 
     /// The number of jobs to use
     pub jobs: String,
-
-    /// Keep the install if a build fails
-    pub keep: bool,
 }
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]

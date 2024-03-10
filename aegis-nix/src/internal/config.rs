@@ -82,7 +82,6 @@ struct Users {
 struct InstallParams {
     cores: String,
     jobs: String,
-    keep: bool,
 }
 
 pub fn read_config(configpath: PathBuf) {
@@ -255,7 +254,7 @@ pub fn read_config(configpath: PathBuf) {
     users::root_pass(config.rootpass.as_str());
     println!();
     info!("Install Athena OS");
-    let exit_code = install(config.params.cores, config.params.jobs, config.params.keep);
+    let exit_code = install(config.params.cores, config.params.jobs);
     println!();
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
