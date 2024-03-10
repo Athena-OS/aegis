@@ -162,7 +162,7 @@ fn install_enlightenment() {
 
 fn install_xfce_refined() {
     install(PackageManager::Pacman, vec![
-        "athena-xfce-config",
+        "athena-xfce-refined",
     ]);
 }
 
