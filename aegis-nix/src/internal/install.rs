@@ -12,7 +12,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
         "--run",
         &install_nixos_args,
     ];
-    // nix-shell seems to work only if rust executable run as sudo
+    // nix-shell seems to work as non-sudo only by using --run; --command works only as sudo
     let mut install_cmd = Command::new("nix-shell")
         .args(&install_args)
         .stdout(Stdio::piped())
