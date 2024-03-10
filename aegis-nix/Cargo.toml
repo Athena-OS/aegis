@@ -1,0 +1,11 @@
+[package]
+name = "aegis-nix"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared = { path = "../shared" }
+
+[[bin]]
+name = "aegis-nix"
+path = "src/main.rs"

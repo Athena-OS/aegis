@@ -1,0 +1,18 @@
+[package]
+name = "shared"
+version = "0.1.0"
+edition = "2021"
+
+# Specify that this is a library crate
+[lib]
+name = "shared"
+path = "src/mod.rs"
+
+[dependencies]
+clap = {version = "4.4.4", features = ["derive"] }
+serde_json = "1.0.107"
+serde = { version = "1.0.188", features = ["derive"] }
+log = "0.4.20"
+flexi_logger = {version = "0.27.2", features = ["colors"] }
+human-panic = "1.2.0"
+regex = "1.9.5"
