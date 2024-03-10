@@ -9,7 +9,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
     let install_args = vec![
         "-p",
         "nixos-install-tools",
-        "--command",
+        "--run",
         &install_nixos_args,
     ];
     // nix-shell seems to work only if rust executable run as sudo
