@@ -32,7 +32,7 @@ struct Config {
     //snapper: bool,
     flatpak: bool,
     zramd: bool,
-    hardened: bool,
+    //hardened: bool,
     extra_packages: Vec<String>,
     kernel: String,
 }
@@ -163,12 +163,12 @@ pub fn read_config(configpath: PathBuf) {
         base::install_zram();
     }
     println!();
-    info!("Hardening system : {}", config.hardened);
+    /*info!("Hardening system : {}", config.hardened);
     if config.hardened {
         secure::secure_password_config();
         secure::secure_ssh_config();
     }
-    println!();
+    println!();*/
     info!("Installing desktop : {:?}", config.desktop);
     /*if let Some(desktop) = &config.desktop {
         desktops::install_desktop_setup(*desktop);

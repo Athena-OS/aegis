@@ -76,8 +76,8 @@ pub enum Command {
     Flatpak,
 
     /// Set up hardened
-    #[command(name = "hardened")]
-    Hardened,
+    /*#[command(name = "hardened")]
+    Hardened,*/
 
     /// Configure users and passwords
     #[command(name = "users")]

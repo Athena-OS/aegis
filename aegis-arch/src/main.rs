@@ -61,10 +61,10 @@ fn main() {
         Command::Zram => {
             base::install_zram();
         }
-        Command::Hardened => {
+        /*Command::Hardened => {
             secure::secure_password_config();
             secure::secure_ssh_config();
-        }
+        }*/
         Command::Users { subcommand } => match subcommand {
             UsersSubcommand::NewUser(args) => {
                 users::new_user(
