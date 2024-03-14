@@ -194,7 +194,7 @@ pub fn install_packages(kernel: String) {
         "athena-neofetch-config",
         "athena-nvim-config",
         "athena-powershell-config",
-        "athena-system-config",
+        "athena-config",
         "athena-theme-tweak",
         "athena-tmux-config",
         "athena-vim-config",
