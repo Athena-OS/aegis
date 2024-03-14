@@ -47,8 +47,10 @@ pub enum Command {
     GenFstab,
     
     /// Setup Snapper
+    /*
     #[command(name = "setup-snapper")]
     SetupSnapper,
+    */
 
     /// Install the bootloader
     #[command(name = "bootloader")]

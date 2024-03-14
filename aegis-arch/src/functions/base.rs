@@ -426,6 +426,7 @@ pub fn install_bootloader_legacy(device: PathBuf) {
     );
 }
 
+/*
 pub fn setup_snapper() {
     install(PackageManager::Pacman, vec![
         "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
@@ -476,6 +477,7 @@ pub fn setup_snapper() {
     files::copy_file("/mnt/etc/snapper/config-templates/garuda", "/mnt/etc/snapper/configs/root");
     enable_service("grub-btrfsd");
 }
+*/
 
 pub fn install_flatpak() {
     install(PackageManager::Pacman, vec!["flatpak"]);

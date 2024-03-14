@@ -35,7 +35,7 @@ fn main() {
         Command::GenFstab => {
             base::genfstab();
         }
-        Command::SetupSnapper => base::setup_snapper(),
+        //Command::SetupSnapper => base::setup_snapper(),
         Command::Bootloader { subcommand } => match subcommand {
             BootloaderSubcommand::GrubEfi { efidir } => {
                 base::install_bootloader_efi(efidir);

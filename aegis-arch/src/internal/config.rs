@@ -29,7 +29,7 @@ struct Config {
     displaymanager: String,
     browser: String,
     terminal: String,
-    snapper: bool,
+    //snapper: bool,
     flatpak: bool,
     zramd: bool,
     hardened: bool,
@@ -367,11 +367,11 @@ pub fn read_config(configpath: PathBuf) {
     }
     // Misc Settings
     println!();
-    info!("Installing snapper : {}", config.snapper);
+    /*info!("Installing snapper : {}", config.snapper);
     if config.snapper {
         base::setup_snapper();
     }
-    println!();
+    println!();*/
     info!("Installing flatpak : {}", config.flatpak);
     if config.flatpak {
         base::install_flatpak();
