@@ -44,7 +44,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 String::from(shell_path),
                 String::from("-p"),
                 String::from(_password).replace('\n', ""),
-                String::from(sanitized_username),
+                String::from(sanitized_username.clone()),
             ],
         ),
         format!("Create user {}", sanitized_username).as_str(),
@@ -56,7 +56,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 vec![
                     String::from("-aG"),
                     String::from("wheel,rfkill,sys,lp,input"),
-                    String::from(sanitized_username),
+                    String::from(sanitized_username.clone()),
                 ],
             ),
             format!("Add user {} to wheel group", sanitized_username).as_str(),
