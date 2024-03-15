@@ -13,11 +13,15 @@ pub fn set_timezone(timezone: &str) {
 }
 
 pub fn set_locale(locale: String) {
+    // Split the string into words using whitespace as delimiters and take only the first part
+    let locale_part = locale.split_whitespace().next().unwrap_or("en_US.UTF-8");
+
+    // Use only the extracted part of the locale in the sed_file call. Nix needs only the extracted part (i.e., en_US.UTF-8)
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/hosts/locale/default.nix",
             "en_US.UTF-8",
-            &locale,
+            &locale_part,
         ),
         "Set Locale",
     );
