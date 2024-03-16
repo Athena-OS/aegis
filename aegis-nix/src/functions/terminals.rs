@@ -25,8 +25,8 @@ fn install_alacritty() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "terminal =.*",
-            "terminal = \"alacritty\";",
+            "  terminal =.*",
+            "  terminal = \"alacritty\";",
         ),
         "Set Alacritty",
     );
@@ -36,8 +36,8 @@ fn install_kitty() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "terminal =.*",
-            "terminal = \"kitty\";",
+            "  terminal =.*",
+            "  terminal = \"kitty\";",
         ),
         "Set Kitty",
     );
