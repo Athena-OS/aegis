@@ -29,7 +29,7 @@ pub fn install_nix_config() {
         ),
         "Update nix channels",
     );
-    std::fs::create_dir_all("/mnt/etc").unwrap();
+    std::fs::create_dir_all("/mnt/etc/nixos").unwrap();
     info!("Generate hardware configuration.");
     // nix-shell seems to work as non-sudo only by using --run; --command works only as sudo
     exec_eval(
