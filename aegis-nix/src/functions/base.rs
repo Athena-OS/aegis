@@ -24,17 +24,6 @@ pub fn install_nix_config() {
         exec(
             "nix-channel",
             vec![
-                String::from("--add"),
-                String::from("https://github.com/nix-community/home-manager/archive/master.tar.gz"),
-                String::from("home-manager"),
-            ],
-        ),
-        "Set home-manager nix channel",
-    );
-    exec_eval(
-        exec(
-            "nix-channel",
-            vec![
                 String::from("--update"),
             ],
         ),
