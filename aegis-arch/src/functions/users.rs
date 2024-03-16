@@ -43,7 +43,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 String::from("-s"),
                 String::from(shell_path),
                 String::from("-p"),
-                String::from(_password).replace('\n', ""),
+                format!("'{}'", _password.replace('\n', "")),
                 String::from(sanitized_username.clone()),
             ],
         ),
@@ -103,7 +103,7 @@ pub fn root_pass(root_pass: &str) {
             "bash",
             vec![
                 String::from("-c"),
-                format!(r#"'usermod --password {root_pass} root'"#),
+                format!(r#"usermod --password '{}' root"#, root_pass),
             ],
         ),
         "set root password",
