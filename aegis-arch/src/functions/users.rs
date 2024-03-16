@@ -100,10 +100,11 @@ pub fn hash_pass(password: &str) -> std::process::Output {
 pub fn root_pass(root_pass: &str) {
     exec_eval(
         exec_chroot(
-            "bash",
+            "usermod",
             vec![
-                String::from("-c"),
-                format!(r#"usermod --password '{}' root"#, root_pass),
+                String::from("--password"),
+                format!("'{}'", root_pass.replace('\n', "")),
+                String::from("root"),
             ],
         ),
         "set root password",
