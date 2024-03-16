@@ -20,8 +20,8 @@ fn install_akame() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"akame\";",
+            "  theme =.*",
+            "  theme = \"akame\";",
         ),
         "Set Akame theme",
     );
@@ -31,8 +31,8 @@ fn install_cyborg() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"cyborg\";",
+            "  theme =.*",
+            "  theme = \"cyborg\";",
         ),
         "Set Cyborg theme",
     );
@@ -42,8 +42,8 @@ fn install_graphite() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"graphite\";",
+            "  theme =.*",
+            "  theme = \"graphite\";",
         ),
         "Set Graphite theme",
     );
@@ -53,8 +53,8 @@ fn install_hackthebox() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"hackthebox\";",
+            "  theme =.*",
+            "  theme = \"hackthebox\";",
         ),
         "Set Hack The Box theme",
     );
@@ -64,8 +64,8 @@ fn install_samurai() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"samurai\";",
+            "  theme =.*",
+            "  theme = \"samurai\";",
         ),
         "Set Samurai theme",
     );
@@ -75,8 +75,8 @@ fn install_sweet() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "theme =.*",
-            "theme = \"sweet\";",
+            "  theme =.*",
+            "  theme = \"sweet\";",
         ),
         "Set Sweet theme",
     );
