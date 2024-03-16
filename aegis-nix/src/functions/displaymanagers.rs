@@ -17,8 +17,8 @@ fn install_gdm() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "dmanager =.*",
-            "dmanager = \"gdm\";",
+            "  dmanager =.*",
+            "  dmanager = \"gdm\";",
         ),
         "Set GDM",
     );
@@ -28,8 +28,8 @@ fn install_lightdm_neon() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "dmanager =.*",
-            "dmanager = \"lightdm\";",
+            "  dmanager =.*",
+            "  dmanager = \"lightdm\";",
         ),
         "Set LightDM",
     );
