@@ -30,8 +30,8 @@ fn install_xfce_refined() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "desktop =.*",
-            "desktop = \"xfce\";",
+            "  desktop =.*",
+            "  desktop = \"xfce\";",
         ),
         "Set XFCE",
     );
@@ -49,8 +49,8 @@ fn install_xfce_picom() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "desktop =.*",
-            "desktop = \"xfce\";",
+            "  desktop =.*",
+            "  desktop = \"xfce\";",
         ),
         "Set XFCE",
     );
@@ -68,8 +68,8 @@ fn install_gnome() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "desktop =.*",
-            "desktop = \"gnome\";",
+            "  desktop =.*",
+            "  desktop = \"gnome\";",
         ),
         "Set GNOME",
     );
@@ -79,8 +79,8 @@ fn install_cinnamon() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "desktop =.*",
-            "desktop = \"cinnamon\";",
+            "  desktop =.*",
+            "  desktop = \"cinnamon\";",
         ),
         "Set Cinnamon",
     );
@@ -90,8 +90,8 @@ fn install_mate() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "desktop =.*",
-            "desktop = \"mate\";",
+            "  desktop =.*",
+            "  desktop = \"mate\";",
         ),
         "Set MATE",
     );
