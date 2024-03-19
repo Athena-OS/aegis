@@ -21,7 +21,7 @@ pub fn set_locale(locale: String) {
         files::sed_file(
             "/mnt/etc/nixos/hosts/locale/default.nix",
             "en_US.UTF-8",
-            &locale_part,
+            locale_part,
         ),
         "Set Locale",
     );

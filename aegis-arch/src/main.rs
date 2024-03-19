@@ -1,6 +1,6 @@
 mod functions;
 mod internal;
-use crate::internal::secure;
+//use crate::internal::secure;
 use crate::functions::*;
 use shared::args::{BootloaderSubcommand, Command, Cli, UsersSubcommand};
 use shared::clap::Parser;

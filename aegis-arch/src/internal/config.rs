@@ -1,5 +1,5 @@
 use crate::internal::install::install;
-use crate::internal::secure;
+//use crate::internal::secure;
 use crate::functions::*;
 use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PackageManager, PartitionMode};
 use shared::{debug, info};
@@ -179,13 +179,13 @@ pub fn read_config(configpath: PathBuf) {
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "gnome" => {
             desktops::install_desktop_setup(DesktopSetup::Gnome);
-            disable_xsession("gnome.desktop");
-            disable_xsession("gnome-classic.desktop");
-            disable_xsession("gnome-classic-xorg.desktop");
-            disable_wsession("gnome.desktop");
-            disable_wsession("gnome-wayland.desktop");
-            disable_wsession("gnome-classic.desktop");
-            disable_wsession("gnome-classic-wayland.desktop");
+            desktops::disable_xsession("gnome.desktop");
+            desktops::disable_xsession("gnome-classic.desktop");
+            desktops::disable_xsession("gnome-classic-xorg.desktop");
+            desktops::disable_wsession("gnome.desktop");
+            desktops::disable_wsession("gnome-wayland.desktop");
+            desktops::disable_wsession("gnome-classic.desktop");
+            desktops::disable_wsession("gnome-classic-wayland.desktop");
         },
         "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
         "xfce refined" => desktops::install_desktop_setup(DesktopSetup::XfceRefined),
@@ -221,10 +221,10 @@ pub fn read_config(configpath: PathBuf) {
             displaymanagers::install_dm_setup(DMSetup::Gdm);
             if ! config.desktop.contains("gnome") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
-                disable_xsession("gnome.desktop");
-                disable_xsession("gnome-xorg.desktop");
-                disable_wsession("gnome.desktop");
-                disable_wsession("gnome-wayland.desktop");
+                desktops::disable_xsession("gnome.desktop");
+                desktops::disable_xsession("gnome-xorg.desktop");
+                desktops::disable_wsession("gnome.desktop");
+                desktops::disable_wsession("gnome-wayland.desktop");
                 // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
             }
             else {
@@ -240,7 +240,7 @@ pub fn read_config(configpath: PathBuf) {
         },
         "lightdm neon" => {
             displaymanagers::install_dm_setup(DMSetup::LightDMNeon);
-            lightdm_set_session(&config.desktop);
+            desktops::lightdm_set_session(&config.desktop);
         },
         "sddm" => displaymanagers::install_dm_setup(DMSetup::Sddm),
         _ => info!("No display manager setup selected!"),
@@ -413,49 +413,12 @@ pub fn read_config(configpath: PathBuf) {
     users::root_pass(config.rootpass.as_str());
     println!();
     info!("Installation log file copied to /var/log/aegis.log");
+    files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file("/tmp/aegis.log", "/mnt/var/log/aegis.log");
+    if config.bootloader.r#type == "grub-efi" {
+        partition::umount("/mnt/boot");
+    }
+    partition::umount("/mnt/home");
+    partition::umount("/mnt");
     println!("Installation finished! You may reboot now!")
-}
-
-fn disable_xsession(session: &str) {
-    debug!("Disabling {}", session);
-    files::rename_file(&("/mnt/usr/share/xsessions/".to_owned()+session), &("/mnt/usr/share/xsessions/".to_owned()+session+".disable"));
-}
-
-fn disable_wsession(session: &str) {
-    debug!("Disabling {}", session);
-    files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
-}
-
-fn lightdm_set_session(setdesktop: &str) {
-    if setdesktop.contains("gnome") {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=gnome-xorg",
-            ),
-            "Apply GNOME User Session on LightDM",
-        );
-    }
-    if setdesktop.contains("xfce") {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=xfce",
-            ),
-            "Apply Hyprland User Session on LightDM",
-        );
-    }
-    if setdesktop == "hyprland" {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=hyprland",
-            ),
-            "Apply Hyprland User Session on LightDM",
-        );
-    }
 }

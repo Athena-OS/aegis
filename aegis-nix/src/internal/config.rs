@@ -269,6 +269,7 @@ pub fn read_config(configpath: PathBuf) {
     }
     else {
         error!("Installation failed. Exit code: {}", exit_code);
+        // The following code should be removed. The log generation must be proposed by Aegis TUI and GUI
         if prompt_user_for_logs() {
             info!("Generating log URL...");
             run_logs_command();

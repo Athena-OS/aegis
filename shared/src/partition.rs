@@ -613,6 +613,6 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
 pub fn umount(mountpoint: &str) {
     exec_eval(
         exec("umount", vec![String::from(mountpoint)]),
-        format!("unmount {}", mountpoint).as_str(),
+        format!("unmount command processed on {}", mountpoint).as_str(),
     );
 }
