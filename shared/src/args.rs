@@ -187,7 +187,7 @@ pub struct PartitionArgs {
 
     /// Encryption for Auto mode
     #[arg(long)]
-    pub encrypt_auto: bool,
+    pub encrypt_check: bool,
 
     /// If the install destination should be partitioned with EFI
     #[arg(long)]

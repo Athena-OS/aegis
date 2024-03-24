@@ -39,7 +39,7 @@ struct Config {
 struct Partition {
     device: String,
     mode: PartitionMode,
-    encrypt_auto: bool,
+    encrypt_check: bool,
     efi: bool,
     swap: bool,
     swap_size: String,
@@ -128,7 +128,7 @@ pub fn read_config(configpath: PathBuf) {
     partition::partition(
         device,
         config.partition.mode,
-        config.partition.encrypt_auto,
+        config.partition.encrypt_check,
         config.partition.efi,
         config.partition.swap,
         config.partition.swap_size,

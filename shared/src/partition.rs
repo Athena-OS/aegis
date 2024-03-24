@@ -16,7 +16,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     let lookupform = Command::new("secret-tool")
         .arg("lookup")
         .arg("luks-key")
-        .arg("luks-key")
+        .arg(cryptlabel)
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to execute secret-tool");
@@ -33,7 +33,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     let lookupopen = Command::new("secret-tool")
         .arg("lookup")
         .arg("luks-key")
-        .arg("luks-key")
+        .arg(cryptlabel)
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("Failed to execute secret-tool");
@@ -148,7 +148,7 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
 pub fn partition(
     device: PathBuf,
     mode: PartitionMode,
-    encrypt_auto: bool,
+    encrypt_check: bool,
     efi: bool,
     swap: bool,
     swap_size: String,
@@ -169,9 +169,9 @@ pub fn partition(
             if device.to_string_lossy().contains("nvme")
                 || device.to_string_lossy().contains("mmcblk")
             {
-                part_nvme(&device, efi, encrypt_auto, swap);
+                part_nvme(&device, efi, encrypt_check, swap);
             } else {
-                part_disk(&device, efi, encrypt_auto, swap);
+                part_disk(&device, efi, encrypt_check, swap);
             }
         }
         PartitionMode::Manual => {
@@ -371,20 +371,14 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
     }
 }
 
-fn part_nvme(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
+fn part_nvme(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     let device = device.to_string_lossy().to_string();
     let mut bdevice = device.clone();
-    let re = Regex::new(r"^/dev/(\w+)").unwrap();
-    let cryptlabel = re
-        .captures(&bdevice)
-        .and_then(|c| c.get(1))
-        .map(|bd| bd.as_str().to_string())
-        .unwrap_or_default();
 
     if efi {
-        if encrypt_auto {
-            encrypt_blockdevice(format!("{bdevice}p2").as_str(), format!("{cryptlabel}p2").as_str());
-            bdevice = format!("/dev/mapper/{cryptlabel}");
+        if encrypt_check {
+            encrypt_blockdevice(format!("{bdevice}p2").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            bdevice = String::from("/dev/mapper/auto");
         }
         exec_eval(
             exec(
@@ -455,9 +449,9 @@ fn part_nvme(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
             );
         }
     } else if !efi{
-        if encrypt_auto {
-            encrypt_blockdevice(format!("{bdevice}p1").as_str(), format!("{cryptlabel}p1").as_str());
-            bdevice = format!("/dev/mapper/{cryptlabel}");
+        if encrypt_check {
+            encrypt_blockdevice(format!("{bdevice}p1").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            bdevice = String::from("/dev/mapper/auto");
         }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         /*exec_eval(
@@ -528,20 +522,14 @@ fn part_nvme(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
     }
 }
 
-fn part_disk(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
+fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     let device = device.to_string_lossy().to_string();
     let mut bdevice = device.clone();
-    let re = Regex::new(r"^/dev/(\w+)").unwrap();
-    let cryptlabel = re
-        .captures(&bdevice)
-        .and_then(|c| c.get(1))
-        .map(|bd| bd.as_str().to_string())
-        .unwrap_or_default();
 
     if efi {
-        if encrypt_auto {
-            encrypt_blockdevice(format!("{bdevice}2").as_str(), format!("{cryptlabel}2").as_str());
-            bdevice = format!("/dev/mapper/{cryptlabel}");
+        if encrypt_check {
+            encrypt_blockdevice(format!("{bdevice}2").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            bdevice = String::from("/dev/mapper/auto");
         }
         exec_eval(
             exec(
@@ -605,9 +593,9 @@ fn part_disk(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
             );
         }
     } else if !efi {
-        if encrypt_auto {
-            encrypt_blockdevice(format!("{bdevice}1").as_str(), format!("{cryptlabel}1").as_str());
-            bdevice = format!("/dev/mapper/{cryptlabel}");
+        if encrypt_check {
+            encrypt_blockdevice(format!("{bdevice}1").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            bdevice = String::from("/dev/mapper/auto");
         }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         /*exec_eval(
