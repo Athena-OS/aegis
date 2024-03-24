@@ -176,14 +176,18 @@ pub enum Command {
 
 #[derive(Debug, Args)]
 pub struct PartitionArgs {
+    /// The device to partition
+    #[arg(required_if_eq("mode", "PartitionMode::Auto"), required = false)]
+    pub device: PathBuf,
+
     /// If aegis should automatically partition (mode = auto)
     /// or the user manually partitioned it (mode = manual)
     #[arg(value_enum)]
     pub mode: PartitionMode,
 
-    /// The device to partition
-    #[arg(required_if_eq("mode", "PartitionMode::Auto"), required = false)]
-    pub device: PathBuf,
+    /// Encryption for Auto mode
+    #[arg(long)]
+    pub encrypt_auto: bool,
 
     /// If the install destination should be partitioned with EFI
     #[arg(long)]
@@ -213,24 +217,28 @@ pub struct Partition {
     pub mountpoint: String,
     pub blockdevice: String,
     pub filesystem: String,
+    pub encrypt: bool,
 }
 
 impl Partition {
-    pub fn new(mountpoint: String, blockdevice: String, filesystem: String) -> Self {
+    pub fn new(mountpoint: String, blockdevice: String, filesystem: String, encrypt: bool) -> Self {
         Self {
             mountpoint,
             blockdevice,
             filesystem,
+            encrypt,
         }
     }
 }
 
 pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewrite
     println!("{}", s);
+    let to_encrypt: bool = s.split(':').collect::<Vec<&str>>()[3].parse().map_err(|_| "Invalid boolean value")?;
     Ok(Partition::new(
         s.split(':').collect::<Vec<&str>>()[0].to_string(),
         s.split(':').collect::<Vec<&str>>()[1].to_string(),
         s.split(':').collect::<Vec<&str>>()[2].to_string(),
+        to_encrypt,
     ))
 }
 

@@ -20,6 +20,7 @@ fn main() {
             partition::partition(
                 args.device,
                 args.mode,
+                args.encrypt_auto,
                 args.efi,
                 args.swap,
                 args.swap_size,

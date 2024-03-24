@@ -42,6 +42,7 @@ struct Config {
 struct Partition {
     device: String,
     mode: PartitionMode,
+    encrypt_auto: bool,
     efi: bool,
     swap: bool,
     swap_size: String,
@@ -111,16 +112,19 @@ pub fn read_config(configpath: PathBuf) {
     info!("Swap partition : {}", config.partition.swap);
     let mut partitions: Vec<args::Partition> = Vec::new();
     for partition in config.partition.partitions {
+        let to_encrypt: bool = partition.split(':').collect::<Vec<&str>>()[3].parse().map_err(|_| "Invalid boolean value").expect("Unable to get encrypt boolean value.");
         partitions.push(args::Partition::new(
             partition.split(':').collect::<Vec<&str>>()[0].to_string(),
             partition.split(':').collect::<Vec<&str>>()[1].to_string(),
             partition.split(':').collect::<Vec<&str>>()[2].to_string(),
+            to_encrypt,
         ));
     }
     let device = PathBuf::from("/dev/").join(config.partition.device.as_str());
     partition::partition(
         device,
         config.partition.mode,
+        config.partition.encrypt_auto,
         config.partition.efi,
         config.partition.swap,
         config.partition.swap_size,

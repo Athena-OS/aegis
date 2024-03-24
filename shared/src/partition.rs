@@ -7,96 +7,148 @@ use crate::log::debug;
 use crate::returncode_eval::exec_eval;
 use crate::returncode_eval::files_eval;
 use crate::strings::crash;
+use regex::Regex;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
+    // LUKS formatting
+    let lookupform = Command::new("secret-tool")
+        .arg("lookup")
+        .arg("luks-key")
+        .arg("luks-key")
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to execute secret-tool");
+
+    Command::new("cryptsetup")
+        .arg("luksFormat")
+        .arg(blockdevice)
+        .arg(String::from("-"))
+        .stdin(lookupform.stdout.unwrap())
+        .output()
+        .expect("Failed to execute cryptsetup");
+    
+    // LUKS opening
+    let lookupopen = Command::new("secret-tool")
+        .arg("lookup")
+        .arg("luks-key")
+        .arg("luks-key")
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to execute secret-tool");
+
+    Command::new("cryptsetup")
+        .arg("luksOpen")
+        .arg(blockdevice)
+        .arg(cryptlabel)
+        .arg(String::from("-"))
+        .stdin(lookupopen.stdout.unwrap())
+        .output()
+        .expect("Failed to execute cryptsetup");
+}
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
 mkfs.btrfs mkfs.ext2  mkfs.ext4  mkfs.minix mkfs.vfat mkfs.f2fs */
 
-pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str) {
+pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encryption: bool) {
+    let mut device = String::from(blockdevice);
+    // Extract the block device name
+    let re = Regex::new(r"^/dev/(\w+)").unwrap();
+    let cryptlabel = re
+        .captures(&device)
+        .and_then(|c| c.get(1))
+        .map(|bd| bd.as_str().to_string())
+        .unwrap_or_default();
+    if encryption {
+        encrypt_blockdevice(&device, &cryptlabel);
+        device = format!("/dev/mapper/{cryptlabel}");
+    }
     match filesystem {
         "vfat" => exec_eval(
-            exec("mkfs.vfat", vec![String::from("-F32"), String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as vfat").as_str(),
+            exec("mkfs.vfat", vec![String::from("-F32"), String::from(&device)]),
+            format!("Formatting {device} as vfat").as_str(),
         ),
         "bfs" => exec_eval(
-            exec("mkfs.bfs", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as bfs").as_str(),
+            exec("mkfs.bfs", vec![String::from(&device)]),
+            format!("Formatting {device} as bfs").as_str(),
         ),
         "cramfs" => exec_eval(
-            exec("mkfs.cramfs", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as cramfs").as_str(),
+            exec("mkfs.cramfs", vec![String::from(&device)]),
+            format!("Formatting {device} as cramfs").as_str(),
         ),
         "ext3" => exec_eval(
-            exec("mkfs.ext3", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as ext3").as_str(),
+            exec("mkfs.ext3", vec![String::from(&device)]),
+            format!("Formatting {device} as ext3").as_str(),
         ),
         "fat" => exec_eval(
-            exec("mkfs.fat", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as fat").as_str(),
+            exec("mkfs.fat", vec![String::from(&device)]),
+            format!("Formatting {device} as fat").as_str(),
         ),
         "msdos" => exec_eval(
-            exec("mkfs.msdos", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as msdos").as_str(),
+            exec("mkfs.msdos", vec![String::from(&device)]),
+            format!("Formatting {device} as msdos").as_str(),
         ),
         "xfs" => exec_eval(
-            exec("mkfs.xfs", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as xfs").as_str(),
+            exec("mkfs.xfs", vec![String::from(&device)]),
+            format!("Formatting {device} as xfs").as_str(),
         ),
         "btrfs" => {
             exec_eval(
-                exec("mkfs.btrfs", vec![String::from("-f"), String::from(blockdevice)]),
-                format!("Formatting {blockdevice} as btrfs").as_str(),
+                exec("mkfs.btrfs", vec![String::from("-f"), String::from(&device)]),
+                format!("Formatting {device} as btrfs").as_str(),
             );
         }
         "ext2" => exec_eval(
-            exec("mkfs.ext2", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as ext2").as_str(),
+            exec("mkfs.ext2", vec![String::from(&device)]),
+            format!("Formatting {device} as ext2").as_str(),
         ),
         "ext4" => exec_eval(
-            exec("mkfs.ext4", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as ext4").as_str(),
+            exec("mkfs.ext4", vec![String::from(&device)]),
+            format!("Formatting {device} as ext4").as_str(),
         ),
         "minix" => exec_eval(
-            exec("mkfs.minix", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as minix").as_str(),
+            exec("mkfs.minix", vec![String::from(&device)]),
+            format!("Formatting {device} as minix").as_str(),
         ),
         "f2fs" => exec_eval(
-            exec("mkfs.f2fs", vec![String::from(blockdevice)]),
-            format!("Formatting {blockdevice} as f2fs").as_str(),
+            exec("mkfs.f2fs", vec![String::from(&device)]),
+            format!("Formatting {device} as f2fs").as_str(),
         ),
         "linux-swap" => {
             exec_eval(
-                exec("mkswap", vec![String::from(blockdevice)]),
-                format!("Formatting {blockdevice} as linux-swap").as_str(),
+                exec("mkswap", vec![String::from(&device)]),
+                format!("Formatting {device} as linux-swap").as_str(),
             );
             exec_eval(
-                exec("swapon", vec![String::from(blockdevice)]),
-                format!("Activate {blockdevice} swap device").as_str(),
+                exec("swapon", vec![String::from(&device)]),
+                format!("Activate {device} swap device").as_str(),
             );
         }
         "don't format" => {
-            debug!("Not formatting {}", blockdevice);
+            debug!("Not formatting {}", device);
         }
         "noformat" => {
-            debug!("Not formatting {}", blockdevice);
+            debug!("Not formatting {}", device);
         }
         _ => {
             crash(
-                format!("Unknown filesystem {filesystem}, used in partition {blockdevice}"),
+                format!("Unknown filesystem {filesystem}, used in partition {device}"),
                 1,
             );
         }
     }
     exec_eval(
         exec("mkdir", vec![String::from("-p"), String::from(mountpoint)]),
-        format!("Creating mountpoint {mountpoint} for {blockdevice}").as_str(),
+        format!("Creating mountpoint {mountpoint} for {device}").as_str(),
     );
-    mount(blockdevice, mountpoint, "");
+    mount(&device, mountpoint, "");
 }
 
 pub fn partition(
     device: PathBuf,
     mode: PartitionMode,
+    encrypt_auto: bool,
     efi: bool,
     swap: bool,
     swap_size: String,
@@ -117,9 +169,9 @@ pub fn partition(
             if device.to_string_lossy().contains("nvme")
                 || device.to_string_lossy().contains("mmcblk")
             {
-                part_nvme(&device, efi, swap);
+                part_nvme(&device, efi, encrypt_auto, swap);
             } else {
-                part_disk(&device, efi, swap);
+                part_disk(&device, efi, encrypt_auto, swap);
             }
         }
         PartitionMode::Manual => {
@@ -131,10 +183,12 @@ pub fn partition(
                 println!("{}", &partitions[i].mountpoint);
                 println!("{}", &partitions[i].filesystem);
                 println!("{}", &partitions[i].blockdevice);
+                println!("{}", partitions[i].encrypt);
                 fmt_mount(
                     &partitions[i].mountpoint,
                     &partitions[i].filesystem,
                     &partitions[i].blockdevice,
+                    partitions[i].encrypt,
                 );
             }
         }
@@ -317,9 +371,21 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
     }
 }
 
-fn part_nvme(device: &Path, efi: bool, swap: bool) {
+fn part_nvme(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
     let device = device.to_string_lossy().to_string();
+    let mut bdevice = device.clone();
+    let re = Regex::new(r"^/dev/(\w+)").unwrap();
+    let cryptlabel = re
+        .captures(&bdevice)
+        .and_then(|c| c.get(1))
+        .map(|bd| bd.as_str().to_string())
+        .unwrap_or_default();
+
     if efi {
+        if encrypt_auto {
+            encrypt_blockdevice(format!("{bdevice}p2").as_str(), format!("{cryptlabel}p2").as_str());
+            bdevice = format!("/dev/mapper/{cryptlabel}");
+        }
         exec_eval(
             exec(
                 "mkfs.fat",
@@ -327,14 +393,15 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
             ),
             format!("format {}p1 as fat32", device).as_str(),
         );
+
         exec_eval(
             exec(
                 "mkfs.btrfs",
-                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p2", device)],
+                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p2", bdevice)],
             ),
-            format!("format {}p2 as btrfs", device).as_str(),
+            format!("format {}p2 as btrfs", bdevice).as_str(),
         );
-        mount(format!("{}p2", device).as_str(), "/mnt", "");
+        mount(format!("{}p2", bdevice).as_str(), "/mnt", "");
         exec_eval(
             exec_workdir(
                 "btrfs",
@@ -360,15 +427,17 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
             "Create btrfs subvolume @home",
         );
         umount("/mnt");
-        mount(format!("{}p2", device).as_str(), "/mnt/", "subvol=@");
+        mount(format!("{}p2", bdevice).as_str(), "/mnt/", "subvol=@");
         files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
         files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
         mount(
-            format!("{}p2", device).as_str(),
+            format!("{}p2", bdevice).as_str(),
             "/mnt/home",
             "subvol=@home",
         );
+
         mount(format!("{}p1", device).as_str(), "/mnt/boot", "");
+
         if swap {
             exec_eval(
                 exec(
@@ -386,6 +455,10 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
             );
         }
     } else if !efi{
+        if encrypt_auto {
+            encrypt_blockdevice(format!("{bdevice}p1").as_str(), format!("{cryptlabel}p1").as_str());
+            bdevice = format!("/dev/mapper/{cryptlabel}");
+        }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         /*exec_eval(
             exec("mkfs.ext4", vec![format!("{}p1", device)]),
@@ -394,11 +467,11 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
         exec_eval(
             exec(
                 "mkfs.btrfs",
-                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p1", device)],
+                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p1", bdevice)],
             ),
-            format!("format {}p1 as btrfs", device).as_str(),
+            format!("format {}p1 as btrfs", bdevice).as_str(),
         );
-        mount(format!("{}p1", device).as_str(), "/mnt/", "");
+        mount(format!("{}p1", bdevice).as_str(), "/mnt/", "");
         exec_eval(
             exec_workdir(
                 "btrfs",
@@ -424,16 +497,18 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
             "Create btrfs subvolume @home",
         );
         umount("/mnt");
-        mount(format!("{}p1", device).as_str(), "/mnt/", "subvol=@");
+        mount(format!("{}p1", bdevice).as_str(), "/mnt/", "subvol=@");
         files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
         files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
         mount(
-            format!("{}p1", device).as_str(),
+            format!("{}p1", bdevice).as_str(),
             "/mnt/home",
             "subvol=@home",
         );
+
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         //mount(format!("{}p1", device).as_str(), "/mnt/boot", "");
+
         if swap {
             exec_eval(
                 exec(
@@ -453,9 +528,21 @@ fn part_nvme(device: &Path, efi: bool, swap: bool) {
     }
 }
 
-fn part_disk(device: &Path, efi: bool, swap: bool) {
+fn part_disk(device: &Path, efi: bool, encrypt_auto: bool, swap: bool) {
     let device = device.to_string_lossy().to_string();
+    let mut bdevice = device.clone();
+    let re = Regex::new(r"^/dev/(\w+)").unwrap();
+    let cryptlabel = re
+        .captures(&bdevice)
+        .and_then(|c| c.get(1))
+        .map(|bd| bd.as_str().to_string())
+        .unwrap_or_default();
+
     if efi {
+        if encrypt_auto {
+            encrypt_blockdevice(format!("{bdevice}2").as_str(), format!("{cryptlabel}2").as_str());
+            bdevice = format!("/dev/mapper/{cryptlabel}");
+        }
         exec_eval(
             exec(
                 "mkfs.fat",
@@ -463,11 +550,12 @@ fn part_disk(device: &Path, efi: bool, swap: bool) {
             ),
             format!("format {}1 as fat32", device).as_str(),
         );
+
         exec_eval(
-            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}2", device)]),
-            format!("format {}2 as btrfs", device).as_str(),
+            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}2", bdevice)]),
+            format!("format {}2 as btrfs", bdevice).as_str(),
         );
-        mount(format!("{}2", device).as_str(), "/mnt", "");
+        mount(format!("{}2", bdevice).as_str(), "/mnt", "");
         exec_eval(
             exec_workdir(
                 "btrfs",
@@ -493,11 +581,13 @@ fn part_disk(device: &Path, efi: bool, swap: bool) {
             "Create btrfs subvolume @home",
         );
         umount("/mnt");
-        mount(format!("{}2", device).as_str(), "/mnt/", "subvol=@");
+        mount(format!("{}2", bdevice).as_str(), "/mnt/", "subvol=@");
         files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
         files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
-        mount(format!("{}2", device).as_str(), "/mnt/home", "subvol=@home");
+        mount(format!("{}2", bdevice).as_str(), "/mnt/home", "subvol=@home");
+
         mount(format!("{}1", device).as_str(), "/mnt/boot", "");
+
         if swap {
             exec_eval(
                 exec(
@@ -515,16 +605,20 @@ fn part_disk(device: &Path, efi: bool, swap: bool) {
             );
         }
     } else if !efi {
+        if encrypt_auto {
+            encrypt_blockdevice(format!("{bdevice}1").as_str(), format!("{cryptlabel}1").as_str());
+            bdevice = format!("/dev/mapper/{cryptlabel}");
+        }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         /*exec_eval(
             exec("mkfs.ext4", vec![format!("{}1", device)]),
             format!("format {}1 as ext4", device).as_str(),
         );*/
         exec_eval(
-            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}1", device)]),
-            format!("format {}1 as btrfs", device).as_str(),
+            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}1", bdevice)]),
+            format!("format {}1 as btrfs", bdevice).as_str(),
         );
-        mount(format!("{}1", device).as_str(), "/mnt/", "");
+        mount(format!("{}1", bdevice).as_str(), "/mnt/", "");
         exec_eval(
             exec_workdir(
                 "btrfs",
@@ -550,7 +644,7 @@ fn part_disk(device: &Path, efi: bool, swap: bool) {
             "create btrfs subvolume @home",
         );
         umount("/mnt");
-        mount(format!("{}1", device).as_str(), "/mnt/", "subvol=@");
+        mount(format!("{}1", bdevice).as_str(), "/mnt/", "subvol=@");
         files_eval(
             files::create_directory("/mnt/boot"),
             "create directory /mnt/boot",
@@ -559,9 +653,11 @@ fn part_disk(device: &Path, efi: bool, swap: bool) {
             files::create_directory("/mnt/home"),
             "create directory /mnt/home",
         );
-        mount(format!("{}1", device).as_str(), "/mnt/home", "subvol=@home");
+        mount(format!("{}1", bdevice).as_str(), "/mnt/home", "subvol=@home");
+
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
         //mount(format!("{}1", device).as_str(), "/mnt/boot", "");
+
         if swap {
             exec_eval(
                 exec(
