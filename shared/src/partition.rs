@@ -29,7 +29,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
         .expect("Failed to execute cryptsetup");
     
     // LUKS opening
-    let lookupform = Command::new("echo")
+    let lookupopen = Command::new("echo")
         .arg("-n")
         .arg("testtest")
         .stdout(std::process::Stdio::piped())
