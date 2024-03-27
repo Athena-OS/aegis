@@ -375,7 +375,7 @@ fn part_nvme(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
 
     if efi {
         if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}p2").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            encrypt_blockdevice(format!("{bdevice}p2").as_str(), "autop2"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
             bdevice = String::from("/dev/mapper/auto");
         }
         exec_eval(
@@ -448,7 +448,7 @@ fn part_nvme(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         }
     } else if !efi{
         if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}p1").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            encrypt_blockdevice(format!("{bdevice}p1").as_str(), "autop1"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
             bdevice = String::from("/dev/mapper/auto");
         }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
@@ -526,7 +526,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
 
     if efi {
         if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}2").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            encrypt_blockdevice(format!("{bdevice}2").as_str(), "auto2"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
             bdevice = String::from("/dev/mapper/auto");
         }
         exec_eval(
@@ -592,7 +592,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         }
     } else if !efi {
         if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}1").as_str(), "auto"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
+            encrypt_blockdevice(format!("{bdevice}1").as_str(), "auto1"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
             bdevice = String::from("/dev/mapper/auto");
         }
         // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
