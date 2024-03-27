@@ -345,6 +345,14 @@ pub fn setting_grub_parameters() {
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub",
+            "#GRUB_ENABLE_CRYPTODISK=.*",
+            "GRUB_ENABLE_CRYPTODISK=y",
+        ),
+        "set grub encrypt parameter",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/default/grub",
             "#GRUB_DISABLE_OS_PROBER=.*",
             "GRUB_DISABLE_OS_PROBER=false",
         ),
