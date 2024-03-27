@@ -13,13 +13,12 @@ use std::process::Command;
 
 fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     // LUKS formatting
-    let lookupform = Command::new("secret-tool")
-        .arg("lookup")
-        .arg("luks-key")
-        .arg(cryptlabel)
+    let lookupform = Command::new("echo")
+        .arg("-n")
+        .arg("testtest")
         .stdout(std::process::Stdio::piped())
         .spawn()
-        .expect("Failed to execute secret-tool");
+        .expect("Failed to execute echo");
 
     Command::new("cryptsetup")
         .arg("luksFormat")
@@ -30,13 +29,12 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
         .expect("Failed to execute cryptsetup");
     
     // LUKS opening
-    let lookupopen = Command::new("secret-tool")
-        .arg("lookup")
-        .arg("luks-key")
-        .arg(cryptlabel)
+    let lookupform = Command::new("echo")
+        .arg("-n")
+        .arg("testtest")
         .stdout(std::process::Stdio::piped())
         .spawn()
-        .expect("Failed to execute secret-tool");
+        .expect("Failed to execute echo");
 
     Command::new("cryptsetup")
         .arg("luksOpen")
