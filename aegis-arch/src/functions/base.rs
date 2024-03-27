@@ -214,7 +214,7 @@ pub fn install_packages(kernel: String) {
             vec![
                 String::from("-i"),
                 String::from("-e"),
-                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms block keyboard sd-vconsole lvm2 filesystems fsck)/g"),
+                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms block keyboard sd-vconsole lvm2 sd-encrypt filesystems fsck)/g"),
                 String::from("/mnt/etc/mkinitcpio.conf"),
             ],
         ),
