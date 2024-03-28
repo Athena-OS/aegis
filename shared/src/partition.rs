@@ -9,41 +9,33 @@ use crate::returncode_eval::files_eval;
 use crate::strings::crash;
 use regex::Regex;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
-    // LUKS formatting
-    let lookupform = Command::new("echo")
-        .arg("-n")
-        .arg("testtest")
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .expect("Failed to execute echo");
-
-    Command::new("cryptsetup")
-        .arg("luksFormat")
-        .arg(blockdevice)
-        .arg(String::from("-"))
-        .stdin(lookupform.stdout.unwrap())
-        .output()
-        .expect("Failed to execute cryptsetup");
-    
-    // LUKS opening
-    let lookupopen = Command::new("echo")
-        .arg("-n")
-        .arg("testtest")
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .expect("Failed to execute echo");
-
-    Command::new("cryptsetup")
-        .arg("luksOpen")
-        .arg(blockdevice)
-        .arg(cryptlabel)
-        .arg(String::from("-"))
-        .stdin(lookupopen.stdout.unwrap())
-        .output()
-        .expect("Failed to execute cryptsetup");
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksFormat"),
+                String::from(blockdevice),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Format LUKS partition",
+    );
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksOpen"),
+                String::from(blockdevice),
+                String::from(cryptlabel),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Open LUKS format",
+    );
 }
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
