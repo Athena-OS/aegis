@@ -7,104 +7,127 @@ use crate::log::debug;
 use crate::returncode_eval::exec_eval;
 use crate::returncode_eval::files_eval;
 use crate::strings::crash;
-use regex::Regex;
 use std::path::{Path, PathBuf};
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
 mkfs.btrfs mkfs.ext2  mkfs.ext4  mkfs.minix mkfs.vfat mkfs.f2fs */
 
+fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksFormat"),
+                String::from("-q"),
+                String::from(blockdevice),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Format LUKS partition",
+    );
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksOpen"),
+                String::from(blockdevice),
+                String::from(cryptlabel),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Open LUKS format",
+    );
+}
+
 pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encryption: bool) {
-    let mut device = String::from(blockdevice);
-    // Extract the block device name
-    let re = Regex::new(r"^/dev/(\w+)").unwrap();
-    let cryptlabel = re
-        .captures(&device)
-        .and_then(|c| c.get(1))
-        .map(|bd| bd.as_str().to_string())
-        .unwrap_or_default();
+    let mut bdevice = String::from(blockdevice);
+    // Extract the block device name (i.e., sda3)
+    let cryptlabel = format!("{}crypted",bdevice.trim_start_matches("/dev/")); // i.e., sda3crypted
     if encryption {
-        encrypt_blockdevice(&device, &cryptlabel);
-        device = format!("/dev/mapper/{cryptlabel}");
+        encrypt_blockdevice(&bdevice, &cryptlabel);
+        bdevice = format!("/dev/mapper/{cryptlabel}");
     }
     match filesystem {
         "vfat" => exec_eval(
-            exec("mkfs.vfat", vec![String::from("-F32"), String::from(&device)]),
-            format!("Formatting {device} as vfat").as_str(),
+            exec("mkfs.vfat", vec![String::from("-F32"), String::from(&bdevice)]),
+            format!("Formatting {bdevice} as vfat").as_str(),
         ),
         "bfs" => exec_eval(
-            exec("mkfs.bfs", vec![String::from(&device)]),
-            format!("Formatting {device} as bfs").as_str(),
+            exec("mkfs.bfs", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as bfs").as_str(),
         ),
         "cramfs" => exec_eval(
-            exec("mkfs.cramfs", vec![String::from(&device)]),
-            format!("Formatting {device} as cramfs").as_str(),
+            exec("mkfs.cramfs", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as cramfs").as_str(),
         ),
         "ext3" => exec_eval(
-            exec("mkfs.ext3", vec![String::from(&device)]),
-            format!("Formatting {device} as ext3").as_str(),
+            exec("mkfs.ext3", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as ext3").as_str(),
         ),
         "fat" => exec_eval(
-            exec("mkfs.fat", vec![String::from(&device)]),
-            format!("Formatting {device} as fat").as_str(),
+            exec("mkfs.fat", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as fat").as_str(),
         ),
         "msdos" => exec_eval(
-            exec("mkfs.msdos", vec![String::from(&device)]),
-            format!("Formatting {device} as msdos").as_str(),
+            exec("mkfs.msdos", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as msdos").as_str(),
         ),
         "xfs" => exec_eval(
-            exec("mkfs.xfs", vec![String::from(&device)]),
-            format!("Formatting {device} as xfs").as_str(),
+            exec("mkfs.xfs", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as xfs").as_str(),
         ),
         "btrfs" => {
             exec_eval(
-                exec("mkfs.btrfs", vec![String::from("-f"), String::from(&device)]),
-                format!("Formatting {device} as btrfs").as_str(),
+                exec("mkfs.btrfs", vec![String::from("-f"), String::from(&bdevice)]),
+                format!("Formatting {bdevice} as btrfs").as_str(),
             );
         }
         "ext2" => exec_eval(
-            exec("mkfs.ext2", vec![String::from(&device)]),
-            format!("Formatting {device} as ext2").as_str(),
+            exec("mkfs.ext2", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as ext2").as_str(),
         ),
         "ext4" => exec_eval(
-            exec("mkfs.ext4", vec![String::from(&device)]),
-            format!("Formatting {device} as ext4").as_str(),
+            exec("mkfs.ext4", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as ext4").as_str(),
         ),
         "minix" => exec_eval(
-            exec("mkfs.minix", vec![String::from(&device)]),
-            format!("Formatting {device} as minix").as_str(),
+            exec("mkfs.minix", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as minix").as_str(),
         ),
         "f2fs" => exec_eval(
-            exec("mkfs.f2fs", vec![String::from(&device)]),
-            format!("Formatting {device} as f2fs").as_str(),
+            exec("mkfs.f2fs", vec![String::from(&bdevice)]),
+            format!("Formatting {bdevice} as f2fs").as_str(),
         ),
         "linux-swap" => {
             exec_eval(
-                exec("mkswap", vec![String::from(&device)]),
-                format!("Formatting {device} as linux-swap").as_str(),
+                exec("mkswap", vec![String::from(&bdevice)]),
+                format!("Formatting {bdevice} as linux-swap").as_str(),
             );
             exec_eval(
-                exec("swapon", vec![String::from(&device)]),
-                format!("Activate {device} swap device").as_str(),
+                exec("swapon", vec![String::from(&bdevice)]),
+                format!("Activate {bdevice} swap device").as_str(),
             );
         }
         "don't format" => {
-            debug!("Not formatting {}", device);
+            debug!("Not formatting {}", bdevice);
         }
         "noformat" => {
-            debug!("Not formatting {}", device);
+            debug!("Not formatting {}", bdevice);
         }
         _ => {
             crash(
-                format!("Unknown filesystem {filesystem}, used in partition {device}"),
+                format!("Unknown filesystem {filesystem}, used in partition {bdevice}"),
                 1,
             );
         }
     }
     exec_eval(
         exec("mkdir", vec![String::from("-p"), String::from(mountpoint)]),
-        format!("Creating mountpoint {mountpoint} for {device}").as_str(),
+        format!("Creating mountpoint {mountpoint} for {bdevice}").as_str(),
     );
-    mount(&device, mountpoint, "");
+    mount(&bdevice, mountpoint, "");
 }
 
 pub fn partition(
@@ -330,35 +353,6 @@ fn partition_no_efi(device: &Path, swap: bool, swap_size: String) {
     );
 }
 
-fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
-    exec_eval(
-        exec(
-            "cryptsetup",
-            vec![
-                String::from("luksFormat"),
-                String::from("-q"),
-                String::from(blockdevice),
-                String::from("-d"),
-                String::from("/tmp/luks"),
-            ],
-        ),
-        "Format LUKS partition",
-    );
-    exec_eval(
-        exec(
-            "cryptsetup",
-            vec![
-                String::from("luksOpen"),
-                String::from(blockdevice),
-                String::from(cryptlabel),
-                String::from("-d"),
-                String::from("/tmp/luks"),
-            ],
-        ),
-        "Open LUKS format",
-    );
-}
-
 fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     let device = device.to_string_lossy().to_string(); // i.e., /dev/sda
 
@@ -496,7 +490,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
 
 pub fn umount(mountpoint: &str) {
     exec_eval(
-        exec("umount", vec![String::from(mountpoint)]),
+        exec("umount", vec![String::from("-R"), String::from(mountpoint)]),
         format!("unmount command processed on {}", mountpoint).as_str(),
     );
 }
