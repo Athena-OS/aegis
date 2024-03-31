@@ -4,6 +4,7 @@ use crate::internal::services::enable_service;
 use shared::args::PackageManager;
 use shared::exec::exec;
 use shared::exec::exec_chroot;
+use shared::encrypt::find_luks_partitions;
 use shared::files;
 use shared::{info, warn};
 use shared::returncode_eval::exec_eval;
@@ -214,7 +215,7 @@ pub fn install_packages(kernel: String) {
             vec![
                 String::from("-i"),
                 String::from("-e"),
-                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms block keyboard sd-vconsole lvm2 sd-encrypt filesystems fsck)/g"),
+                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g"),
                 String::from("/mnt/etc/mkinitcpio.conf"),
             ],
         ),
@@ -325,7 +326,8 @@ pub fn genfstab() {
     );
 }
 
-pub fn setting_grub_parameters() {
+fn setting_grub_parameters(encrypt_check: bool) {
+    let mut luks_param = String::new();
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub",
@@ -334,11 +336,24 @@ pub fn setting_grub_parameters() {
         ),
         "set distributor name",
     );
+    if encrypt_check {
+        /*Set UUID of encrypted partition as kernel parameter*/
+        let luks_partitions = find_luks_partitions();
+        let mut cryptlabel = String::new();
+        info!("LUKS partitions found:");
+        for (device_path, uuid) in &luks_partitions {
+            info!("Device: {}, UUID: {}", device_path, uuid);
+            cryptlabel = format!("{}crypted", device_path.trim_start_matches("/dev/")); // i.e., sda3crypted
+            luks_param.push_str(&format!("rd.luks.name={}={} ", uuid, cryptlabel));
+        }
+        luks_param.push_str(&format!("root=/dev/mapper/{} ", cryptlabel));
+        // NOTE: in case of multiple LUKS encryted partitions, the encrypted system will work ONLY if the root partition is the last one in the disk
+    }
     files_eval(
         files::sed_file(
             "/mnt/etc/default/grub",
             "GRUB_CMDLINE_LINUX_DEFAULT=.*",
-            "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet loglevel=3 audit=0 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"",
+            &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{}quiet loglevel=3 audit=0 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"", luks_param),
         ),
         "set kernel parameters",
     );
@@ -360,7 +375,7 @@ pub fn setting_grub_parameters() {
     );
 }
 
-pub fn install_bootloader_efi(efidir: PathBuf) {
+pub fn install_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     install(PackageManager::Pacman, vec![
         "grub",
         "efibootmgr",
@@ -396,7 +411,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
         ),
         "install grub as efi without --removable",
     );
-    setting_grub_parameters();
+    setting_grub_parameters(encrypt_check);
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -406,7 +421,7 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
     );
 }
 
-pub fn install_bootloader_legacy(device: PathBuf) {
+pub fn install_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
     install(PackageManager::Pacman, vec![
         "grub",
         "os-prober",
@@ -424,7 +439,7 @@ pub fn install_bootloader_legacy(device: PathBuf) {
         ),
         "install grub as legacy",
     );
-    setting_grub_parameters();
+    setting_grub_parameters(encrypt_check);
     exec_eval(
         exec_chroot(
             "grub-mkconfig",

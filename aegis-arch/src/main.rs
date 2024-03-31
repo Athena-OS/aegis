@@ -39,10 +39,10 @@ fn main() {
         //Command::SetupSnapper => base::setup_snapper(),
         Command::Bootloader { subcommand } => match subcommand {
             BootloaderSubcommand::GrubEfi { efidir } => {
-                base::install_bootloader_efi(efidir);
+                base::install_bootloader_efi(efidir,false);
             }
             BootloaderSubcommand::GrubLegacy { device } => {
-                base::install_bootloader_legacy(device);
+                base::install_bootloader_legacy(device,false);
             }
         }
         Command::Locale(args) => {

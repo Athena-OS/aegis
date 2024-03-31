@@ -139,9 +139,9 @@ pub fn read_config(configpath: PathBuf) {
     info!("Installing bootloader : {}", config.bootloader.r#type);
     info!("Installing bootloader to : {}", config.bootloader.location);
     if config.bootloader.r#type == "grub-efi" {
-        base::install_bootloader_efi(PathBuf::from(config.bootloader.location));
+        base::install_bootloader_efi(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     } else if config.bootloader.r#type == "grub-legacy" {
-        base::install_bootloader_legacy(PathBuf::from(config.bootloader.location));
+        base::install_bootloader_legacy(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     }
     println!();
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"

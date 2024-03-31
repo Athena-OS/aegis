@@ -10,34 +10,6 @@ use crate::strings::crash;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
-fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
-    exec_eval(
-        exec(
-            "cryptsetup",
-            vec![
-                String::from("luksFormat"),
-                String::from(blockdevice),
-                String::from("-d"),
-                String::from("/tmp/luks"),
-            ],
-        ),
-        "Format LUKS partition",
-    );
-    exec_eval(
-        exec(
-            "cryptsetup",
-            vec![
-                String::from("luksOpen"),
-                String::from(blockdevice),
-                String::from(cryptlabel),
-                String::from("-d"),
-                String::from("/tmp/luks"),
-            ],
-        ),
-        "Open LUKS format",
-    );
-}
-
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
 mkfs.btrfs mkfs.ext2  mkfs.ext4  mkfs.minix mkfs.vfat mkfs.f2fs */
 
@@ -156,13 +128,7 @@ pub fn partition(
             } else {
                 partition_no_efi(&device, swap, swap_size);
             }
-            if device.to_string_lossy().contains("nvme")
-                || device.to_string_lossy().contains("mmcblk")
-            {
-                part_nvme(&device, efi, encrypt_check, swap);
-            } else {
-                part_disk(&device, efi, encrypt_check, swap);
-            }
+            part_disk(&device, efi, encrypt_check, swap);
         }
         PartitionMode::Manual => {
             debug!("Manual partitioning");
@@ -182,95 +148,6 @@ pub fn partition(
                 );
             }
         }
-    }
-}
-
-fn partition_no_efi(device: &Path, swap: bool, swap_size: String) {
-    let device = device.to_string_lossy().to_string();
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mklabel"),
-                String::from("msdos"),
-            ],
-        ),
-        format!("Create msdos label on {}", device).as_str(),
-    );
-    // No need to create ext4 GRUB partition because MBR should automatically create it inside in the boot sector
-    /*exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("ext4"),
-                String::from("1MIB"),
-                String::from("512MIB"),
-            ],
-        ),
-        "create bios boot partition",
-    );*/
-    let boundary_partition_size = if swap {
-        format!("-{}", swap_size)
-    } else {
-        String::from("100%")
-    };
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("btrfs"),
-                String::from("1MIB"), // 1MiB instead of 512MiB because we removed the explicit creation of ext4 boot partition for bios-legacy case
-                String::from(&boundary_partition_size),
-            ],
-        ),
-        "create btrfs root partition",
-    );
-    // The following is needed because boot GRUB partition is not created explicitely but automatically created by MBR in the boot sector
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("set"),
-                String::from("1"),
-                String::from("boot"),
-                String::from("on"),
-            ],
-        ),
-        "set the root partition's boot flag to on",
-    );
-    if swap {
-        exec_eval(
-            exec(
-                "parted",
-                vec![
-                    String::from("-s"),
-                    String::from(&device),
-                    String::from("--"),
-                    String::from("mkpart"),
-                    String::from("primary"),
-                    String::from("linux-swap"),
-                    String::from(&boundary_partition_size),
-                    String::from("100%"),
-                ],
-            ),
-            "create swap partition",
-        );
     }
 }
 
@@ -323,24 +200,8 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
     let boundary_partition_size = if swap {
         format!("-{}", swap_size)
     } else {
-        String::from("100%")
+        String::from("512MiB")
     };
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("btrfs"),
-                String::from("512MIB"),
-                String::from(&boundary_partition_size),
-            ],
-        ),
-        "create btrfs root partition",
-    );
     if swap {
         exec_eval(
             exec(
@@ -352,307 +213,256 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
                     String::from("mkpart"),
                     String::from("swap"),
                     String::from("linux-swap"),
+                    String::from("512MiB"),
                     String::from(&boundary_partition_size),
-                    String::from("100%"),
                 ],
             ),
             "create swap partition",
         );
     }
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                String::from(&device),
+                String::from("--"),
+                String::from("mkpart"),
+                String::from("primary"),
+                String::from("btrfs"),
+                String::from(&boundary_partition_size),
+                String::from("100%"),
+            ],
+        ),
+        "create btrfs root partition",
+    );
 }
 
-fn part_nvme(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
+fn partition_no_efi(device: &Path, swap: bool, swap_size: String) {
     let device = device.to_string_lossy().to_string();
-    let mut bdevice = device.clone();
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                String::from(&device),
+                String::from("--"),
+                String::from("mklabel"),
+                String::from("msdos"),
+            ],
+        ),
+        format!("Create msdos label on {}", device).as_str(),
+    );
+    /* Create a dedicated legacy boot partition. Needed mostly in case of LUKS: https://bbs.archlinux.org/viewtopic.php?pid=2160947 */
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                String::from(&device),
+                String::from("--"),
+                String::from("mkpart"),
+                String::from("primary"),
+                String::from("ext4"),
+                String::from("1MIB"),
+                String::from("512MIB"),
+            ],
+        ),
+        "create bios boot partition",
+    );
+    let boundary_partition_size = if swap {
+        swap_size
+    } else {
+        String::from("512MiB")
+    };
 
-    if efi {
-        if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}p2").as_str(), "autop2"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
-            bdevice = String::from("/dev/mapper/auto");
-        }
+    if swap {
         exec_eval(
             exec(
-                "mkfs.fat",
-                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("boot"), format!("{}p1", device)],
-            ),
-            format!("format {}p1 as fat32", device).as_str(),
-        );
-
-        exec_eval(
-            exec(
-                "mkfs.btrfs",
-                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p2", bdevice)],
-            ),
-            format!("format {}p2 as btrfs", bdevice).as_str(),
-        );
-        mount(format!("{}p2", bdevice).as_str(), "/mnt", "");
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
+                "parted",
                 vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@"),
+                    String::from("-s"),
+                    String::from(&device),
+                    String::from("--"),
+                    String::from("mkpart"),
+                    String::from("primary"),
+                    String::from("linux-swap"),
+                    String::from("512MIB"),
+                    String::from(&boundary_partition_size),
                 ],
             ),
-            "Create btrfs subvolume @",
+            "create swap partition",
         );
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@home"),
-                ],
-            ),
-            "Create btrfs subvolume @home",
-        );
-        umount("/mnt");
-        mount(format!("{}p2", bdevice).as_str(), "/mnt/", "subvol=@");
-        files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
-        files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
-        mount(
-            format!("{}p2", bdevice).as_str(),
-            "/mnt/home",
-            "subvol=@home",
-        );
-
-        mount(format!("{}p1", device).as_str(), "/mnt/boot", "");
-
-        if swap {
-            exec_eval(
-                exec(
-                    "mkswap",
-                    vec!["-L".to_string(), "swap".to_string(), format!("{}p3", device)],
-                ),
-                format!("make {}p3 as swap partition", device).as_str(),
-            );
-            exec_eval(
-                exec(
-                    "swapon",
-                    vec![format!("{}p3", device)],
-                ),
-                format!("activate {}p3 swap device", device).as_str(),
-            );
-        }
-    } else if !efi{
-        if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}p1").as_str(), "autop1"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
-            bdevice = String::from("/dev/mapper/auto");
-        }
-        // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
-        /*exec_eval(
-            exec("mkfs.ext4", vec![format!("{}p1", device)]),
-            format!("format {}p1 as ext4", device).as_str(),
-        );*/
-        exec_eval(
-            exec(
-                "mkfs.btrfs",
-                vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}p1", bdevice)],
-            ),
-            format!("format {}p1 as btrfs", bdevice).as_str(),
-        );
-        mount(format!("{}p1", bdevice).as_str(), "/mnt/", "");
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@"),
-                ],
-            ),
-            "Create btrfs subvolume @",
-        );
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@home"),
-                ],
-            ),
-            "Create btrfs subvolume @home",
-        );
-        umount("/mnt");
-        mount(format!("{}p1", bdevice).as_str(), "/mnt/", "subvol=@");
-        files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
-        files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
-        mount(
-            format!("{}p1", bdevice).as_str(),
-            "/mnt/home",
-            "subvol=@home",
-        );
-
-        // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
-        //mount(format!("{}p1", device).as_str(), "/mnt/boot", "");
-
-        if swap {
-            exec_eval(
-                exec(
-                    "mkswap",
-                    vec!["-L".to_string(), "swap".to_string(), format!("{}p2", device)],
-                ),
-                format!("make {}p2 as swap partition", device).as_str(),
-            );
-            exec_eval(
-                exec(
-                    "swapon",
-                    vec![format!("{}p2", device)],
-                ),
-                format!("activate {}p2 swap device", device).as_str(),
-            );
-        }
     }
+
+    /* Root Partition. Created as last partition to allow users to shrink or extend*/
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                String::from(&device),
+                String::from("--"),
+                String::from("mkpart"),
+                String::from("primary"),
+                String::from("btrfs"),
+                String::from(&boundary_partition_size),
+                String::from("100%"),
+            ],
+        ),
+        "create btrfs root partition",
+    );
+    // The following is needed because boot GRUB partition is inside the 'device' disk
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                String::from(&device),
+                String::from("--"),
+                String::from("set"),
+                String::from("1"),
+                String::from("boot"),
+                String::from("on"),
+            ],
+        ),
+        "set the root partition's boot flag to on",
+    );
+}
+
+fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksFormat"),
+                String::from("-q"),
+                String::from(blockdevice),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Format LUKS partition",
+    );
+    exec_eval(
+        exec(
+            "cryptsetup",
+            vec![
+                String::from("luksOpen"),
+                String::from(blockdevice),
+                String::from(cryptlabel),
+                String::from("-d"),
+                String::from("/tmp/luks"),
+            ],
+        ),
+        "Open LUKS format",
+    );
 }
 
 fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
-    let device = device.to_string_lossy().to_string();
-    let mut bdevice = device.clone();
+    let device = device.to_string_lossy().to_string(); // i.e., /dev/sda
+
+    let dsuffix = if device.contains("nvme") || device.contains("mmcblk") {
+        "p"
+    }
+    else {
+        ""
+    };
+
+    let bdsuffix = if swap {
+        format!("{}3", dsuffix)
+    } else {
+        format!("{}2", dsuffix)
+    };
 
     if efi {
-        if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}2").as_str(), "auto2"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
-            bdevice = String::from("/dev/mapper/auto");
-        }
+        /* Format EFI partition */
         exec_eval(
             exec(
                 "mkfs.fat",
-                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("boot"), format!("{}1", device)],
+                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("BOOT"), format!("{}{}1", device, dsuffix)],
             ),
-            format!("format {}1 as fat32", device).as_str(),
+            format!("format {}{}1 as fat32", device, dsuffix).as_str(),
         );
-
-        exec_eval(
-            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}2", bdevice)]),
-            format!("format {}2 as btrfs", bdevice).as_str(),
-        );
-        mount(format!("{}2", bdevice).as_str(), "/mnt", "");
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@"),
-                ],
-            ),
-            "Create btrfs subvolume @",
-        );
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@home"),
-                ],
-            ),
-            "Create btrfs subvolume @home",
-        );
-        umount("/mnt");
-        mount(format!("{}2", bdevice).as_str(), "/mnt/", "subvol=@");
-        files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
-        files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
-        mount(format!("{}2", bdevice).as_str(), "/mnt/home", "subvol=@home");
-
-        mount(format!("{}1", device).as_str(), "/mnt/boot", "");
-
-        if swap {
-            exec_eval(
-                exec(
-                    "mkswap",
-                    vec!["-L".to_string(), "swap".to_string(), format!("{}3", device)],
-                ),
-                format!("make {}3 as swap partition", device).as_str(),
-            );
-            exec_eval(
-                exec(
-                    "swapon",
-                    vec![format!("{}3", device)],
-                ),
-                format!("activate {}3 swap device", device).as_str(),
-            );
-        }
     } else if !efi {
-        if encrypt_check {
-            encrypt_blockdevice(format!("{bdevice}1").as_str(), "auto1"); // auto is the attr value of secret-tool defined in Aegis TUI and GUI for Auto mode
-            bdevice = String::from("/dev/mapper/auto");
-        }
-        // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
-        /*exec_eval(
-            exec("mkfs.ext4", vec![format!("{}1", device)]),
-            format!("format {}1 as ext4", device).as_str(),
-        );*/
+        /* Format GRUB Legacy partition */
         exec_eval(
-            exec("mkfs.btrfs", vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}1", bdevice)]),
-            format!("format {}1 as btrfs", bdevice).as_str(),
+            exec("mkfs.ext4", vec![format!("{}{}1", device, dsuffix)]),
+            format!("format {}{}1 as ext4", device, dsuffix).as_str(),
         );
-        mount(format!("{}1", bdevice).as_str(), "/mnt/", "");
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@"),
-                ],
-            ),
-            "Create btrfs subvolume @",
-        );
-        exec_eval(
-            exec_workdir(
-                "btrfs",
-                "/mnt",
-                vec![
-                    String::from("subvolume"),
-                    String::from("create"),
-                    String::from("@home"),
-                ],
-            ),
-            "create btrfs subvolume @home",
-        );
-        umount("/mnt");
-        mount(format!("{}1", bdevice).as_str(), "/mnt/", "subvol=@");
-        files_eval(
-            files::create_directory("/mnt/boot"),
-            "create directory /mnt/boot",
-        );
-        files_eval(
-            files::create_directory("/mnt/home"),
-            "create directory /mnt/home",
-        );
-        mount(format!("{}1", bdevice).as_str(), "/mnt/home", "subvol=@home");
-
-        // No need to create ext4 GRUB partition because MBR should automatically create it inside the boot sector
-        //mount(format!("{}1", device).as_str(), "/mnt/boot", "");
-
-        if swap {
-            exec_eval(
-                exec(
-                    "mkswap",
-                    vec!["-L".to_string(), "swap".to_string(), format!("{}2", device)],
-                ),
-                format!("make {}2 as swap partition", device).as_str(),
-            );
-            exec_eval(
-                exec(
-                    "swapon",
-                    vec![format!("{}2", device)],
-                ),
-                format!("activate {}2 swap device", device).as_str(),
-            );
-        }
     }
+
+    /* Format Swap partition */
+    if swap {
+        exec_eval(
+            exec(
+                "mkswap",
+                vec!["-L".to_string(), "swap".to_string(), format!("{}{}2", device, dsuffix)],
+            ),
+            format!("make {}{}2 as swap partition", device, dsuffix).as_str(),
+        );
+        exec_eval(
+            exec(
+                "swapon",
+                vec![format!("{}{}2", device, dsuffix)],
+            ),
+            format!("activate {}{}2 swap device", device, dsuffix).as_str(),
+        );
+    }
+
+    let mut root_blockdevice = format!("{device}{bdsuffix}"); // i.e., /dev/sda3
+    let root_blockdevice_name = root_blockdevice.trim_start_matches("/dev/"); // i.e., sda3
+
+    if encrypt_check {
+        let cryptlabel = format!("{root_blockdevice_name}crypted"); // i.e., sda3crypted will be the name of the opened LUKS partition
+        encrypt_blockdevice(&root_blockdevice, &cryptlabel);
+        root_blockdevice =  format!("/dev/mapper/{cryptlabel}");
+    }
+
+    /* Format root partition */
+    exec_eval(
+        exec(
+            "mkfs.btrfs",
+            vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}", root_blockdevice)],
+        ),
+        format!("format {} as btrfs", root_blockdevice).as_str(),
+    );
+    mount(&root_blockdevice, "/mnt", "");
+    exec_eval(
+        exec_workdir(
+            "btrfs",
+            "/mnt",
+            vec![
+                String::from("subvolume"),
+                String::from("create"),
+                String::from("@"),
+            ],
+        ),
+        "Create btrfs subvolume @",
+    );
+    exec_eval(
+        exec_workdir(
+            "btrfs",
+            "/mnt",
+            vec![
+                String::from("subvolume"),
+                String::from("create"),
+                String::from("@home"),
+            ],
+        ),
+        "Create btrfs subvolume @home",
+    );
+    umount("/mnt");
+    mount(&root_blockdevice, "/mnt/", "subvol=@");
+    files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
+    files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
+    mount(
+        &root_blockdevice,
+        "/mnt/home",
+        "subvol=@home",
+    );
+
+    mount(format!("{}{}1", device, dsuffix).as_str(), "/mnt/boot", "");
 }
 
 pub fn mount(partition: &str, mountpoint: &str, options: &str) {

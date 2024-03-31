@@ -1,4 +1,5 @@
 pub mod args;
+pub mod encrypt;
 pub mod exec;
 pub mod files;
 pub mod logging;
