@@ -245,7 +245,9 @@ pub fn install_packages(kernel: String) {
         ),
         "Set nsswitch configuration",
     );
+}
 
+pub fn preset_process() {
     // mkinitcpio -P must be run after all the edits on /etc/mkinitcpio.conf file
     exec_eval(
         exec_chroot(

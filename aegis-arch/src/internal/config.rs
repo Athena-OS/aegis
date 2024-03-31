@@ -152,6 +152,8 @@ pub fn read_config(configpath: PathBuf) {
     locale::set_keyboard(config.locale.virtkeymap.as_str(), config.locale.x11keymap.as_str());
     info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
+    info!("Processing all presets.");
+    base::preset_process();
     println!();
     info!("Hostname : {}", config.networking.hostname);
     network::set_hostname(config.networking.hostname.as_str());
