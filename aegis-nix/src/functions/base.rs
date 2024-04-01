@@ -14,7 +14,7 @@ pub fn install_nix_config() {
             "nix-channel",
             vec![
                 String::from("--add"),
-                String::from("https://nixos.org/channels/nixpkgs-unstable"),
+                String::from("https://nixos.org/channels/nixos-unstable"),
                 String::from("nixpkgs"),
             ],
         ),
