@@ -361,6 +361,15 @@ fn setting_grub_parameters(encrypt_check: bool) {
         }
         luks_param.push_str(&format!("root=/dev/mapper/{} ", cryptlabel));
         // NOTE: in case of multiple LUKS encryted partitions, the encrypted system will work ONLY if the root partition is the last one in the disk
+
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/default/grub",
+                "#GRUB_ENABLE_CRYPTODISK=.*",
+                "GRUB_ENABLE_CRYPTODISK=y",
+            ),
+            "set grub encrypt parameter",
+        );
     }
     files_eval(
         files::sed_file(
@@ -369,14 +378,6 @@ fn setting_grub_parameters(encrypt_check: bool) {
             &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{}quiet loglevel=3 audit=0 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"", luks_param),
         ),
         "set kernel parameters",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub",
-            "#GRUB_ENABLE_CRYPTODISK=.*",
-            "GRUB_ENABLE_CRYPTODISK=y",
-        ),
-        "set grub encrypt parameter",
     );
     files_eval(
         files::sed_file(
