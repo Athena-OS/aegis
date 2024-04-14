@@ -9,12 +9,13 @@ use std::path::PathBuf;
 
 pub fn install_nix_config() {
     info!("Set nix channels.");
+    // As channel we use nixos-unstable instead of nixpkgs-unstable because 'nixos-' has additional tests that ensure kernel and bootloaders actually work. And some other critical packages.
     exec_eval(
         exec(
             "nix-channel",
             vec![
                 String::from("--add"),
-                String::from("https://nixos.org/channels/nixos-23.11"),
+                String::from("https://nixos.org/channels/nixos-unstable"),
                 String::from("nixpkgs"),
             ],
         ),
