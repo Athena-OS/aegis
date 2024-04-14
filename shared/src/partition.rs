@@ -153,8 +153,8 @@ pub fn partition(
             }
             part_disk(&device, efi, encrypt_check, swap);
         }
-        PartitionMode::Manual => {
-            debug!("Manual partitioning");
+        PartitionMode::Manual | PartitionMode::Replace => {
+            debug!("Manual/Replace partitioning");
             partitions.sort_by(|a, b| a.mountpoint.len().cmp(&b.mountpoint.len()));
             for i in 0..partitions.len() {
                 println!("{:?}", partitions);

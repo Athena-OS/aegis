@@ -181,6 +181,7 @@ pub struct PartitionArgs {
     pub device: PathBuf,
 
     /// If aegis should automatically partition (mode = auto)
+    /// or replace (mode = replace)
     /// or the user manually partitioned it (mode = manual)
     #[arg(value_enum)]
     pub mode: PartitionMode,
@@ -246,6 +247,8 @@ pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewr
 pub enum PartitionMode {
     #[value(name = "auto")]
     Auto,
+    #[value(name = "replace")]
+    Replace,
     #[value(name = "manual")]
     Manual,
 }
