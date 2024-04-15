@@ -190,6 +190,7 @@ pub fn install_packages(kernel: String) {
         "which",
         "xclip",
         "xmlstarlet",
+        "zoxide",
         // Athena
         "athena-cyber-hub",
         "athena-neofetch-config",
