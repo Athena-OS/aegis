@@ -395,7 +395,7 @@ pub fn read_config(configpath: PathBuf) {
     // Users
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
-        //info!("Setting use password : {}", config.users[i].password);
+        //info!("Setting user password : {}", config.users[i].password);
         info!("Enabling root for user : {}", config.users[i].hasroot);
         info!("Setting user shell : {}", config.users[i].shell);
 
