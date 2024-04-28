@@ -73,7 +73,7 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
             format!("Formatting {bdevice} as cramfs").as_str(),
         ),
         "ext3" => exec_eval(
-            exec("mkfs.ext3", vec![String::from(&bdevice)]),
+            exec("mkfs.ext3", vec![String::from("-F"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as ext3").as_str(),
         ),
         "fat" => exec_eval(
@@ -85,7 +85,7 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
             format!("Formatting {bdevice} as msdos").as_str(),
         ),
         "xfs" => exec_eval(
-            exec("mkfs.xfs", vec![String::from(&bdevice)]),
+            exec("mkfs.xfs", vec![String::from("-f"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as xfs").as_str(),
         ),
         "btrfs" => {
@@ -95,11 +95,11 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
             );
         }
         "ext2" => exec_eval(
-            exec("mkfs.ext2", vec![String::from(&bdevice)]),
+            exec("mkfs.ext2", vec![String::from("-F"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as ext2").as_str(),
         ),
         "ext4" => exec_eval(
-            exec("mkfs.ext4", vec![String::from(&bdevice)]),
+            exec("mkfs.ext4", vec![String::from("-F"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as ext4").as_str(),
         ),
         "minix" => exec_eval(
@@ -107,12 +107,12 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
             format!("Formatting {bdevice} as minix").as_str(),
         ),
         "f2fs" => exec_eval(
-            exec("mkfs.f2fs", vec![String::from(&bdevice)]),
+            exec("mkfs.f2fs", vec![String::from("-f"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as f2fs").as_str(),
         ),
         "linux-swap" => {
             exec_eval(
-                exec("mkswap", vec![String::from(&bdevice)]),
+                exec("mkswap", vec![String::from("-L"), String::from("swap"), String::from(&bdevice)]),
                 format!("Formatting {bdevice} as linux-swap").as_str(),
             );
             exec_eval(
@@ -391,7 +391,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     } else if !efi {
         /* Format GRUB Legacy partition */
         exec_eval(
-            exec("mkfs.ext4", vec![format!("{}{}1", device, dsuffix)]),
+            exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}1", device, dsuffix)]),
             format!("format {}{}1 as ext4", device, dsuffix).as_str(),
         );
     }
@@ -401,7 +401,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         exec_eval(
             exec(
                 "mkswap",
-                vec!["-L".to_string(), "swap".to_string(), format!("{}{}2", device, dsuffix)],
+                vec![String::from("-L"), String::from("swap"), format!("{}{}2", device, dsuffix)],
             ),
             format!("make {}{}2 as swap partition", device, dsuffix).as_str(),
         );
@@ -427,7 +427,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     exec_eval(
         exec(
             "mkfs.btrfs",
-            vec!["-L".to_string(), "athenaos".to_string(), "-f".to_string(), format!("{}", root_blockdevice)],
+            vec![String::from("-L"), String::from("athenaos"), String::from("-f"), format!("{}", root_blockdevice)],
         ),
         format!("format {} as btrfs", root_blockdevice).as_str(),
     );
