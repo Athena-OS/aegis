@@ -257,7 +257,7 @@ pub fn lightdm_set_session(setdesktop: &str) {
                 "#user-session=.*",
                 "user-session=xfce",
             ),
-            "Apply Hyprland User Session on LightDM",
+            "Apply XFCE User Session on LightDM",
         );
     }
     if setdesktop == "hyprland" {
@@ -265,7 +265,7 @@ pub fn lightdm_set_session(setdesktop: &str) {
             files::sed_file(
                 "/mnt/etc/lightdm/lightdm.conf",
                 "#user-session=.*",
-                "user-session=hyprland",
+                "user-session=Hyprland",
             ),
             "Apply Hyprland User Session on LightDM",
         );
