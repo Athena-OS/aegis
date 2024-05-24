@@ -126,7 +126,7 @@ pub fn install_packages(kernel: String) {
         "eza",
         "pocl", // Hashcat dependency
         "ananicy",
-        "armcord-git",
+        "goofcord-bin",
         "asciinema",
         "bashtop",
         "bat",
