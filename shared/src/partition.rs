@@ -231,7 +231,7 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
         "enable EFI system partition",
     );
     let boundary_partition_size = if swap {
-        format!("-{}", swap_size)
+        swap_size
     } else {
         String::from("512MiB")
     };
