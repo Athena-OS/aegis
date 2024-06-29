@@ -12,6 +12,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
         ThemeSetup::HackTheBox => install_hackthebox(),
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
+        ThemeSetup::Temple => install_temple(),
         ThemeSetup::None => debug!("No theme setup selected"),
     }
 }
@@ -79,5 +80,16 @@ fn install_sweet() {
             "  theme = \"sweet\";",
         ),
         "Set Sweet theme",
+    );
+}
+
+fn install_temple() {
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/nixos/configuration.nix",
+            "  theme =.*",
+            "  theme = \"temple\";",
+        ),
+        "Set Temple theme",
     );
 }

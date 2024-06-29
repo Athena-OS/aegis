@@ -409,6 +409,9 @@ pub enum ThemeSetup {
     #[value(name = "sweet")]
     Sweet,
 
+    #[value(name = "temple")]
+    Temple,
+
     #[value(name = "None/DIY")]
     None,
 }

@@ -218,6 +218,7 @@ pub fn read_config(configpath: PathBuf) {
         "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
         "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
+        "temple" => themes::install_theme_setup(ThemeSetup::Temple),
         _ => info!("No theme setup selected!"),
     }
     println!();

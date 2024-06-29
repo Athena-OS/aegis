@@ -14,6 +14,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
         ThemeSetup::HackTheBox => install_hackthebox(),
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
+        ThemeSetup::Temple => install_temple(),
         ThemeSetup::None => debug!("No theme setup selected"),
     }
 }
@@ -147,5 +148,27 @@ fn install_sweet() {
             "set -g @tmux_power_theme 'violet'",
         ),
         "Apply Violet Tmux theme",
+    );
+}
+
+fn install_temple() {
+    install(PackageManager::Pacman, vec![
+        "athena-temple-theme",
+    ]);
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
+            "\"workbench.colorTheme\":.*",
+            "\"workbench.colorTheme\": \"Tokyo Night Storm\",",
+        ),
+        "Apply Tokyo Night Storm VSCodium theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.tmux.conf",
+            "set -g @tmux_power_theme.*",
+            "set -g @tmux_power_theme 'sky'",
+        ),
+        "Apply Sky Tmux theme",
     );
 }
