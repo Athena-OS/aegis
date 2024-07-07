@@ -81,7 +81,7 @@ struct Users {
     shell: String,
 }
 
-pub fn read_config(configpath: PathBuf) {
+pub fn read_config(configpath: PathBuf) -> i32 {
     let data = std::fs::read_to_string(&configpath);
     match &data {
         Ok(_) => {
@@ -427,5 +427,6 @@ pub fn read_config(configpath: PathBuf) {
     }
     partition::umount("/mnt/home");
     partition::umount("/mnt");
-    println!("Installation finished! You may reboot now!")
+    println!("Installation finished! You may reboot now!");
+    0
 }

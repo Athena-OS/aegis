@@ -9,8 +9,8 @@ use shared::serde::{self, Deserialize, Serialize};
 use shared::serde_json;
 use shared::strings::crash;
 use std::path::{PathBuf};
-use std::io::{self, BufRead, BufReader};
-use std::process::{Command, Stdio};
+//use std::io::{self, BufRead, BufReader};
+//use std::process::{Command, Stdio};
 
 
 #[derive(Serialize, Deserialize)]
@@ -85,7 +85,7 @@ struct InstallParams {
     jobs: String,
 }
 
-pub fn read_config(configpath: PathBuf) {
+pub fn read_config(configpath: PathBuf) -> i32 {
     let data = std::fs::read_to_string(&configpath);
     match &data {
         Ok(_) => {
@@ -274,14 +274,19 @@ pub fn read_config(configpath: PathBuf) {
     }
     else {
         error!("Installation failed. Exit code: {}", exit_code);
+        /*
         // The following code should be removed. The log generation must be proposed by Aegis TUI and GUI
         if prompt_user_for_logs() {
             info!("Generating log URL...");
             run_logs_command();
         }
+        */
     }
+    
+    exit_code
 }
 
+/*
 // Prompt the user to generate logs and return true if the answer is 'Y'
 fn prompt_user_for_logs() -> bool {
     println!("\nDo you want to generate logs of the failed install to communicate to the team? (Y/n)");
@@ -342,3 +347,4 @@ fn run_logs_command() {
     stdout_thread.join().expect("Failed to join stdout thread.");
     stderr_thread.join().expect("Failed to join stderr thread.");
 }
+*/

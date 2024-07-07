@@ -7,7 +7,7 @@ use shared::human_panic;
 use shared::logging;
 use shared::partition;
 
-fn main() {
+fn main() -> Result<(), i32> {
     human_panic::setup_panic!();
     let cli = Cli::parse();
     println!("verbose: {}", cli.verbose);
@@ -69,7 +69,10 @@ fn main() {
             internal::install::install(args.cores, args.jobs);
         }
         Command::Config { config } => {
-            internal::config::read_config(config);
+            let exit_code = internal::config::read_config(config);
+            if exit_code != 0 {
+                return Err(exit_code);
+            }
         }
         Command::Desktops { desktop } => {
             desktops::install_desktop_setup(desktop);
@@ -88,7 +91,8 @@ fn main() {
         }
         Command::Terminals { terminal } => {
             terminals::install_terminal_setup(terminal);
-        }
-        _ => todo!()
+        },
+        _ => todo!() //Do nothing for all those Command:: specified in shared/args.rs but not specifically implemented in athena-nix (because useless)
     }
+    Ok(())
 }

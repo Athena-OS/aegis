@@ -8,7 +8,7 @@ use shared::human_panic;
 use shared::logging;
 use shared::partition;
 
-fn main() {
+fn main() -> Result<(), i32> {
     human_panic::setup_panic!();
     let cli = Cli::parse();
     println!("verbose: {}", cli.verbose);
@@ -104,10 +104,13 @@ fn main() {
         Command::InstallParams(args) => {
             //internal::install::install(args.cores, args.jobs);
             println!("{} {}", args.cores, args.jobs); //Just to delete the warning about unused args variable
-            todo!()
+            //todo!()
         }
         Command::Config { config } => {
-            internal::config::read_config(config);
+            let exit_code = internal::config::read_config(config);
+            if exit_code != 0 {
+                return Err(exit_code);
+            }
         }
         Command::Desktops { desktop } => {
             desktops::install_desktop_setup(desktop);
@@ -131,4 +134,5 @@ fn main() {
             base::enable_system_services();
         }
     }
+    Ok(())
 }
