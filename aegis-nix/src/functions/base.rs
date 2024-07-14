@@ -106,14 +106,6 @@ pub fn install_bootloader_efi(efidir: PathBuf) {
     if !std::path::Path::new(&format!("/mnt{efi_str}")).exists() {
         crash(format!("The efidir {efidir:?} doesn't exist"), 1);
     }
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/nixos/configuration.nix",
-            "systemd",
-            "systemd",
-        ),
-        "Set EFI bootloader",
-    );
 }
 
 pub fn install_bootloader_legacy(device: PathBuf) {
@@ -129,14 +121,6 @@ pub fn install_bootloader_legacy(device: PathBuf) {
             &device,
         ),
         "Set Legacy bootloader device",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/nixos/configuration.nix",
-            "systemd",
-            "grub",
-        ),
-        "Set Legacy bootloader",
     );
 }
 
