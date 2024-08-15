@@ -205,7 +205,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "awesome" => desktops::install_desktop_setup(DesktopSetup::Awesome),
         "bspwm" => desktops::install_desktop_setup(DesktopSetup::Bspwm),
         "hyprland" => desktops::install_desktop_setup(DesktopSetup::Hyprland),
-        "none/diy" => desktops::install_desktop_setup(DesktopSetup::None),
+        "none" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => info!("No desktop setup selected!"),
     }
     println!();

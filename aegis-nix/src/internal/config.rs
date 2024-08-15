@@ -175,7 +175,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "xfce refined" => desktops::install_desktop_setup(DesktopSetup::XfceRefined),
         "xfce picom" => desktops::install_desktop_setup(DesktopSetup::XfcePicom),
-        "none/diy" => desktops::install_desktop_setup(DesktopSetup::None),
+        "none" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => info!("No desktop setup selected!"),
     }
     println!();

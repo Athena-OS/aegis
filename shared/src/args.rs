@@ -24,7 +24,7 @@ pub enum PackageManager {
     #[value(name = "pacstrap")]
     Pacstrap,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -385,7 +385,7 @@ pub enum DesktopSetup {
     #[value(name = "hyprland")]
     Hyprland,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -412,7 +412,7 @@ pub enum ThemeSetup {
     #[value(name = "temple")]
     Temple,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -427,7 +427,7 @@ pub enum DMSetup {
     #[value(name = "sddm")]
     Sddm,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -442,7 +442,7 @@ pub enum ShellSetup {
     #[value(name = "zsh")]
     Zsh,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -454,7 +454,7 @@ pub enum BrowserSetup {
     #[value(name = "brave")]
     Brave,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
 
@@ -493,6 +493,6 @@ pub enum TerminalSetup {
     #[value(name = "xterm")]
     Xterm,
 
-    #[value(name = "None/DIY")]
+    #[value(name = "None")]
     None,
 }
