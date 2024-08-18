@@ -17,8 +17,8 @@ fn install_bash() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "  shell =.*",
-            "  shell = \"bash\";",
+            "  mainShell =.*",
+            "  mainShell = \"bash\";",
         ),
         "Set Bash",
     );
@@ -28,8 +28,8 @@ fn install_fish() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "  shell =.*",
-            "  shell = \"fish\";",
+            "  mainShell =.*",
+            "  mainShell = \"fish\";",
         ),
         "Set Fish",
     );
@@ -39,8 +39,8 @@ fn install_zsh() {
     files_eval(
         files::sed_file(
             "/mnt/etc/nixos/configuration.nix",
-            "  shell =.*",
-            "  shell = \"zsh\";",
+            "  mainShell =.*",
+            "  mainShell = \"zsh\";",
         ),
         "Set Zsh",
     );
