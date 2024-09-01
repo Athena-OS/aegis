@@ -15,8 +15,8 @@ pub fn virt_check() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/nixos/modules/hardware/virtualization/guest.nix",
-                "virtualisation.virtualbox.guest.enable =.*",
-                "virtualisation.virtualbox.guest.enable = true;",
+                "virtualbox.guest.enable =.*",
+                "virtualbox.guest.enable = lib.mkDefault true;",
             ),
             "enable virtualbox guest additions",
         );
@@ -24,8 +24,8 @@ pub fn virt_check() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/nixos/modules/hardware/virtualization/guest.nix",
-                "virtualisation.vmware.guest.enable =.*",
-                "virtualisation.vmware.guest.enable = true;",
+                "vmware.guest.enable =.*",
+                "vmware.guest.enable = lib.mkDefault true;",
             ),
             "enable vmware guest additions",
         );
@@ -33,16 +33,16 @@ pub fn virt_check() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/nixos/modules/hardware/virtualization/guest.nix",
-                "services.spice-vdagentd.enable =.*",
-                "services.spice-vdagentd.enable = true;",
+                "spice-vdagentd.enable =.*",
+                "spice-vdagentd.enable = lib.mkDefault true;",
             ),
             "enable spice vdagent",
         );
         files_eval(
             files::sed_file(
                 "/mnt/etc/nixos/modules/hardware/virtualization/guest.nix",
-                "services.qemuGuest.enable =.*",
-                "services.qemuGuest.enable = true;",
+                "qemuGuest.enable =.*",
+                "qemuGuest.enable = lib.mkDefault true;",
             ),
             "enable qemu guest additions",
         );
@@ -50,8 +50,8 @@ pub fn virt_check() {
         files_eval(
             files::sed_file(
                 "/mnt/etc/nixos/modules/hardware/virtualization/guest.nix",
-                "virtualisation.hypervGuest.enable =.*",
-                "virtualisation.hypervGuest.enable = true;",
+                "hypervGuest.enable =.*",
+                "hypervGuest.enable = lib.mkDefault true;",
             ),
             "enable kvm guest additions",
         );
