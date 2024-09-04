@@ -84,8 +84,26 @@ struct Users {
 pub fn read_config(configpath: PathBuf) -> i32 {
     let data = std::fs::read_to_string(&configpath);
     match &data {
-        Ok(_) => {
+        Ok(contents) => {
+            files_eval(
+                files::sed_file(
+                    configpath.to_str().unwrap(),
+                    "\"password\":.*",
+                    "\"password\": \"*REDACTED*\",",
+                ),
+                "Redact user password hash",
+            );
+            files_eval(
+                files::sed_file(
+                    configpath.to_str().unwrap(),
+                    "\"rootpass\":.*",
+                    "\"rootpass\": \"*REDACTED*\",",
+                ),
+                "Redact root password hash",
+            );
             debug!("[ \x1b[2;1;32mOK\x1b[0m ] Read config file {configpath:?}");
+            // Print the contents of the config file to the install log file
+            info!("Configuration set:\n{}", contents);
         }
         Err(e) => {
             crash(
