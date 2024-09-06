@@ -84,14 +84,14 @@ struct Users {
 pub fn read_config(configpath: PathBuf) -> i32 {
     let data = std::fs::read_to_string(&configpath);
     match &data {
-        Ok(contents) => {
+        Ok(_) => {
             files_eval(
                 files::sed_file(
                     configpath.to_str().unwrap(),
                     "\"password\":.*",
                     "\"password\": \"*REDACTED*\",",
                 ),
-                "Redact user password hash",
+                "Redact user information",
             );
             files_eval(
                 files::sed_file(
@@ -99,11 +99,13 @@ pub fn read_config(configpath: PathBuf) -> i32 {
                     "\"rootpass\":.*",
                     "\"rootpass\": \"*REDACTED*\",",
                 ),
-                "Redact root password hash",
+                "Redact root information",
             );
-            debug!("[ \x1b[2;1;32mOK\x1b[0m ] Read config file {configpath:?}");
-            // Print the contents of the config file to the install log file
-            info!("Configuration set:\n{}", contents);
+            // Re-read the redacted file content
+            let redacted_data = std::fs::read_to_string(&configpath).expect("Failed to read config file after redaction");
+            info!("Configuration set:\n{}", redacted_data);
+
+            debug!("[ \x1b[2;1;32mOK\x1b[0m ] Read and redacted config file {configpath:?}");
         }
         Err(e) => {
             crash(
