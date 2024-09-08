@@ -32,13 +32,13 @@ fn install_lightdm_neon() {
 
 fn install_sddm() {
     install(PackageManager::Pacman, vec![
-        "sddm-theme-astronaut",
+        "sddm-astronaut-theme",
     ]);
     files::create_file("/mnt/etc/sddm.conf");
     files_eval(
         files::append_file(
             "/mnt/etc/sddm.conf",
-            "[Theme]\nCurrent=astronaut",
+            "[Theme]\nCurrent=sddm-astronaut-theme",
         ),
         "Add astronaut theme",
     );
