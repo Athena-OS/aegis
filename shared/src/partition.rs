@@ -366,7 +366,7 @@ fn partition_no_efi(device: &Path, swap: bool, swap_size: String) {
 fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     let device = device.to_string_lossy().to_string(); // i.e., /dev/sda
 
-    let dsuffix = if device.contains("nvme") || device.contains("mmcblk") {
+    let dsuffix = if device.contains("nvme") || device.contains("mmcblk") || device.contains("loop") {
         "p"
     }
     else {
