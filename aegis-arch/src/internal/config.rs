@@ -169,7 +169,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     locale::set_locale(config.locale.locale.join(" "));
     info!("Using console keymap : {}", config.locale.virtkeymap);
     info!("Using x11 keymap : {}", config.locale.x11keymap);
-    locale::set_keyboard(config.locale.virtkeymap.as_str(), config.locale.x11keymap.as_str());
+    locale::set_keyboard(config.locale.virtkeymap.as_str(), config.locale.x11keymap.as_str())
+        .unwrap_or_else(|e| {
+            eprintln!("Error setting keyboard configuration: {}", e);
+        });
     info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
     info!("Processing all presets.");

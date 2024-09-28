@@ -47,7 +47,9 @@ fn main() -> Result<(), i32> {
         }
         Command::Locale(args) => {
             locale::set_locale(args.locales.join(" ")); // locale.gen file comes grom glibc package that is in base group package
-            locale::set_keyboard(&args.virtkeyboard, &args.x11keyboard);
+            locale::set_keyboard(&args.virtkeyboard, &args.x11keyboard).unwrap_or_else(|e| {
+                eprintln!("Error setting keyboard: {}", e);
+            });
             locale::set_timezone(&args.timezone);
         }
         Command::Networking(args) => {
