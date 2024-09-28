@@ -1,15 +1,14 @@
-use crate::internal::install::install;
-use crate::internal::services::enable_service;
-use shared::args::PackageManager;
-use shared::exec::exec;
 use shared::files;
 use shared::info;
-use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 use std::process::Command;
 use std::thread::available_parallelism;
 
-pub fn virt_check() {
+type Packages = Vec<&'static str>;
+type Services = Vec<&'static str>;
+type SetParams = Vec<(String, Vec<String>)>;
+
+pub fn virt_check() -> (Packages, Services, SetParams) {
     let output = Command::new("systemd-detect-virt")
         .output()
         .expect("Failed to run systemd-detect-virt");
@@ -17,51 +16,53 @@ pub fn virt_check() {
     let mut result = String::from_utf8_lossy(&output.stdout).to_string();
     result.pop(); //Removing the \n char from string
 
+    let mut packages = Vec::new();
+    let mut services = Vec::new();
+    let mut set_params = Vec::new(); // To store the commands for file changes by sed
+
     if result == "oracle" {
-        install(PackageManager::Pacman, vec!["virtualbox-guest-utils"]);
-        enable_service("vboxservice");
+        packages.push("virtualbox-guest-utils");
+        services.push("vboxservice");
     } else if result == "vmware" {
-        install(PackageManager::Pacman, vec!["open-vm-tools", "xf86-video-vmware"]);
-        enable_service("vmware-vmblock-fuse");
-        enable_service("vmtoolsd");
-        //enable_service("mnt-hgfs.mount");
+        packages.extend(vec!["open-vm-tools", "xf86-video-vmware"]);
+        services.extend(vec!["vmware-vmblock-fuse", "vmtoolsd"]);
 
-        exec_eval(
-            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-                "sed",
-                vec![
-                    String::from("-i"),
-                    String::from("-e"),
-                    String::from("/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/"),
-                    String::from("-e"),
-                    String::from("/^MODULES=([^)]*)/ {/vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/}"),
-                    String::from("/mnt/etc/mkinitcpio.conf"),
-                ],
-            ),
-            "Set vmware modules",
-        );
+        // Add the file change for vmware modules
+        set_params.push((
+            "Set vmware modules".to_string(),
+            vec![
+                "-i".to_string(),
+                "-e".to_string(),
+                "/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/".to_string(),
+                "-e".to_string(),
+                "/^MODULES=([^)]*)/ {/vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/".to_string(),
+                "/mnt/etc/mkinitcpio.conf".to_string(),
+            ],
+        ));
     } else if result == "qemu" || result == "kvm" {
-        install(PackageManager::Pacman, vec!["qemu-guest-agent", "spice-vdagent"]);
-        enable_service("qemu-guest-agent");
+        packages.extend(vec!["qemu-guest-agent", "spice-vdagent"]);
+        services.push("qemu-guest-agent");
     } else if result == "microsoft" {
-        install(PackageManager::Pacman, vec!["hyperv", "xf86-video-fbdev"]);
-        enable_service("hv_fcopy_daemon");
-        enable_service("hv_kvp_daemon");
-        enable_service("hv_vss_daemon");
+        packages.extend(vec!["hyperv", "xf86-video-fbdev"]);
+        services.extend(vec![
+            "hv_fcopy_daemon",
+            "hv_kvp_daemon",
+            "hv_vss_daemon",
+        ]);
 
-        exec_eval(
-            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-                "sed",
-                vec![
-                    String::from("-i"),
-                    String::from("-e"),
-                    String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"),
-                    String::from("/mnt/etc/default/grub"),
-                ],
-            ),
-            "Set hyperv kernel parameter",
-        );
+        // Add the file change for Hyper-V kernel parameter
+        set_params.push((
+            "Set hyperv kernel parameter".to_string(),
+            vec![
+                "-i".to_string(),
+                "-e".to_string(),
+                "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g".to_string(),
+                "/mnt/etc/default/grub".to_string(),
+            ],
+        ));
     }
+
+    (packages, services, set_params) // Return packages, services, and file changes
 }
 
 pub fn set_cores() {
@@ -111,154 +112,110 @@ pub fn set_cores() {
     }
 }
 
-pub fn cpu_gpu_check(kernel: &str) {
+pub fn cpu_gpu_check(kernel: &str) -> Vec<&'static str> {
+    let mut packages = Vec::new();
+
     // Detect CPU
-    
     if cpu_detect().contains("Intel") {
         info!("Intel CPU detected.");
-        install(PackageManager::Pacman, vec!["intel-compute-runtime", "intel-ucode"]);
+        packages.extend(vec!["intel-compute-runtime", "intel-ucode"]);
     } else if cpu_detect().contains("AMD") {
         info!("AMD CPU detected.");
-        install(PackageManager::Pacman, vec!["amd-ucode"]);
+        packages.push("amd-ucode");
     }
-    
+
     // Detect GPU
     let gpudetect_output = Command::new("lspci")
         .arg("-k")
         .output()
         .expect("Failed to execute lspci -k command");
-    
+
     let gpudetect = String::from_utf8_lossy(&gpudetect_output.stdout);
     let mut flag_gpu_found = false;
-    
+
     if gpudetect.contains("AMD") {
         info!("AMD GPU detected.");
-        install(PackageManager::Pacman, vec!["xf86-video-amdgpu", "opencl-amd"]);
+        packages.extend(vec!["xf86-video-amdgpu", "opencl-amd"]);
         flag_gpu_found = true;
     }
-    
+
     if gpudetect.contains("ATI") && !gpudetect.contains("AMD") {
         info!("ATI GPU detected.");
-        install(PackageManager::Pacman, vec!["opencl-mesa"]);
+        packages.push("opencl-mesa");
         flag_gpu_found = true;
     }
-    
+
     if gpudetect.contains("NVIDIA") {
         info!("NVIDIA GPU detected.");
 
-        // https://wiki.archlinux.org/title/NVIDIA#Installation
-        // https://nouveau.freedesktop.org/CodeNames.html
-        
-        if gpudetect.contains("GM107") || gpudetect.contains("GM108")
-            || gpudetect.contains("GM200") || gpudetect.contains("GM204")
-            || gpudetect.contains("GM206") || gpudetect.contains("GM20B")
-        {
+        if gpudetect.contains("GM107") || gpudetect.contains("GM108") || gpudetect.contains("GM200")
+            || gpudetect.contains("GM204") || gpudetect.contains("GM206") || gpudetect.contains("GM20B") {
             info!("NV110 family (Maxwell)");
             flag_gpu_found = true;
-            
-            if kernel == "linux" {
-                install(PackageManager::Pacman, vec!["nvidia"]);
-            } else if kernel == "linux-lts" {
-                install(PackageManager::Pacman, vec!["nvidia-lts"]);
-            } else {
-                install(PackageManager::Pacman, vec!["nvidia-dkms"]);
+
+            match kernel {
+                "linux" => packages.push("nvidia"),
+                "linux-lts" => packages.push("nvidia-lts"),
+                _ => packages.push("nvidia-dkms"),
             }
-            
-            install(PackageManager::Pacman, vec!["nvidia-settings"]);
+
+            packages.push("nvidia-settings");
         }
 
-        if gpudetect.contains("TU102") || gpudetect.contains("TU104")
-            || gpudetect.contains("TU106") || gpudetect.contains("TU116")
-            || gpudetect.contains("TU117")
-        {
+        if gpudetect.contains("TU102") || gpudetect.contains("TU104") || gpudetect.contains("TU106")
+            || gpudetect.contains("TU116") || gpudetect.contains("TU117") {
             info!("NV160 family (Turing)");
             flag_gpu_found = true;
-            if kernel == "linux" {
-                install(PackageManager::Pacman, vec!["nvidia-open"]);
-            } else {
-                install(PackageManager::Pacman, vec!["nvidia-open-dkms"]);
+
+            match kernel {
+                "linux" => packages.push("nvidia-open"),
+                _ => packages.push("nvidia-open-dkms"),
             }
-            
-            install(PackageManager::Pacman, vec!["nvidia-settings"]);
+
+            packages.push("nvidia-settings");
         }
 
-        if gpudetect.contains("GK104") || gpudetect.contains("GK107")
-            || gpudetect.contains("GK106") || gpudetect.contains("GK110")
-            || gpudetect.contains("GK110B") || gpudetect.contains("GK208B")
-            || gpudetect.contains("GK208") || gpudetect.contains("GK20A")
-            || gpudetect.contains("GK210")
-        {
+        if gpudetect.contains("GK104") || gpudetect.contains("GK107") || gpudetect.contains("GK106")
+            || gpudetect.contains("GK110") || gpudetect.contains("GK110B") || gpudetect.contains("GK208B")
+            || gpudetect.contains("GK208") || gpudetect.contains("GK20A") || gpudetect.contains("GK210") {
             info!("NVE0 family (Kepler)");
             flag_gpu_found = true;
-            install(PackageManager::Pacman, vec!["nvidia-470xx-dkms", "nvidia-470xx-settings"]);
+            packages.extend(vec!["nvidia-470xx-dkms", "nvidia-470xx-settings"]);
         }
 
-        if gpudetect.contains("GF100") || gpudetect.contains("GF108")
-            || gpudetect.contains("GF106") || gpudetect.contains("GF104")
-            || gpudetect.contains("GF110") || gpudetect.contains("GF114")
-            || gpudetect.contains("GF116") || gpudetect.contains("GF117")
-            || gpudetect.contains("GF119")
-        {
+        if gpudetect.contains("GF100") || gpudetect.contains("GF108") || gpudetect.contains("GF106")
+            || gpudetect.contains("GF104") || gpudetect.contains("GF110") || gpudetect.contains("GF114")
+            || gpudetect.contains("GF116") || gpudetect.contains("GF117") || gpudetect.contains("GF119") {
             info!("NVC0 family (Fermi)");
             flag_gpu_found = true;
-            install(PackageManager::Pacman, vec!["nvidia-390xx-dkms", "nvidia-390xx-settings"]);
+            packages.extend(vec!["nvidia-390xx-dkms", "nvidia-390xx-settings"]);
         }
 
-        if gpudetect.contains("G80") || gpudetect.contains("G84")
-            || gpudetect.contains("G86") || gpudetect.contains("G92")
-            || gpudetect.contains("G94") || gpudetect.contains("G96")
-            || gpudetect.contains("G98") || gpudetect.contains("GT200")
-            || gpudetect.contains("GT215") || gpudetect.contains("GT216")
-            || gpudetect.contains("GT218") || gpudetect.contains("MCP77")
-            || gpudetect.contains("MCP78") || gpudetect.contains("MCP79")
-            || gpudetect.contains("MCP7A") || gpudetect.contains("MCP89")
-        {
+        if gpudetect.contains("G80") || gpudetect.contains("G84") || gpudetect.contains("G86")
+            || gpudetect.contains("G92") || gpudetect.contains("G94") || gpudetect.contains("G96")
+            || gpudetect.contains("G98") || gpudetect.contains("GT200") || gpudetect.contains("GT215")
+            || gpudetect.contains("GT216") || gpudetect.contains("GT218") || gpudetect.contains("MCP77")
+            || gpudetect.contains("MCP78") || gpudetect.contains("MCP79") || gpudetect.contains("MCP7A")
+            || gpudetect.contains("MCP89") {
             info!("NV50 family (Tesla)");
             flag_gpu_found = true;
-            install(PackageManager::Pacman, vec!["nvidia-340xx-dkms", "nvidia-340xx-settings"]);
+            packages.extend(vec!["nvidia-340xx-dkms", "nvidia-340xx-settings"]);
         }
-        
-        // For not recognized families
-        
-        if !flag_gpu_found {
-            install(PackageManager::Pacman, vec!["nvidia-open-dkms", "nvidia-settings"]);
-        }
-        
-        install(PackageManager::Pacman, vec!["opencl-nvidia", "gwe", "nvtop"]);
-        
-        exec_eval(
-            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-                "sed",
-                vec![
-                    String::from("-i"),
-                    String::from("-e"),
-                    String::from("/^MODULES=()/ s/()/(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/"),
-                    String::from("-e"),
-                    String::from("/^MODULES=([^)]*)/ {/nvidia nvidia_modeset nvidia_uvm nvidia_drm/! s/)/ nvidia nvidia_modeset nvidia_uvm nvidia_drm)/}"),
-                    String::from("/mnt/etc/mkinitcpio.conf"),
-                ],
-            ),
-            "Set nvidia modules",
-        );
 
-        exec_eval(
-            exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-                "sed",
-                vec![
-                    String::from("-i"),
-                    String::from("-e"),
-                    String::from("/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ nvidia-drm.modeset=1\"/g"),
-                    String::from("/mnt/etc/default/grub"),
-                ],
-            ),
-            "Enable NVIDIA GPU kernel paramater",
-        );
-        
-        // Removed nvidia-exec because it seems to break envycontrol and optimus-manager
+        // For unrecognized NVIDIA families
+        if !flag_gpu_found {
+            packages.extend(vec!["nvidia-open-dkms", "nvidia-settings"]);
+        }
+
+        packages.extend(vec!["opencl-nvidia", "gwe", "nvtop"]);
+
+        // Add envycontrol if hybrid GPU setup detected
         if gpudetect.contains("Intel") || gpudetect.contains("AMD") || gpudetect.contains("ATI") {
-            install(PackageManager::Pacman, vec!["envycontrol"]);
+            packages.push("envycontrol");
         }
     }
+
+    packages // Return the list of packages
 }
 
 fn cpu_detect() -> String {

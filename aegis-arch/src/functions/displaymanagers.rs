@@ -1,39 +1,44 @@
-use crate::internal::install::install;
-use crate::internal::services::enable_service;
 use shared::args::DMSetup;
-use shared::args::PackageManager;
 use shared::debug;
 use shared::files;
 use shared::returncode_eval::files_eval;
 
-pub fn install_dm_setup(dm_setup: DMSetup) {
-    debug!("Installing {:?}", dm_setup);
+pub fn install_dm_setup(dm_setup: DMSetup) -> Vec<&'static str> {
+    debug!("Selecting {:?}", dm_setup);
+
     match dm_setup {
         DMSetup::Gdm => install_gdm(),
         DMSetup::LightDMNeon => install_lightdm_neon(),
         DMSetup::Sddm => install_sddm(),
-        DMSetup::None => debug!("No display manager setup selected"),
+        DMSetup::None => {
+            debug!("No display manager setup selected");
+            Vec::new() // Return empty vector if no DM setup is selected
+        }
     }
 }
 
-fn install_gdm() {
-    install(PackageManager::Pacman, vec![
+fn install_gdm() -> Vec<&'static str> {
+    let packages = vec![
         "athena-gdm-config",
-    ]);
-    enable_service("gdm");
+    ];
+
+    packages
 }
 
-fn install_lightdm_neon() {
-    install(PackageManager::Pacman, vec![
+fn install_lightdm_neon() -> Vec<&'static str> {
+    let packages = vec![
         "athena-lightdm-neon-theme",
-    ]);
-    enable_service("lightdm");
+    ];
+
+    packages
 }
 
-fn install_sddm() {
-    install(PackageManager::Pacman, vec![
+fn install_sddm() -> Vec<&'static str> {
+    let packages = vec![
         "sddm-astronaut-theme",
-    ]);
+    ];
+
+    // File creation and configuration can still happen here if needed
     files::create_file("/mnt/etc/sddm.conf");
     files_eval(
         files::append_file(
@@ -42,5 +47,6 @@ fn install_sddm() {
         ),
         "Add astronaut theme",
     );
-    enable_service("sddm");
+
+    packages
 }

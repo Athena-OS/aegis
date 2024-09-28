@@ -1,12 +1,11 @@
-use crate::internal::install::install;
 use shared::args::DesktopSetup;
-use shared::args::PackageManager;
 use shared::debug;
 use shared::files;
 use shared::returncode_eval::files_eval;
 
-pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
-    debug!("Installing {:?}", desktop_setup);
+pub fn install_desktop_setup(desktop_setup: DesktopSetup) -> Vec<&'static str> {
+    debug!("Selecting {:?}", desktop_setup);
+
     match desktop_setup {
         DesktopSetup::Onyx => install_onyx(),
         DesktopSetup::Gnome => install_gnome(),
@@ -24,24 +23,27 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) {
         DesktopSetup::Awesome => install_awesome(),
         DesktopSetup::Bspwm => install_bspwm(),
         DesktopSetup::Hyprland => install_hyprland(),
-        DesktopSetup::None => debug!("No desktop setup selected"),
+        DesktopSetup::None => {
+            debug!("No desktop setup selected");
+            Vec::new() // Return empty vector for "None"
+        }
     }
 }
 
-fn install_hyprland() {
-    install(PackageManager::Pacman, vec![
+fn install_hyprland() -> Vec<&'static str> {
+    vec![
         "athena-hyprland-config",
-    ]);
+    ]
 }
 
-fn install_bspwm() {
-    install(PackageManager::Pacman, vec![
+fn install_bspwm() -> Vec<&'static str> {
+    vec![
         "athena-bspwm-config",
-    ]);
+    ]
 }
 
-fn install_awesome() {
-    install(PackageManager::Pacman, vec![
+fn install_awesome() -> Vec<&'static str> {
+    vec![
         "xorg",
         "awesome",
         "dex",
@@ -51,11 +53,11 @@ fn install_awesome() {
         "lightdm-gtk-greeter",
         "lightdm-gtk-greeter-settings",
         "xdg-user-dirs",
-    ]);
+    ]
 }
 
-fn install_herbstluftwm() {
-    install(PackageManager::Pacman, vec![
+fn install_herbstluftwm() -> Vec<&'static str> {
+    vec![
         "xorg",
         "herbstluftwm",
         "dmenu",
@@ -65,11 +67,11 @@ fn install_herbstluftwm() {
         "lightdm-gtk-greeter",
         "lightdm-gtk-greeter-settings",
         "xdg-user-dirs",
-    ]);
+    ]
 }
 
-fn install_i3() {
-    install(PackageManager::Pacman, vec![
+fn install_i3() -> Vec<&'static str> {
+    vec![
         "xorg",
         "i3-wm",
         "dmenu",
@@ -82,22 +84,11 @@ fn install_i3() {
         "xdg-user-dirs",
         "dex",
         "polkit-gnome",
-    ]);
-    files_eval(
-        files::append_file("/mnt/etc/i3/config", "exec --no-startup-id dex -a\n"),
-        "Add dex to i3 config for autostart",
-    );
-    files_eval(
-        files::append_file(
-            "/mnt/etc/i3/config",
-            "exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1",
-        ),
-        "Add polkit gnome to i3 config",
-    );
+    ]
 }
 
-fn install_sway() {
-    install(PackageManager::Pacman, vec![
+fn install_sway() -> Vec<&'static str> {
+    vec![
         "xorg-xwayland",
         "sway",
         "bemenu",
@@ -114,22 +105,11 @@ fn install_sway() {
         "xdg-user-dirs",
         "dex",
         "polkit-gnome",
-    ]);
-    files_eval(
-        files::append_file("/mnt/etc/sway/config", "exec --no-startup-id dex -a\n"),
-        "Add dex to sway config for autostart",
-    );
-    files_eval(
-        files::append_file(
-            "/mnt/etc/sway/config",
-            "exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1",
-        ),
-        "Add polkit gnome to sway config",
-    );
+    ]
 }
 
-fn install_lxqt() {
-    install(PackageManager::Pacman, vec![
+fn install_lxqt() -> Vec<&'static str> {
+    vec![
         "xorg",
         "lxqt",
         "breeze-icons",
@@ -141,11 +121,11 @@ fn install_lxqt() {
         "pipewire-jack",
         "wireplumber",
         "sddm",
-    ]);
+    ]
 }
 
-fn install_enlightenment() {
-    install(PackageManager::Pacman, vec![
+fn install_enlightenment() -> Vec<&'static str> {
+    vec![
         "xorg",
         "enlightenment",
         "terminology",
@@ -157,35 +137,35 @@ fn install_enlightenment() {
         "lightdm",
         "lightdm-gtk-greeter",
         "lightdm-gtk-greeter-settings",
-    ]);
+    ]
 }
 
-fn install_xfce_refined() {
-    install(PackageManager::Pacman, vec![
+fn install_xfce_refined() -> Vec<&'static str> {
+    vec![
         "athena-xfce-refined",
-    ]);
+    ]
 }
 
-fn install_xfce_picom() {
-    install(PackageManager::Pacman, vec![
+fn install_xfce_picom() -> Vec<&'static str> {
+    vec![
         "athena-xfce-picom",
-    ]);
+    ]
 }
 
-fn install_mate() {
-    install(PackageManager::Pacman, vec![
+fn install_mate() -> Vec<&'static str> {
+    vec![
         "athena-mate-base",
-    ]);
+    ]
 }
 
-fn install_cinnamon() {
-    install(PackageManager::Pacman, vec![
+fn install_cinnamon() -> Vec<&'static str> {
+    vec![
         "athena-cinnamon-base",
-    ]);
+    ]
 }
 
-fn install_budgie() {
-    install(PackageManager::Pacman, vec![
+fn install_budgie() -> Vec<&'static str> {
+    vec![
         "xorg",
         "budgie-desktop",
         "gnome",
@@ -200,23 +180,23 @@ fn install_budgie() {
         "xdg-desktop-portal",
         "xdg-desktop-portal-gtk",
         "xdg-utils",
-    ]);
+    ]
 }
 
-fn install_kde() {
-    install(PackageManager::Pacman, vec![
+fn install_kde() -> Vec<&'static str> {
+    vec![
         "athena-kde-base",
-    ]);
+    ]
 }
 
-fn install_gnome() {
-    install(PackageManager::Pacman, vec![
+fn install_gnome() -> Vec<&'static str> {
+    vec![
         "athena-gnome-config",
-    ]);
+    ]
 }
 
-fn install_onyx() {
-    install(PackageManager::Pacman, vec![
+fn install_onyx() -> Vec<&'static str> {
+    vec![
         "xorg",
         "onyx",
         "sushi",
@@ -226,7 +206,7 @@ fn install_onyx() {
         "pipewire-jack",
         "wireplumber",
         "gdm",
-    ]);
+    ]
 }
 
 pub fn disable_xsession(session: &str) {

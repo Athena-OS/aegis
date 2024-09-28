@@ -1,12 +1,11 @@
-use crate::internal::install::install;
 use shared::args::ThemeSetup;
-use shared::args::PackageManager;
 use shared::debug;
 use shared::files;
 use shared::returncode_eval::files_eval;
 
-pub fn install_theme_setup(theme_setup: ThemeSetup) {
-    debug!("Installing {:?}", theme_setup);
+pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
+    debug!("Selecting {:?}", theme_setup);
+
     match theme_setup {
         ThemeSetup::Akame => install_akame(),
         ThemeSetup::Cyborg => install_cyborg(),
@@ -15,14 +14,58 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
         ThemeSetup::Temple => install_temple(),
-        ThemeSetup::None => debug!("No theme setup selected"),
+        ThemeSetup::None => {
+            debug!("No theme setup selected");
+            Vec::new() // Return empty vector if no theme setup is selected
+        }
     }
 }
 
-fn install_akame() {
-    install(PackageManager::Pacman, vec![
+fn install_akame() -> Vec<&'static str> {
+    vec![
         "athena-akame-theme",
-    ]);
+    ]
+}
+
+fn install_cyborg() -> Vec<&'static str> {
+    vec![
+        "athena-cyborg-theme",
+    ]
+}
+
+fn install_graphite() -> Vec<&'static str> {
+    vec![
+        "athena-graphite-theme",
+    ]
+}
+
+fn install_hackthebox() -> Vec<&'static str> {
+    vec![
+        "athena-htb-theme",
+    ]
+}
+
+fn install_samurai() -> Vec<&'static str> {
+    vec![
+        "athena-samurai-theme",
+    ]
+}
+
+fn install_sweet() -> Vec<&'static str> {
+    vec![
+        "athena-sweetdark-theme",
+    ]
+}
+
+fn install_temple() -> Vec<&'static str> {
+    vec![
+        "athena-temple-theme",
+    ]
+}
+
+/**********************************/
+
+pub fn configure_akame() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -41,10 +84,7 @@ fn install_akame() {
     );
 }
 
-fn install_cyborg() {
-    install(PackageManager::Pacman, vec![
-        "athena-cyborg-theme",
-    ]);
+pub fn configure_cyborg() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -63,10 +103,7 @@ fn install_cyborg() {
     );
 }
 
-fn install_graphite() {
-    install(PackageManager::Pacman, vec![
-        "athena-graphite-theme",
-    ]);
+pub fn configure_graphite() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -85,10 +122,7 @@ fn install_graphite() {
     );
 }
 
-fn install_hackthebox() {
-    install(PackageManager::Pacman, vec![
-        "athena-htb-theme",
-    ]);
+pub fn configure_hackthebox() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -107,10 +141,7 @@ fn install_hackthebox() {
     );
 }
 
-fn install_samurai() {
-    install(PackageManager::Pacman, vec![
-        "athena-samurai-theme",
-    ]);
+pub fn configure_samurai() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -129,10 +160,7 @@ fn install_samurai() {
     );
 }
 
-fn install_sweet() {
-    install(PackageManager::Pacman, vec![
-        "athena-sweetdark-theme",
-    ]);
+pub fn configure_sweet() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",
@@ -151,10 +179,7 @@ fn install_sweet() {
     );
 }
 
-fn install_temple() {
-    install(PackageManager::Pacman, vec![
-        "athena-temple-theme",
-    ]);
+pub fn configure_temple() {
     files_eval(
         files::sed_file(
             "/mnt/etc/skel/.config/VSCodium/User/settings.json",

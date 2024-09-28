@@ -1,4 +1,5 @@
 use crate::internal::install::install;
+use crate::internal::services::enable_service;
 //use crate::internal::secure;
 use crate::functions::*;
 use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PackageManager, PartitionMode};
@@ -82,6 +83,153 @@ struct Users {
 }
 
 pub fn read_config(configpath: PathBuf) -> i32 {
+    let mut package_set: Vec<&str> = vec![
+        "linux-firmware",
+        "systemd-sysvcompat",
+        "networkmanager",
+        "network-manager-applet",
+        "man-db",
+        "man-pages",
+        "texinfo",
+        "nano",
+        "sudo",
+        "curl",
+        // Extra Base Arch
+        "accountsservice",
+        "alacritty",
+        "alsa-utils",
+        "arch-install-scripts",
+        "broadcom-wl-dkms",
+        "dhcpcd",
+        "dialog",
+        "dosfstools",
+        "edk2-shell",
+        "inetutils",
+        "irqbalance",
+        "lvm2",
+        "memtest86+",
+        "mesa",
+        "mesa-utils",
+        "mkinitcpio-nfs-utils",
+        "mkinitcpio-openswap",
+        "most",
+        "mtools",
+        "nbd",
+        "net-tools",
+        "netctl",
+        "nfs-utils",
+        "nohang",
+        "nss-mdns",
+        "ntfsprogs",
+        "ntp",
+        "pavucontrol",
+        "profile-sync-daemon",
+        "pv",
+        "rsync",
+        "rtl8821cu-morrownr-dkms-git",
+        "sof-firmware",
+        "squashfs-tools",
+        "syslinux",
+        "testdisk",
+        "timelineproject-hg",
+        "usbutils",
+        "wireless_tools",
+        "wpa_supplicant",
+        "xfsprogs",
+        // Fonts
+        "noto-fonts",
+        "noto-fonts-emoji",
+        "noto-fonts-cjk",
+        // Common packages for all desktops
+        "pipewire",
+        "pipewire-pulse",
+        "pipewire-alsa",
+        "pipewire-jack",
+        "wireplumber",
+        "ntfs-3g",
+        "vi",
+        "eza",
+        "pocl", // Hashcat dependency
+        "ananicy",
+        "goofcord-bin",
+        "asciinema",
+        "bashtop",
+        "bat",
+        "bc",
+        "bless",
+        "chatgpt-desktop-bin",
+        "cmatrix",
+        "cowsay",
+        "cron",
+        "cyberchef-electron",
+        "downgrade",
+        "eog",
+        "espeakup",
+        "figlet",
+        "figlet-fonts",
+        "file-roller",
+        "fortune-mod",
+        "git",
+        "gparted",
+        "grub-customizer",
+        "gtk-engine-murrine",
+        "gvfs-gphoto2",
+        "gvfs-mtp",
+        "hexedit",
+        //"hw-probe, //HW probing
+        "imagemagick",
+        "jq",
+        "lib32-glibc",
+        "lolcat",
+        "lsd",
+        "mtpfs",
+        "nano-syntax-highlighting",
+        "nautilus",
+        "ncdu",
+        "networkmanager-openvpn",
+        "nyancat",
+        "octopi",
+        "onionshare",
+        "openbsd-netcat",
+        "openvpn",
+        "orca",
+        "p7zip",
+        "paru",
+        "pfetch",
+        "polkit",
+        "python-pywhat",
+        "reflector",
+        "sl",
+        //"smartmontools", //hw-probe deps
+        "superbfetch-git",
+        "textart",
+        "tidy",
+        "tk",
+        "toilet-fonts",
+        "torbrowser-launcher",
+        "tree",
+        "ufw",
+        "unzip",
+        "vnstat",
+        "wget",
+        "which",
+        "xclip",
+        "xmlstarlet",
+        "zoxide",
+        // Athena
+        "athena-cyber-hub",
+        "athena-neofetch-config",
+        "athena-nvim-config",
+        "athena-powershell-config",
+        "athena-config",
+        "athena-theme-tweak",
+        "athena-tmux-config",
+        "athena-vim-config",
+        "athena-vscodium-themes",
+        "athena-welcome",
+        "htb-toolkit",
+        "nist-feed",
+    ];
     let data = std::fs::read_to_string(&configpath);
     match &data {
         Ok(_) => {
@@ -151,17 +299,174 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         &mut partitions,
     );
     println!();
-    base::install_base_packages();
+
+    /* BOOTLOADER PACKAGE SET */
+    let boot_packages = vec![
+        "grub",
+        "os-prober",
+        "athena-grub-theme",
+    ];
+    package_set.extend(boot_packages);
+    if config.bootloader.r#type == "grub-efi" {
+        package_set.push("efibootmgr");
+    }
+    /**************************/
     println!();
-    base::install_packages(config.kernel);
+    /*        DESKTOP         */
+    info!("Selected desktop : {:?}", config.desktop);
+    /*if let Some(desktop) = &config.desktop {
+        desktops::install_desktop_setup(*desktop);
+    }*/
+    match config.desktop.to_lowercase().as_str() {
+        "onyx" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Onyx)),
+        "kde plasma" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Kde)), //Note that the value on this match statement must fit the name in desktops.py of aegis-gui (then they are lowercase transformed)
+        "mate" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Mate)),
+        "gnome" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Gnome)),
+        "cinnamon" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Cinnamon)),
+        "xfce refined" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::XfceRefined)),
+        "xfce picom" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::XfcePicom)),
+        "budgie" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Budgie)),
+        "enlightenment" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Enlightenment)),
+        "lxqt" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Lxqt)),
+        "sway" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Sway)),
+        "i3" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::I3)),
+        "herbstluftwm" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Herbstluftwm)),
+        "awesome" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Awesome)),
+        "bspwm" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Bspwm)),
+        "hyprland" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Hyprland)),
+        "none" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::None)),
+        _ => info!("No desktop setup selected!"),
+    }
+    /**************************/
+
+    /*     DISPLAY MANAGER    */
+    info!("Selecting display manager : {:?}", config.displaymanager);
+    match config.displaymanager.to_lowercase().as_str() {
+        "gdm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Gdm)),
+        "lightdm neon" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::LightDMNeon)),
+        "sddm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Sddm)),
+        _ => info!("No display manager setup selected!"),
+    }
+    /**************************/
+    println!();
+    /* BROWSER PACKAGE SET */
+    info!("Selected browser : {:?}", config.browser);
+    match config.browser.to_lowercase().as_str() {
+        "firefox" => {
+            package_set.extend(browsers::install_browser_setup(BrowserSetup::Firefox));
+        },
+        "brave" => {
+            package_set.extend(browsers::install_browser_setup(BrowserSetup::Brave));
+        },
+        _ => info!("No browser setup selected!"),
+    }
+    /**************************/
+    println!();
+    /*        TERMINAL       */
+    info!("Selected terminal : {:?}", config.terminal);
+    let mut terminal_choice = String::new();
+    match config.terminal.to_lowercase().as_str() {
+        "alacritty" => {
+            terminal_choice = String::from("alacritty");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Alacritty));
+        },
+        "cool retro term" => {
+            terminal_choice = String::from("cool-retro-term");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm));
+        },
+        "foot" => {
+            terminal_choice = String::from("foot");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Foot));
+        },
+        "gnome terminal" => {
+            terminal_choice = String::from("gnome-terminal");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::GnomeTerminal));
+        },
+        "kitty" => {
+            terminal_choice = String::from("kitty");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Kitty));
+        },
+        "konsole" => {
+            terminal_choice = String::from("konsole");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Konsole));
+        },
+        "terminator" => {
+            terminal_choice = String::from("terminator");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Terminator));
+        },
+        "terminology" => {
+            terminal_choice = String::from("terminology");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Terminology));
+        },
+        "urxvt" => {
+            terminal_choice = String::from("urxvt");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Urxvt));
+        },
+        "xfce" => {
+            terminal_choice = String::from("xfce4-terminal");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Xfce));
+        },
+        "xterm" => {
+            terminal_choice = String::from("xterm");
+            package_set.extend(terminals::install_terminal_setup(TerminalSetup::Xterm));
+        },
+        _ => info!("No terminal setup selected!"),
+    }
+    /**************************/
+    println!();
+    /*         THEME         */
+    info!("Selecting theme : {:?}", config.theme);
+    match config.theme.to_lowercase().as_str() {
+        "akame" => package_set.extend(themes::install_theme_setup(ThemeSetup::Akame)),
+        "cyborg" => package_set.extend(themes::install_theme_setup(ThemeSetup::Cyborg)),
+        "graphite" => package_set.extend(themes::install_theme_setup(ThemeSetup::Graphite)),
+        "hackthebox" => package_set.extend(themes::install_theme_setup(ThemeSetup::HackTheBox)), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
+        "samurai" => package_set.extend(themes::install_theme_setup(ThemeSetup::Samurai)),
+        "sweet" => package_set.extend(themes::install_theme_setup(ThemeSetup::Sweet)),
+        "temple" => package_set.extend(themes::install_theme_setup(ThemeSetup::Temple)),
+        _ => info!("No theme setup selected!"),
+    }
+    /**************************/
+    println!();
+    /*          MISC         */
+
+    if config.zramd {
+        info!("Selecting zramd : {}", config.zramd);
+        package_set.push("zram-generator");
+    }
+    if config.flatpak {
+        info!("Selecting flatpak : {}", config.flatpak);
+        package_set.push("flatpak");
+    }
+    /**************************/
+    println!();
+    /*         USERS         */
+    for i in 0..config.users.len() {
+        match config.users[i].shell.to_lowercase().as_str() {
+            "bash" => package_set.extend(shells::install_shell_setup(ShellSetup::Bash)),
+            "fish" => package_set.extend(shells::install_shell_setup(ShellSetup::Fish)),
+            "zsh" => package_set.extend(shells::install_shell_setup(ShellSetup::Zsh)),
+            _ => info!("No shell setup selected!"),
+        }
+    }
+    /**************************/
+    println!();
+    /********** INSTALLATION **********/
+
+    base::install_packages(config.kernel, package_set);
+
+    /**************************/
+    println!();
+    /********** CONFIGURATION **********/
+
     base::genfstab();
     println!();
-    info!("Installing bootloader : {}", config.bootloader.r#type);
-    info!("Installing bootloader to : {}", config.bootloader.location);
+    info!("Configuring bootloader : {}", config.bootloader.r#type);
+    info!("Configuring bootloader to : {}", config.bootloader.location);
     if config.bootloader.r#type == "grub-efi" {
-        base::install_bootloader_efi(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
+        base::configure_bootloader_efi(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     } else if config.bootloader.r#type == "grub-legacy" {
-        base::install_bootloader_legacy(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
+        base::configure_bootloader_legacy(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     }
     println!();
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
@@ -186,10 +491,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         network::enable_ipv6();
     }
     println!();
-    println!("---------");
-    info!("Enabling zramd : {}", config.zramd);
     if config.zramd {
-        base::install_zram();
+        info!("Enabling zramd : {}", config.zramd);
+        base::configure_zram();
     }
     println!();
     /*info!("Hardening system : {}", config.hardened);
@@ -198,16 +502,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         secure::secure_ssh_config();
     }
     println!();*/
-    info!("Installing desktop : {:?}", config.desktop);
-    /*if let Some(desktop) = &config.desktop {
-        desktops::install_desktop_setup(*desktop);
-    }*/
+    info!("Configuring desktop : {:?}", config.desktop);
     match config.desktop.to_lowercase().as_str() {
-        "onyx" => desktops::install_desktop_setup(DesktopSetup::Onyx),
-        "kde plasma" => desktops::install_desktop_setup(DesktopSetup::Kde), //Note that the value on this match statement must fit the name in desktops.py of aegis-gui (then they are lowercase transformed)
-        "mate" => desktops::install_desktop_setup(DesktopSetup::Mate),
         "gnome" => {
-            desktops::install_desktop_setup(DesktopSetup::Gnome);
             desktops::disable_xsession("gnome.desktop");
             desktops::disable_xsession("gnome-classic.desktop");
             desktops::disable_xsession("gnome-classic-xorg.desktop");
@@ -216,39 +513,12 @@ pub fn read_config(configpath: PathBuf) -> i32 {
             desktops::disable_wsession("gnome-classic.desktop");
             desktops::disable_wsession("gnome-classic-wayland.desktop");
         },
-        "cinnamon" => desktops::install_desktop_setup(DesktopSetup::Cinnamon),
-        "xfce refined" => desktops::install_desktop_setup(DesktopSetup::XfceRefined),
-        "xfce picom" => desktops::install_desktop_setup(DesktopSetup::XfcePicom),
-        "budgie" => desktops::install_desktop_setup(DesktopSetup::Budgie),
-        "enlightenment" => desktops::install_desktop_setup(DesktopSetup::Enlightenment),
-        "lxqt" => desktops::install_desktop_setup(DesktopSetup::Lxqt),
-        "sway" => desktops::install_desktop_setup(DesktopSetup::Sway),
-        "i3" => desktops::install_desktop_setup(DesktopSetup::I3),
-        "herbstluftwm" => desktops::install_desktop_setup(DesktopSetup::Herbstluftwm),
-        "awesome" => desktops::install_desktop_setup(DesktopSetup::Awesome),
-        "bspwm" => desktops::install_desktop_setup(DesktopSetup::Bspwm),
-        "hyprland" => desktops::install_desktop_setup(DesktopSetup::Hyprland),
-        "none" => desktops::install_desktop_setup(DesktopSetup::None),
-        _ => info!("No desktop setup selected!"),
+        _ => info!("No desktop configuration needed."),
     }
     println!();
-    info!("Installing theme : {:?}", config.theme);
-
-    match config.theme.to_lowercase().as_str() {
-        "akame" => themes::install_theme_setup(ThemeSetup::Akame),
-        "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
-        "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
-        "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
-        "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
-        "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
-        "temple" => themes::install_theme_setup(ThemeSetup::Temple),
-        _ => info!("No theme setup selected!"),
-    }
-    println!();
-    info!("Installing display manager : {:?}", config.displaymanager);
+    info!("Configuring display manager : {:?}", config.displaymanager);
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => {
-            displaymanagers::install_dm_setup(DMSetup::Gdm);
             if ! config.desktop.contains("gnome") {
                 files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
                 desktops::disable_xsession("gnome.desktop");
@@ -267,17 +537,18 @@ pub fn read_config(configpath: PathBuf) -> i32 {
                     "Disable Wayland in GNOME",
                 );
             }
+            enable_service("gdm");
         },
         "lightdm neon" => {
-            displaymanagers::install_dm_setup(DMSetup::LightDMNeon);
             desktops::lightdm_set_session(&config.desktop);
+            enable_service("lightdm");
         },
-        "sddm" => displaymanagers::install_dm_setup(DMSetup::Sddm),
-        _ => info!("No display manager setup selected!"),
+        "sddm" => enable_service("sddm"),
+        _ => info!("No display manager configuration needed."),
     }
 
     println!();
-    info!("Installing browser : {:?}", config.browser);
+    info!("Configuring browser : {:?}", config.browser);
     /*if let Some(browser) = &config.browser {
         browsers::install_browser_setup(*browser);
     }*/
@@ -308,62 +579,21 @@ pub fn read_config(configpath: PathBuf) -> i32 {
                 );
             }
         }
-        _ => info!("No browser setup selected!"),
+        _ => info!("No browser configuration needed."),
     }
     println!();
-    // Terminal configuration //
-    info!("Installing terminal : {:?}", config.terminal);
-    /*if let Some(terminal) = &config.terminal {
-        terminals::install_terminal_setup(*terminal);
-    }*/
-    let mut terminal_choice = String::new();
-    match config.terminal.to_lowercase().as_str() {
-        "alacritty" => {
-            terminal_choice = String::from("alacritty");
-            terminals::install_terminal_setup(TerminalSetup::Alacritty);
-        },
-        "cool retro term" => {
-            terminal_choice = String::from("cool-retro-term");
-            terminals::install_terminal_setup(TerminalSetup::CoolRetroTerm);
-        },
-        "foot" => {
-            terminal_choice = String::from("foot");
-            terminals::install_terminal_setup(TerminalSetup::Foot);
-        },
-        "gnome terminal" => {
-            terminal_choice = String::from("gnome-terminal");
-            terminals::install_terminal_setup(TerminalSetup::GnomeTerminal);
-        },
-        "kitty" => {
-            terminal_choice = String::from("kitty");
-            terminals::install_terminal_setup(TerminalSetup::Kitty);
-        },
-        "konsole" => {
-            terminal_choice = String::from("konsole");
-            terminals::install_terminal_setup(TerminalSetup::Konsole);
-        },
-        "terminator" => {
-            terminal_choice = String::from("terminator");
-            terminals::install_terminal_setup(TerminalSetup::Terminator);
-        },
-        "terminology" => {
-            terminal_choice = String::from("terminology");
-            terminals::install_terminal_setup(TerminalSetup::Terminology);
-        },
-        "urxvt" => {
-            terminal_choice = String::from("urxvt");
-            terminals::install_terminal_setup(TerminalSetup::Urxvt);
-        },
-        "xfce" => {
-            terminal_choice = String::from("xfce4-terminal");
-            terminals::install_terminal_setup(TerminalSetup::Xfce);
-        },
-        "xterm" => {
-            terminal_choice = String::from("xterm");
-            terminals::install_terminal_setup(TerminalSetup::Xterm);
-        },
-        _ => info!("No terminal setup selected!"),
+    info!("Configuring theme : {:?}", config.theme);
+    match config.theme.to_lowercase().as_str() {
+        "akame" => themes::configure_akame(),
+        "cyborg" => themes::configure_cyborg(),
+        "graphite" => themes::configure_graphite(),
+        "hackthebox" => themes::configure_hackthebox(),
+        "samurai" => themes::configure_samurai(),
+        "sweet" => themes::configure_sweet(),
+        "temple" => themes::configure_temple(),
+        _ => info!("No theme configuration needed."),
     }
+    println!();
     //////////
     exec_eval(
         exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
@@ -402,9 +632,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         base::setup_snapper();
     }
     println!();*/
-    info!("Installing flatpak : {}", config.flatpak);
     if config.flatpak {
-        base::install_flatpak();
+        info!("Configuring flatpak : {}", config.flatpak);
+        base::configure_flatpak();
     }
     info!("Extra packages : {:?}", config.extra_packages);
     let mut extra_packages: Vec<&str> = Vec::new();
@@ -416,6 +646,47 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Enabling system services...");
     base::enable_system_services();
     println!("---------");
+    // SHELL
+    // The shell of the first created user will be applied on shell.desktop and on SHELL variable
+    match config.users[0].shell.to_lowercase().as_str() {
+        "fish" => {
+            files_eval(
+                files::sed_file(
+                    "/mnt/usr/share/applications/shell.desktop",
+                    "Bash",
+                    "Fish",
+                ),
+                "Apply FISH shell on .desktop shell file",
+            );
+            files_eval(
+                files::sed_file(
+                    "/mnt/etc/skel/.bashrc",
+                    "export SHELL=.*",
+                    r"export SHELL=$(which fish)",
+                ),
+                "Apply FISH shell",
+            );
+        },
+        "zsh" => {
+            files_eval(
+                files::sed_file(
+                    "/mnt/usr/share/applications/shell.desktop",
+                    "Bash",
+                    "Zsh",
+                ),
+                "Apply ZSH shell on .desktop shell file",
+            );
+            files_eval(
+                files::sed_file(
+                    "/mnt/etc/skel/.bashrc",
+                    "export SHELL=.*",
+                    r"export SHELL=$(which zsh)",
+                ),
+                "Apply ZSH shell",
+            );
+        },
+        _ => info!("No shell configuration needed."),
+    }
     // Users
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
@@ -423,12 +694,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         info!("Enabling root for user : {}", config.users[i].hasroot);
         info!("Setting user shell : {}", config.users[i].shell);
 
-        match config.users[i].shell.to_lowercase().as_str() {
-            "bash" => shells::install_shell_setup(ShellSetup::Bash),
-            "fish" => shells::install_shell_setup(ShellSetup::Fish),
-            "zsh" => shells::install_shell_setup(ShellSetup::Zsh),
-            _ => info!("No shell setup selected!"),
-        }
         users::new_user(
             config.users[i].name.as_str(),
             config.users[i].hasroot,

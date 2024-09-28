@@ -1,5 +1,3 @@
-use crate::internal::install::install;
-use shared::args::PackageManager;
 use shared::exec::exec_chroot;
 use shared::files;
 use shared::returncode_eval::exec_eval;
@@ -18,15 +16,6 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
     else {
         _password = password.to_string();
     }
-    let shell_to_install = match shell {
-        "bash" => "bash",
-        "csh" => "tcsh",
-        "fish" => "fish",
-        "tcsh" => "tcsh",
-        "zsh" => "zsh",
-        &_ => "bash",
-    };
-    install(PackageManager::Pacman, vec![shell_to_install]);
     let shell_path = match shell {
         "bash" => "/bin/bash",
         "csh" => "/usr/bin/csh",

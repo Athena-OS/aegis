@@ -27,11 +27,9 @@ fn main() -> Result<(), i32> {
                 &mut partitions,
             );
         }
-        Command::InstallBase => {
-            base::install_base_packages();
-        }
         Command::InstallPackages(args) => {
-            base::install_packages(args.kernel);
+            let package_set: Vec<&str> = Vec::new();
+            base::install_packages(args.kernel, package_set);
         }
         Command::GenFstab => {
             base::genfstab();
@@ -39,10 +37,10 @@ fn main() -> Result<(), i32> {
         //Command::SetupSnapper => base::setup_snapper(),
         Command::Bootloader { subcommand } => match subcommand {
             BootloaderSubcommand::GrubEfi { efidir } => {
-                base::install_bootloader_efi(efidir,false);
+                base::configure_bootloader_efi(efidir,false);
             }
             BootloaderSubcommand::GrubLegacy { device } => {
-                base::install_bootloader_legacy(device,false);
+                base::configure_bootloader_legacy(device,false);
             }
         }
         Command::Locale(args) => {
@@ -62,7 +60,7 @@ fn main() -> Result<(), i32> {
             network::set_hostname(&args.hostname);
         }
         Command::Zram => {
-            base::install_zram();
+            base::configure_zram();
         }
         /*Command::Hardened => {
             secure::secure_password_config();
@@ -83,25 +81,7 @@ fn main() -> Result<(), i32> {
             }
         },
         Command::Flatpak => {
-            base::install_flatpak();
-        }
-        Command::Cuda => {
-            base::install_cuda();
-        }
-        Command::Spotify => {
-            base::install_spotify();
-        }
-        Command::CherryTree => {
-            base::install_cherrytree();
-        }
-        Command::Flameshot => {
-            base::install_flameshot();
-        }
-        Command::BusyBox => {
-            base::install_busybox();
-        }
-        Command::Toybox => {
-            base::install_toybox();
+            base::configure_flatpak();
         }
         Command::InstallParams(args) => {
             //internal::install::install(args.cores, args.jobs);
@@ -135,6 +115,7 @@ fn main() -> Result<(), i32> {
         Command::EnableServices => {
             base::enable_system_services();
         }
+        _ => todo!() //Do nothing for all those Command:: specified in shared/args.rs but not specifically implemented in athena-nix (because useless)
     }
     Ok(())
 }

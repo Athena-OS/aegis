@@ -90,30 +90,6 @@ pub enum Command {
     #[command(name = "params")]
     InstallParams(InstallArgs),
 
-    /// Install CUDA
-    #[command(name = "cuda")]
-    Cuda,
-
-    /// Install Spotify
-    #[command(name = "spotify")]
-    Spotify,
-
-    /// Install CherryTree
-    #[command(name = "cherrytree")]
-    CherryTree,
-
-    /// Install Flameshot
-    #[command(name = "flameshot")]
-    Flameshot,
-
-    /// Install BusyBox
-    #[command(name = "busybox")]
-    BusyBox,
-
-    /// Install Toybox
-    #[command(name = "toybox")]
-    Toybox,
-
     /// Read Aegis installation config
     #[command(name = "config")]
     Config {

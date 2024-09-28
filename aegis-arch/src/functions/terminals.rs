@@ -1,10 +1,9 @@
-use crate::internal::install::install;
 use shared::args::TerminalSetup;
-use shared::args::PackageManager;
 use shared::debug;
 
-pub fn install_terminal_setup(terminal_setup: TerminalSetup) {
-    debug!("Installing {:?}", terminal_setup);
+pub fn install_terminal_setup(terminal_setup: TerminalSetup) -> Vec<&'static str> {
+    debug!("Selecting {:?}", terminal_setup);
+
     match terminal_setup {
         TerminalSetup::Alacritty => install_alacritty(),
         TerminalSetup::CoolRetroTerm => install_coolretroterm(),
@@ -17,72 +16,75 @@ pub fn install_terminal_setup(terminal_setup: TerminalSetup) {
         TerminalSetup::Urxvt => install_urxvt(),
         TerminalSetup::Xfce => install_xfce(),
         TerminalSetup::Xterm => install_xterm(),
-        TerminalSetup::None => debug!("No terminal setup selected"),
+        TerminalSetup::None => {
+            debug!("No terminal setup selected");
+            Vec::new() // Return empty vector if no terminal setup is selected
+        }
     }
 }
 
-fn install_alacritty() {
-    install(PackageManager::Pacman, vec![
+fn install_alacritty() -> Vec<&'static str> {
+    vec![
         "athena-alacritty-config",
-    ]);
+    ]
 }
 
-fn install_coolretroterm() {
-    install(PackageManager::Pacman, vec![
+fn install_coolretroterm() -> Vec<&'static str> {
+    vec![
         "cool-retro-term",
-    ]);
+    ]
 }
 
-fn install_foot() {
-    install(PackageManager::Pacman, vec![
+fn install_foot() -> Vec<&'static str> {
+    vec![
         "foot",
-    ]);
+    ]
 }
 
-fn install_gnometerminal() {
-    install(PackageManager::Pacman, vec![
+fn install_gnometerminal() -> Vec<&'static str> {
+    vec![
         "gnome-terminal",
-    ]);
+    ]
 }
 
-fn install_kitty() {
-    install(PackageManager::Pacman, vec![
+fn install_kitty() -> Vec<&'static str> {
+    vec![
         "athena-kitty-config",
-    ]);
+    ]
 }
 
-fn install_konsole() {
-    install(PackageManager::Pacman, vec![
+fn install_konsole() -> Vec<&'static str> {
+    vec![
         "konsole",
-    ]);
+    ]
 }
 
-fn install_terminator() {
-    install(PackageManager::Pacman, vec![
+fn install_terminator() -> Vec<&'static str> {
+    vec![
         "terminator",
-    ]);
+    ]
 }
 
-fn install_terminology() {
-    install(PackageManager::Pacman, vec![
+fn install_terminology() -> Vec<&'static str> {
+    vec![
         "terminology",
-    ]);
+    ]
 }
 
-fn install_urxvt() {
-    install(PackageManager::Pacman, vec![
+fn install_urxvt() -> Vec<&'static str> {
+    vec![
         "rxvt-unicode",
-    ]);
+    ]
 }
 
-fn install_xfce() {
-    install(PackageManager::Pacman, vec![
+fn install_xfce() -> Vec<&'static str> {
+    vec![
         "xfce4-terminal",
-    ]);
+    ]
 }
 
-fn install_xterm() {
-    install(PackageManager::Pacman, vec![
+fn install_xterm() -> Vec<&'static str> {
+    vec![
         "xterm",
-    ]);
+    ]
 }

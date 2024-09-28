@@ -12,12 +12,31 @@ use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
 
-pub fn install_base_packages() {
+pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
 
-    std::fs::create_dir_all("/mnt/etc").unwrap();
-    initialize_keyrings(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors too
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
-    install(PackageManager::Pacstrap, vec![
+    let (kernel_to_install, kernel_headers_to_install) = if kernel.is_empty() {
+        ("linux-lts", "linux-lts-headers")
+    } else {
+        match kernel.as_str() {
+            "linux" => ("linux", "linux-headers"),
+            "linux lts" => ("linux-lts", "linux-lts-headers"),
+            "linux zen" => ("linux-zen", "linux-zen-headers"),
+            "linux hardened" => ("linux-hardened", "linux-hardened-headers"),
+            "linux real-time" => ("linux-rt", "linux-rt-headers"),
+            "linux real-time lts" => ("linux-rt-lts", "linux-rt-lts-headers"),
+            "linux liquorix" => ("linux-lqx", "linux-lqx-headers"),
+            "linux xanmod" => ("linux-xanmod", "linux-xanmod-headers"),
+            _ => {
+                warn!("Unknown kernel: {}, using default instead", kernel);
+                ("linux-lts", "linux-lts-headers")
+            }
+        }
+    };
+    let mut base_packages: Vec<&str> = vec![
+        // Kernel
+        kernel_to_install,
+        kernel_headers_to_install,
+        "linux-firmware",
         // Base Arch
         "base",
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
@@ -28,187 +47,40 @@ pub fn install_base_packages() {
         "archlinux-keyring",
         "athena-keyring",
         "chaotic-keyring",
-    ]);
+        ];
+
+    // Add multiple strings from another Vec
+    packages.append(&mut base_packages);
+
+    std::fs::create_dir_all("/mnt/etc").unwrap();
+    init_keyrings_mirrors(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors for Arch and Chaotic AUR on the host
+    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
+
+    let (virt_packages, virt_services, virt_params) = hardware::virt_check();
+    let gpu_packages = hardware::cpu_gpu_check(kernel_to_install);
+    packages.extend(virt_packages);
+    packages.extend(gpu_packages);
+
+    // These packages are installed by Pacstrap, so by using host mirrors
+    install(PackageManager::Pacstrap, packages);
+
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
-    fastest_mirrors(); // Done on the target system
-}
-
-pub fn install_packages(kernel: String) {
-
-    let kernel_to_install = if kernel.is_empty() {
-        "linux-lts"
-    } else {
-        match kernel.as_str() {
-            "linux" => "linux",
-            "linux lts" => "linux-lts",
-            "linux zen" => "linux-zen",
-            "linux hardened" => "linux-hardened",
-            "linux real-time" => "linux-rt",
-            "linux real-time lts" => "linux-rt-lts",
-            "linux liquorix" => "linux-lqx",
-            "linux xanmod" => "linux-xanmod",
-            _ => {
-                warn!("Unknown kernel: {}, using default instead", kernel);
-                "linux-lts"
-            }
-        }
-    };
-
-    
-    install(PackageManager::Pacman, vec![
-        // System Arch
-        kernel_to_install,
-        format!("{kernel_to_install}-headers").as_str(),
-        "linux-firmware",
-        "systemd-sysvcompat",
-        "networkmanager",
-        "network-manager-applet",
-        "man-db",
-        "man-pages",
-        "texinfo",
-        "nano",
-        "sudo",
-        "curl",
-        // Extra Base Arch
-        "accountsservice",
-        "alacritty",
-        "alsa-utils",
-        "arch-install-scripts",
-        "broadcom-wl-dkms",
-        "dhcpcd",
-        "dialog",
-        "dosfstools",
-        "edk2-shell",
-        "inetutils",
-        "irqbalance",
-        "lvm2",
-        "memtest86+",
-        "mesa",
-        "mesa-utils",
-        "mkinitcpio-nfs-utils",
-        "mkinitcpio-openswap",
-        "most",
-        "mtools",
-        "nbd",
-        "net-tools",
-        "netctl",
-        "nfs-utils",
-        "nohang",
-        "nss-mdns",
-        "ntfsprogs",
-        "ntp",
-        "pavucontrol",
-        "profile-sync-daemon",
-        "pv",
-        "rsync",
-        "rtl8821cu-morrownr-dkms-git",
-        "sof-firmware",
-        "squashfs-tools",
-        "syslinux",
-        "testdisk",
-        "timelineproject-hg",
-        "usbutils",
-        "wireless_tools",
-        "wpa_supplicant",
-        "xfsprogs",
-        // Fonts
-        "noto-fonts",
-        "noto-fonts-emoji",
-        "noto-fonts-cjk",
-        // Common packages for all desktops
-        "pipewire",
-        "pipewire-pulse",
-        "pipewire-alsa",
-        "pipewire-jack",
-        "wireplumber",
-        "ntfs-3g",
-        "vi",
-        "eza",
-        "pocl", // Hashcat dependency
-        "ananicy",
-        "goofcord-bin",
-        "asciinema",
-        "bashtop",
-        "bat",
-        "bc",
-        "bless",
-        "chatgpt-desktop-bin",
-        "cmatrix",
-        "cowsay",
-        "cron",
-        "cyberchef-electron",
-        "downgrade",
-        "eog",
-        "espeakup",
-        "figlet",
-        "figlet-fonts",
-        "file-roller",
-        "fortune-mod",
-        "git",
-        "gparted",
-        "grub-customizer",
-        "gtk-engine-murrine",
-        "gvfs-gphoto2",
-        "gvfs-mtp",
-        "hexedit",
-        //"hw-probe, //HW probing
-        "imagemagick",
-        "jq",
-        "lib32-glibc",
-        "lolcat",
-        "lsd",
-        "mtpfs",
-        "nano-syntax-highlighting",
-        "nautilus",
-        "ncdu",
-        "networkmanager-openvpn",
-        "nyancat",
-        "octopi",
-        "onionshare",
-        "openbsd-netcat",
-        "openvpn",
-        "orca",
-        "p7zip",
-        "paru",
-        "pfetch",
-        "polkit",
-        "python-pywhat",
-        "reflector",
-        "sl",
-        //"smartmontools", //hw-probe deps
-        "superbfetch-git",
-        "textart",
-        "tidy",
-        "tk",
-        "toilet-fonts",
-        "torbrowser-launcher",
-        "tree",
-        "ufw",
-        "unzip",
-        "vnstat",
-        "wget",
-        "which",
-        "xclip",
-        "xmlstarlet",
-        "zoxide",
-        // Athena
-        "athena-cyber-hub",
-        "athena-neofetch-config",
-        "athena-nvim-config",
-        "athena-powershell-config",
-        "athena-config",
-        "athena-theme-tweak",
-        "athena-tmux-config",
-        "athena-vim-config",
-        "athena-vscodium-themes",
-        "athena-welcome",
-        "htb-toolkit",
-        "nist-feed",
-    ]);
+    files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
 
     hardware::set_cores();
-    hardware::cpu_gpu_check(kernel_to_install);
-    hardware::virt_check();
+
+    // Enable the necessary services after installation
+    for service in virt_services {
+        enable_service(service);
+    }
+
+    // After the packages are installed, apply sed commands for virt service
+    for (description, args) in virt_params {
+        exec_eval(
+            exec("sed", args),  // Apply each file change via `sed`
+            &description,       // Log the description of the file change
+        );
+    }
 
     exec_eval(
         exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
@@ -259,7 +131,7 @@ pub fn preset_process() {
     );
 }
 
-fn initialize_keyrings() {
+fn init_keyrings_mirrors() {
     info!("Upgrade keyrings on the host");
     exec_eval(
         exec(
@@ -289,6 +161,7 @@ fn initialize_keyrings() {
         ),
         "Populate keys",
     );
+    info!("Getting fastest Arch and Chaotic AUR mirrors for your location");
     exec_eval(
         exec( // It is done on the live system
             "rate-mirrors",
@@ -302,14 +175,11 @@ fn initialize_keyrings() {
                 String::from("arch"),
             ],
         ),
-        "Set fastest Arch Linux mirrors",
+        "Set fastest Arch Linux mirrors on the host",
     );
-}
-
-fn fastest_mirrors() {
-    info!("Getting fastest Chaotic AUR mirrors for your location");
+    
     exec_eval(
-        exec_chroot(
+        exec(
             "rate-mirrors",
             vec![
                 String::from("--concurrency"),
@@ -321,7 +191,7 @@ fn fastest_mirrors() {
                 String::from("chaotic-aur"),
             ],
         ),
-        "Set fastest mirrors from Chaotic AUR",
+        "Set fastest mirrors from Chaotic AUR on the target system",
     );
 }
 
@@ -388,19 +258,16 @@ fn setting_grub_parameters(encrypt_check: bool) {
     );
 }
 
-pub fn install_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
-    install(PackageManager::Pacman, vec![
-        "grub",
-        "efibootmgr",
-        "os-prober",
-        "athena-grub-theme",
-    ]);
-    let efidir = std::path::Path::new("/mnt").join(efidir);
+pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
+
+    let efidir = std::path::Path::new("/mnt").join(&efidir);
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {}", efi_str);
+    
     if !std::path::Path::new(&format!("/mnt{efi_str}")).exists() {
         crash(format!("The efidir {efidir:?} doesn't exist"), 1);
     }
+    
     exec_eval(
         exec_chroot(
             "grub-install",
@@ -413,6 +280,7 @@ pub fn install_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
         ),
         "install grub as efi with --removable",
     );
+
     exec_eval(
         exec_chroot(
             "grub-install",
@@ -424,7 +292,9 @@ pub fn install_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
         ),
         "install grub as efi without --removable",
     );
+
     setting_grub_parameters(encrypt_check);
+    
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -434,25 +304,25 @@ pub fn install_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     );
 }
 
-pub fn install_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
-    install(PackageManager::Pacman, vec![
-        "grub",
-        "os-prober",
-        "athena-grub-theme",
-    ]);
+pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
+
     if !device.exists() {
         crash(format!("The device {device:?} does not exist"), 1);
     }
-    let device = device.to_string_lossy().to_string();
-    info!("Legacy bootloader installing at {}", device);
+
+    let device_str = device.to_string_lossy().to_string();
+    info!("Legacy bootloader installing at {}", device_str);
+
     exec_eval(
         exec_chroot(
             "grub-install",
-            vec![String::from("--target=i386-pc"), device],
+            vec![String::from("--target=i386-pc"), device_str],
         ),
         "install grub as legacy",
     );
+
     setting_grub_parameters(encrypt_check);
+    
     exec_eval(
         exec_chroot(
             "grub-mkconfig",
@@ -515,8 +385,7 @@ pub fn setup_snapper() {
 }
 */
 
-pub fn install_flatpak() {
-    install(PackageManager::Pacman, vec!["flatpak"]);
+pub fn configure_flatpak() {
     exec_eval(
         exec_chroot(
             "flatpak",
@@ -531,32 +400,7 @@ pub fn install_flatpak() {
     )
 }
 
-pub fn install_cuda() {
-    install(PackageManager::Pacman, vec!["cuda"]);
-}
-
-pub fn install_spotify() {
-    install(PackageManager::Pacman, vec!["spotify"]);
-}
-
-pub fn install_cherrytree() {
-    install(PackageManager::Pacman, vec!["cherrytree"]);
-}
-
-pub fn install_flameshot() {
-    install(PackageManager::Pacman, vec!["flameshot"]);
-}
-
-pub fn install_busybox() {
-    install(PackageManager::Pacman, vec!["busybox"]);
-}
-
-pub fn install_toybox() {
-    install(PackageManager::Pacman, vec!["toybox"]);
-}
-
-pub fn install_zram() {
-    install(PackageManager::Pacman, vec!["zram-generator"]);
+pub fn configure_zram() {
     files::create_file("/mnt/etc/systemd/zram-generator.conf");
     files_eval(
         files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\nswap-priority = 100\nfs-type = swap"),
