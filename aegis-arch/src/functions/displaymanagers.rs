@@ -40,16 +40,6 @@ fn install_sddm() -> Vec<&'static str> {
         "sddm-astronaut-theme",
     ];
 
-    // File creation and configuration can still happen here if needed
-    files::create_file("/mnt/etc/sddm.conf");
-    files_eval(
-        files::append_file(
-            "/mnt/etc/sddm.conf",
-            "[Theme]\nCurrent=sddm-astronaut-theme",
-        ),
-        "Add astronaut theme",
-    );
-
     packages
 }
 
