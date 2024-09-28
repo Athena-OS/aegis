@@ -1,5 +1,9 @@
 use shared::args::TerminalSetup;
 use shared::debug;
+use shared::exec::exec;
+use shared::files::sed_file;
+use shared::returncode_eval::exec_eval;
+use shared::returncode_eval::files_eval;
 
 pub fn install_terminal_setup(terminal_setup: TerminalSetup) -> Vec<&'static str> {
     debug!("Selecting {:?}", terminal_setup);
@@ -87,4 +91,39 @@ fn install_xterm() -> Vec<&'static str> {
     vec![
         "xterm",
     ]
+}
+
+/**********************************/
+
+pub fn configure_terminal(term: String, desktop: &str) {
+    exec_eval(
+        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
+            "sed",
+            vec![
+                String::from("-i"),
+                String::from("-e"),
+                format!("s/^TERMINAL_EXEC=.*/TERMINAL_EXEC=\"{}\"/g", &(term.clone()+" "+if term == "gnome-terminal" { "--" } else { "-e" })),
+                String::from("/mnt/usr/bin/shell-rocket"),
+            ],
+        ),
+        "Set terminal on shell rocket",
+    );
+    files_eval(
+        sed_file(
+            "/mnt/usr/share/applications/shell.desktop",
+            "alacritty",
+            &term,
+        ),
+        "Set terminal call on shell.desktop file",
+    );
+    if desktop.contains("gnome") {
+        files_eval(
+            sed_file(
+                "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
+                "alacritty",
+                &term,
+            ),
+            "Set terminal call on dconf file",
+        );
+    }
 }

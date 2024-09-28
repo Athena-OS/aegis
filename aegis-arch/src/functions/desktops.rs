@@ -1,7 +1,6 @@
 use shared::args::DesktopSetup;
 use shared::debug;
 use shared::files;
-use shared::returncode_eval::files_eval;
 
 pub fn install_desktop_setup(desktop_setup: DesktopSetup) -> Vec<&'static str> {
     debug!("Selecting {:?}", desktop_setup);
@@ -209,6 +208,20 @@ fn install_onyx() -> Vec<&'static str> {
     ]
 }
 
+/**********************************/
+
+pub fn configure_gnome() {
+    disable_xsession("gnome.desktop");
+    disable_xsession("gnome-classic.desktop");
+    disable_xsession("gnome-classic-xorg.desktop");
+    disable_wsession("gnome.desktop");
+    disable_wsession("gnome-wayland.desktop");
+    disable_wsession("gnome-classic.desktop");
+    disable_wsession("gnome-classic-wayland.desktop");
+}
+
+/**********************************/
+
 pub fn disable_xsession(session: &str) {
     debug!("Disabling {}", session);
     files::rename_file(&("/mnt/usr/share/xsessions/".to_owned()+session), &("/mnt/usr/share/xsessions/".to_owned()+session+".disable"));
@@ -217,37 +230,4 @@ pub fn disable_xsession(session: &str) {
 pub fn disable_wsession(session: &str) {
     debug!("Disabling {}", session);
     files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
-}
-
-pub fn lightdm_set_session(setdesktop: &str) {
-    if setdesktop.contains("gnome") {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=gnome-xorg",
-            ),
-            "Apply GNOME User Session on LightDM",
-        );
-    }
-    if setdesktop.contains("xfce") {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=xfce",
-            ),
-            "Apply XFCE User Session on LightDM",
-        );
-    }
-    if setdesktop == "hyprland" {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/lightdm/lightdm.conf",
-                "#user-session=.*",
-                "user-session=Hyprland",
-            ),
-            "Apply Hyprland User Session on LightDM",
-        );
-    }
 }

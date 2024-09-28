@@ -1,14 +1,10 @@
 use crate::internal::install::install;
-use crate::internal::services::enable_service;
 //use crate::internal::secure;
 use crate::functions::*;
 use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PackageManager, PartitionMode};
 use shared::{debug, info};
-use shared::exec::exec;
 use shared::files;
-use shared::files::sed_file;
 use shared::partition;
-use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 use shared::serde::{self, Deserialize, Serialize};
 use shared::serde_json;
@@ -272,7 +268,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
             crash(format!("Parse config file {configpath:?}  ERROR: {}", e), 1);
         }
     }
-    //////
+    /*    PARTITIONING    */
     let config: Config = config.unwrap();
     info!("Block device to use : {}", config.partition.device);
     info!("Partitioning mode : {:?}", config.partition.mode);
@@ -340,7 +336,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /**************************/
 
     /*     DISPLAY MANAGER    */
-    info!("Selecting display manager : {:?}", config.displaymanager);
+    info!("Selected display manager : {:?}", config.displaymanager);
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Gdm)),
         "lightdm neon" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::LightDMNeon)),
@@ -415,7 +411,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /**************************/
     println!();
     /*         THEME         */
-    info!("Selecting theme : {:?}", config.theme);
+    info!("Selected theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
         "akame" => package_set.extend(themes::install_theme_setup(ThemeSetup::Akame)),
         "cyborg" => package_set.extend(themes::install_theme_setup(ThemeSetup::Cyborg)),
@@ -460,7 +456,8 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /********** CONFIGURATION **********/
 
     base::genfstab();
-    println!();
+
+    /*    BOOTLOADER CONFIG     */
     info!("Configuring bootloader : {}", config.bootloader.r#type);
     info!("Configuring bootloader to : {}", config.bootloader.location);
     if config.bootloader.r#type == "grub-efi" {
@@ -468,7 +465,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     } else if config.bootloader.r#type == "grub-legacy" {
         base::configure_bootloader_legacy(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     }
+    /**************************/
     println!();
+    /*         LOCALES        */
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locales : {:?}", config.locale.locale);
     locale::set_locale(config.locale.locale.join(" "));
@@ -480,108 +479,48 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         });
     info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
+    /**************************/
     info!("Processing all presets.");
     base::preset_process();
     println!();
     info!("Hostname : {}", config.networking.hostname);
     network::set_hostname(config.networking.hostname.as_str());
     network::create_hosts();
-    info!("Enabling ipv6 : {}", config.networking.ipv6);
-    if config.networking.ipv6 {
-        network::enable_ipv6();
-    }
+    /**************************/
     println!();
-    if config.zramd {
-        info!("Enabling zramd : {}", config.zramd);
-        base::configure_zram();
-    }
-    println!();
-    /*info!("Hardening system : {}", config.hardened);
-    if config.hardened {
-        secure::secure_password_config();
-        secure::secure_ssh_config();
-    }
-    println!();*/
+    /*     DESKTOP CONFIG     */
     info!("Configuring desktop : {:?}", config.desktop);
     match config.desktop.to_lowercase().as_str() {
-        "gnome" => {
-            desktops::disable_xsession("gnome.desktop");
-            desktops::disable_xsession("gnome-classic.desktop");
-            desktops::disable_xsession("gnome-classic-xorg.desktop");
-            desktops::disable_wsession("gnome.desktop");
-            desktops::disable_wsession("gnome-wayland.desktop");
-            desktops::disable_wsession("gnome-classic.desktop");
-            desktops::disable_wsession("gnome-classic-wayland.desktop");
-        },
+        "gnome" => desktops::configure_gnome(),
         _ => info!("No desktop configuration needed."),
     }
+    /**************************/
     println!();
+    /* DISPLAY MANAGER CONFIG */
     info!("Configuring display manager : {:?}", config.displaymanager);
     match config.displaymanager.to_lowercase().as_str() {
-        "gdm" => {
-            if ! config.desktop.contains("gnome") {
-                files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
-                desktops::disable_xsession("gnome.desktop");
-                desktops::disable_xsession("gnome-xorg.desktop");
-                desktops::disable_wsession("gnome.desktop");
-                desktops::disable_wsession("gnome-wayland.desktop");
-                // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
-            }
-            else {
-                files_eval(
-                    files::sed_file(
-                        "/mnt/etc/gdm/custom.conf",
-                        ".*WaylandEnable=.*",
-                        "WaylandEnable=false",
-                    ),
-                    "Disable Wayland in GNOME",
-                );
-            }
-            enable_service("gdm");
-        },
-        "lightdm neon" => {
-            desktops::lightdm_set_session(&config.desktop);
-            enable_service("lightdm");
-        },
-        "sddm" => enable_service("sddm"),
+        "gdm" => displaymanagers::configure_gdm(&config.desktop),
+        "lightdm neon" => displaymanagers::configure_lightdm_neon(&config.desktop),
+        "sddm" => displaymanagers::configure_sddm(),
         _ => info!("No display manager configuration needed."),
     }
-
+    /**************************/
     println!();
+    /*     BROWSER CONFIG     */
     info!("Configuring browser : {:?}", config.browser);
-    /*if let Some(browser) = &config.browser {
-        browsers::install_browser_setup(*browser);
-    }*/
     match config.browser.to_lowercase().as_str() {
-        "firefox" => {
-            browsers::install_browser_setup(BrowserSetup::Firefox);
-            if config.desktop.contains("gnome") {
-                files_eval(
-                    files::sed_file(
-                        "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                        "\\{\\\\\"name\\\\\":\\\\\"Brave\\\\\",\\\\\"icon\\\\\":\\\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\\\",\\\\\"type\\\\\":\\\\\"Command\\\\\",\\\\\"data\\\\\":\\{\\\\\"command\\\\\":\\\\\"brave\\\\\"\\},\\\\\"angle\\\\\":-1\\}",
-                        "{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}",
-                    ),
-                    "Apply Browser info on dconf shell",
-                );
-            }
-        },
-        "brave" => {
-            browsers::install_browser_setup(BrowserSetup::Brave);
-            if config.desktop.contains("gnome") {
-                files_eval(
-                    files::sed_file(
-                        "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                        "\\{\\\\\"name\\\\\":\\\\\"Firefox ESR\\\\\",\\\\\"icon\\\\\":\\\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\\\",\\\\\"type\\\\\":\\\\\"Command\\\\\",\\\\\"data\\\\\":\\{\\\\\"command\\\\\":\\\\\"firefox-esr\\\\\"\\},\\\\\"angle\\\\\":-1\\}",
-                        "{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}",
-                    ),
-                    "Apply Browser info on dconf shell",
-                );
-            }
-        }
+        "firefox" => browsers::configure_firefox(&config.desktop),
+        "brave" => browsers::configure_brave(&config.desktop),
         _ => info!("No browser configuration needed."),
     }
+    /**************************/
     println!();
+    /*    TERMINAL CONFIG    */
+    info!("Configuring terminal : {}", config.terminal);
+    terminals::configure_terminal(terminal_choice, &config.desktop);
+    /**************************/
+    println!();
+    /*      THEME CONFIG     */
     info!("Configuring theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
         "akame" => themes::configure_akame(),
@@ -593,101 +532,53 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "temple" => themes::configure_temple(),
         _ => info!("No theme configuration needed."),
     }
+    /**************************/
     println!();
-    //////////
-    exec_eval(
-        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-            "sed",
-            vec![
-                String::from("-i"),
-                String::from("-e"),
-                format!("s/^TERMINAL_EXEC=.*/TERMINAL_EXEC=\"{}\"/g", &(terminal_choice.clone()+" "+if terminal_choice == "gnome-terminal" { "--" } else { "-e" })),
-                String::from("/mnt/usr/bin/shell-rocket"),
-            ],
-        ),
-        "Set terminal on shell rocket",
-    );
-    files_eval(
-        sed_file(
-            "/mnt/usr/share/applications/shell.desktop",
-            "alacritty",
-            &terminal_choice,
-        ),
-        "Set terminal call on shell.desktop file",
-    );
-    if config.desktop.contains("gnome") {
-        files_eval(
-            sed_file(
-                "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                "alacritty",
-                &terminal_choice,
-            ),
-            "Set terminal call on dconf file",
-        );
-    }
-    // Misc Settings
-    println!();
+
     /*info!("Installing snapper : {}", config.snapper);
     if config.snapper {
         base::setup_snapper();
-    }
-    println!();*/
-    if config.flatpak {
-        info!("Configuring flatpak : {}", config.flatpak);
-        base::configure_flatpak();
-    }
+    }*/
+    
+    /*    EXTRA PACKAGES    */
     info!("Extra packages : {:?}", config.extra_packages);
     let mut extra_packages: Vec<&str> = Vec::new();
     for i in 0..config.extra_packages.len() {
         extra_packages.push(config.extra_packages[i].as_str());
     }
     install(PackageManager::Pacman, extra_packages);
+    /**************************/
     println!();
-    info!("Enabling system services...");
-    base::enable_system_services();
-    println!("---------");
-    // SHELL
+    /*     SHELL CONFIG     */
     // The shell of the first created user will be applied on shell.desktop and on SHELL variable
     match config.users[0].shell.to_lowercase().as_str() {
-        "fish" => {
-            files_eval(
-                files::sed_file(
-                    "/mnt/usr/share/applications/shell.desktop",
-                    "Bash",
-                    "Fish",
-                ),
-                "Apply FISH shell on .desktop shell file",
-            );
-            files_eval(
-                files::sed_file(
-                    "/mnt/etc/skel/.bashrc",
-                    "export SHELL=.*",
-                    r"export SHELL=$(which fish)",
-                ),
-                "Apply FISH shell",
-            );
-        },
-        "zsh" => {
-            files_eval(
-                files::sed_file(
-                    "/mnt/usr/share/applications/shell.desktop",
-                    "Bash",
-                    "Zsh",
-                ),
-                "Apply ZSH shell on .desktop shell file",
-            );
-            files_eval(
-                files::sed_file(
-                    "/mnt/etc/skel/.bashrc",
-                    "export SHELL=.*",
-                    r"export SHELL=$(which zsh)",
-                ),
-                "Apply ZSH shell",
-            );
-        },
+        "fish" => shells::configure_fish(),
+        "zsh" => shells::configure_zsh(),
         _ => info!("No shell configuration needed."),
     }
-    // Users
+    /**************************/
+    println!();
+    /*          MISC         */
+    info!("Enabling ipv6 : {}", config.networking.ipv6);
+    if config.networking.ipv6 {
+        network::enable_ipv6();
+    }
+    if config.zramd {
+        info!("Enabling zramd : {}", config.zramd);
+        base::configure_zram();
+    }
+    if config.flatpak {
+        info!("Configuring flatpak : {}", config.flatpak);
+        base::configure_flatpak();
+    }
+    /*info!("Hardening system : {}", config.hardened);
+    if config.hardened {
+        secure::secure_password_config();
+        secure::secure_ssh_config();
+    }*/
+    /**************************/
+    println!();
+    /*      USER CONFIG      */
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
         //info!("Setting user password : {}", config.users[i].password);
@@ -701,11 +592,15 @@ pub fn read_config(configpath: PathBuf) -> i32 {
             false,
             "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
         );
-        println!("---------");
     }
-    println!();
     //info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
+    /**************************/
+    println!();
+    /*    ENABLE SERVICES    */
+    info!("Enabling system services...");
+    base::enable_system_services();
+    /**************************/
     println!();
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");

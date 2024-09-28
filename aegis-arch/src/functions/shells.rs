@@ -1,5 +1,7 @@
 use shared::args::ShellSetup;
 use shared::debug;
+use shared::files;
+use shared::returncode_eval::files_eval;
 
 pub fn install_shell_setup(shell_setup: ShellSetup) -> Vec<&'static str> {
     debug!("Selecting {:?}", shell_setup);
@@ -33,4 +35,44 @@ fn install_zsh() -> Vec<&'static str> {
     vec![
         "athena-zsh",
     ]
+}
+
+/**********************************/
+
+pub fn configure_fish() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/applications/shell.desktop",
+            "Bash",
+            "Fish",
+        ),
+        "Apply FISH shell on .desktop shell file",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.bashrc",
+            "export SHELL=.*",
+            r"export SHELL=$(which fish)",
+        ),
+        "Apply FISH shell",
+    );
+}
+
+pub fn configure_zsh() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/applications/shell.desktop",
+            "Bash",
+            "Zsh",
+        ),
+        "Apply ZSH shell on .desktop shell file",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.bashrc",
+            "export SHELL=.*",
+            r"export SHELL=$(which zsh)",
+        ),
+        "Apply ZSH shell",
+    );
 }
