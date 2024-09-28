@@ -226,8 +226,6 @@ pub fn install_packages(kernel: String) {
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
     files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
     files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
-    // Copy the content of system-connections to the target system in order to keep active WiFi connection even after the installation
-    files::copy_all_files("/etc/NetworkManager/system-connections", "/mnt/etc/NetworkManager/system-connections");
 
     files_eval(
         files::sed_file(

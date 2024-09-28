@@ -2,7 +2,6 @@ use crate::log::{info};
 use crate::strings::crash;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write, Error, ErrorKind};
-use std::path::Path;
 use regex::Regex;
 
 pub fn create_file(path: &str) {
@@ -27,44 +26,6 @@ pub fn copy_file(path: &str, destpath: &str) {
             crash(
                 format!("Copy {} to {}: Failed with error {}", path, destpath, e),
                 1,
-            );
-        }
-    }
-}
-
-// Copy recusrively all files from the given source directory to the specified target directory
-pub fn copy_all_files(source_dir: &str, target_dir: &str) {
-    // Convert &str paths to Path
-    let source_path = Path::new(source_dir);
-    let target_path = Path::new(target_dir);
-
-    // Create the target directory if it doesn't exist
-    if let Err(err) = fs::create_dir_all(target_path) {
-        println!("Error creating target directory: {}", err);
-        return;
-    }
-
-    // Iterate over the entries in the source directory
-    for entry in fs::read_dir(source_path).unwrap() {
-        let entry = entry.unwrap();
-        let source_entry_path = entry.path();
-
-        // Construct the target path by appending the file/directory name to the target directory
-        let target_entry_path = target_path.join(entry.file_name());
-
-        // Check if the entry is a file or a directory
-        if entry.file_type().unwrap().is_file() {
-            // If it's a file, copy it to the target directory
-            if let Err(err) = fs::copy(&source_entry_path, &target_entry_path) {
-                println!("Error copying file: {}", err);
-            } else {
-                println!("File copied successfully: {:?}", target_entry_path);
-            }
-        } else if entry.file_type().unwrap().is_dir() {
-            // If it's a directory, recursively copy its contents
-            copy_all_files(
-                &source_entry_path.to_string_lossy(),
-                &target_entry_path.to_string_lossy(),
             );
         }
     }
