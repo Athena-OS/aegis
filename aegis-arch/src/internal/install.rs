@@ -109,7 +109,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                         }
                     }
                 }
-                else if line.contains("signature from") && line.contains("is invalid") {
+                else if (line.contains("signature from") && line.contains("is invalid")) || line.contains("is corrupted (invalid or corrupted package (checksum))") {
                     let package_name = extract_package_name(&line);
                     let repository = get_repository_name(&package_name);
                     println!("Package {} found in repository: {}", package_name, repository);
@@ -142,7 +142,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                                 );
                             } else {
                                 // Update the retry flag within the Mutex
-                                info!("Detected invalid signature key in mirror: {}. Retrying by a new one...", mirror_name);
+                                info!("Detected issue on mirror: {}. Retrying by a new one...", mirror_name);
                                 let mut retry = retry_clone.lock().unwrap();
                                 *retry = true;
                                 //info!("[ DEBUG ] Invalid signature key in mirror retry {}", *retry);
