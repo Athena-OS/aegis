@@ -109,7 +109,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                         }
                     }
                 }
-                else if (line.contains("signature from") && line.contains("is invalid")) || line.contains("is corrupted (invalid or corrupted package (checksum))") {
+                else if (line.contains("signature from") && line.contains("is invalid")) || line.contains("invalid or corrupted package") {
                     let package_name = extract_package_name(&line);
                     let repository = get_repository_name(&package_name);
                     println!("Package {} found in repository: {}", package_name, repository);
