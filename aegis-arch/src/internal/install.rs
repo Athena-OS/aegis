@@ -115,7 +115,7 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                         mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
                     }
                 }
-                info!("line: {}; package manager: {}; package_name: {}; repository: {}; mirrorlist_filename: {}");
+                info!("line: {}; package manager: {}; package_name: {}; repository: {}; mirrorlist_filename: {}", line, pkgmanager_name, package_name, repository, mirrorlist_filename);
                 match get_first_mirror_name(&mirrorlist_filename) {
                     Ok(mirror_name) => {
                         if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
