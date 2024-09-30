@@ -9,5 +9,6 @@ pub mod strings;
 pub use clap;
 pub use human_panic;
 pub use log::{self, *};
+pub use regex;
 pub use serde;
 pub use serde_json::{self, *};

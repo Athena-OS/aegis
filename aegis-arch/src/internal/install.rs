@@ -1,3 +1,4 @@
+use shared::regex::Regex;
 use shared::args::PackageManager;
 use shared::{debug, error, info};
 use std::fs::{self, File, OpenOptions};
@@ -115,7 +116,6 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                         mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
                     }
                 }
-                info!("line: {}; package manager: {}; package_name: {}; repository: {}; mirrorlist_filename: {}", line, pkgmanager_name, package_name, repository, mirrorlist_filename);
                 match get_first_mirror_name(&mirrorlist_filename) {
                     Ok(mirror_name) => {
                         if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
@@ -235,18 +235,24 @@ fn get_first_mirror_name(filename: &str) -> Result<String, io::Error> {
     Err(io::Error::new(io::ErrorKind::NotFound, "Mirror not found"))
 }
 
-fn extract_package_name(input: &str) -> String {
-    let error_prefix = "error:";
-    let colon = ':';
+fn extract_package_name(line: &str) -> String {
+    // Regular expression to match both patterns: 
+    // - /pkg/<package-name>-version.pkg.tar (file path)
+    // - error: <package-name>: invalid key found
+    let re = Regex::new(r"(?:/pkg/|error:\s)([a-zA-Z0-9\-_]+)").unwrap();
 
-    if let Some(error_idx) = input.find(error_prefix) {
-        let remaining_text = &input[error_idx + error_prefix.len()..];
-        if let Some(colon_idx) = remaining_text.find(colon) {
-            let package_name = &remaining_text[..colon_idx].trim();
+    // Apply the regex to the input line
+    if let Some(captures) = re.captures(line) {
+        let package_with_version = captures[1].to_string();
+        
+        // Split the package name by "-" and remove the version part (anything after the last "-")
+        if let Some((package_name, _version)) = package_with_version.rsplit_once('-') {
             return package_name.to_string();
         }
+
+        return package_with_version; // If no version is found, return the entire capture
     }
-    String::new() // Return an empty string if package name is not found
+    String::new()
 }
 
 fn get_repository_name(package_name: &str) -> String {
