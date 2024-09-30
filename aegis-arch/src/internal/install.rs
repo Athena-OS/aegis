@@ -97,7 +97,7 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                         }
                     }
                 }
-            } else if line.contains("invalid or corrupted package") || line.contains("invalid key") {
+            } else if (line.contains("File") && line.contains("is corrupted")) || line.contains("invalid key") {
                 let package_name = extract_package_name(&line);
                 let repository = get_repository_name(&package_name);
                 let mut mirrorlist_filename = String::new();
