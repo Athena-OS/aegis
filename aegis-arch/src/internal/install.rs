@@ -1,5 +1,5 @@
 use shared::args::PackageManager;
-use shared::{debug, error, info, warn};
+use shared::{debug, error, info};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
@@ -7,18 +7,16 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
-
     // Create an Arc<Mutex<bool>> for the retry flag
-    let mut retry = Arc::new(Mutex::new(true)); //Just to enter the first time in the while loop
-    
+    let mut retry = Arc::new(Mutex::new(true)); // Just to enter the first time in the while loop
+
     let mut retry_counter = 0; // Initialize retry counter
-    while *retry.lock().unwrap() && retry_counter < 15 { // retry_counter should be the number of mirrors in mirrorlist
+    while *retry.lock().unwrap() && retry_counter < 15 {
         retry = Arc::new(Mutex::new(false));
-        let retry_clone = Arc::clone(&retry); // Clone for use in the thread. I need to do this because normally I cannot define a variable above and use it inside a threadzz
-        //info!("[ DEBUG ] Beginning retry {}", *retry.lock().unwrap());
+        let retry_clone = Arc::clone(&retry); // Clone for use in the thread
         let mut pkgmanager_cmd = Command::new("true")
             .spawn()
-            .expect("Failed to initiialize by 'true'"); // Note that the Command type below will spawn child process, so the return type is Child, not Command. It means we need to initialize a Child type element, and we can do by .spawn().expect() over the Command type. 'true' in bash is like a NOP command
+            .expect("Failed to initialize by 'true'"); // 'true' in bash is like a NOP command
         let mut pkgmanager_name = String::new();
         match pkgmanager {
             PackageManager::Pacman => {
@@ -51,123 +49,89 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         let stdout_handle = pkgmanager_cmd.stdout.take().unwrap();
         let stderr_handle = pkgmanager_cmd.stderr.take().unwrap();
 
-        let stdout_thread = thread::spawn(move || {
-            let reader = BufReader::new(stdout_handle);
-            for line in reader.lines() {
-                let line = line.expect("Failed to read stdout");
-                info!("{}", line);
-            }
-        });
+        // Wrap the stdout and stderr in BufReader to satisfy the BufRead trait
+        let stdout_thread = spawn_log_thread(BufReader::new(stdout_handle), retry_clone.clone(), &pkgmanager_name);
+        let stderr_thread = spawn_log_thread(BufReader::new(stderr_handle), retry_clone.clone(), &pkgmanager_name);
 
         let exit_status = pkgmanager_cmd.wait().expect("Failed to wait for the package manager");
 
-        let stderr_thread = thread::spawn(move || {
-            let reader = BufReader::new(stderr_handle);
-            for line in reader.lines() {
-                if *retry_clone.lock().unwrap() {
-                    break; // Exit the for loop early if *retry is true. It means we updated the mirrorlist, we can proceed to retry the install command
-                }
-                let line = line.expect("Failed to read stderr");
-                let exit_code = exit_status.code().unwrap_or(-1);
-                if exit_code == 0 {
-                    warn!(
-                        "{} warn (exit code {}): {}",
-                        pkgmanager_name,
-                        exit_code,
-                        line
-                    );
-                }
-                else {
-                    error!(
-                        "{} err (exit code {}): {}",
-                        pkgmanager_name,
-                        exit_code,
-                        line
-                    );
-                }
-
-                // Check if the error message contains "failed retrieving file" and "mirror"
-                if line.contains("failed retrieving file") && line.contains("from") {
-                    // Extract the mirror name from the error message
-                    if let Some(mirror_name) = extract_mirror_name(&line) {
-                        // Check if the mirror is in one of the mirrorlist files
-                        if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, &pkgmanager_name) {
-                            // Move the "Server" line within the mirrorlist file
-                            if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
-                                error!(
-                                    "Failed to move 'Server' line in {}: {}",
-                                    mirrorlist_file,
-                                    err
-                                );
-                            } else {
-                                // Update the retry flag within the Mutex
-                                info!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
-                                let mut retry = retry_clone.lock().unwrap();
-                                *retry = true;
-                                //info!("[ DEBUG ] Unstable mirror retry {}", *retry);
-                            }
-                        }
-                    }
-                }
-                else if (line.contains("signature from") && line.contains("is invalid")) || line.contains("invalid or corrupted package") {
-                    let package_name = extract_package_name(&line);
-                    let repository = get_repository_name(&package_name);
-                    println!("Package {} found in repository: {}", package_name, repository);
-                    let mut mirrorlist_filename = String::new();
-                    if pkgmanager_name == "pacstrap" {
-                        if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
-                            mirrorlist_filename = String::from("/etc/pacman.d/mirrorlist");
-                        }
-                        if repository == "chaotic-aur" {
-                            mirrorlist_filename = String::from("/etc/pacman.d/chaotic-mirrorlist");
-                        }
-                    }
-                    else if pkgmanager_name == "pacman" {
-                        if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
-                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/mirrorlist");
-                        }
-                        if repository == "chaotic-aur" {
-                            mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
-                        }
-                    }
-                    
-                    match get_first_mirror_name(&mirrorlist_filename) {
-                        Ok(mirror_name) => {
-                            println!("Mirror Name: {}", mirror_name);
-                            if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
-                                error!(
-                                    "Failed to move 'Server' line in {}: {}",
-                                    mirrorlist_filename,
-                                    err
-                                );
-                            } else {
-                                // Update the retry flag within the Mutex
-                                info!("Detected issue on mirror: {}. Retrying by a new one...", mirror_name);
-                                let mut retry = retry_clone.lock().unwrap();
-                                *retry = true;
-                                //info!("[ DEBUG ] Invalid signature key in mirror retry {}", *retry);
-                            }
-                        }
-                        Err(err) => eprintln!("Error: {}", err),
-                    }
-                }
-            }
-        });
-
-        // Wait for the stdout and stderr threads to finish
         stdout_thread.join().expect("stdout thread panicked");
         stderr_thread.join().expect("stderr thread panicked");
 
         if !exit_status.success() {
-            // Handle the error here, e.g., by logging it
             error!("The package manager failed with exit code: {}", exit_status.code().unwrap_or(-1));
         }
 
-        // Increment the retry counter
         retry_counter += 1;
-
-        //info!("[ DEBUG ] End retry {}", *retry.lock().unwrap());
     }
+}
+
+// Helper function to handle both stdout and stderr
+fn spawn_log_thread<R: BufRead + Send + 'static>(
+    reader_handle: R,
+    retry_clone: Arc<Mutex<bool>>,
+    pkgmanager_name: &str,
+) -> thread::JoinHandle<()> {
+    let pkgmanager_name = pkgmanager_name.to_string();
+    thread::spawn(move || {
+        let reader = BufReader::new(reader_handle);
+        for line in reader.lines() {
+            let line = line.expect("Failed to read line");
+            info!("{}", line);
+
+            // Check if the retry flag is already set
+            if *retry_clone.lock().unwrap() {
+                break; // Exit the loop early if *retry is true
+            }
+
+            // Error handling logic
+            if line.contains("failed retrieving file") && line.contains("from") {
+                if let Some(mirror_name) = extract_mirror_name(&line) {
+                    if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, &pkgmanager_name) {
+                        if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
+                            error!("Failed to move 'Server' line in {}: {}", mirrorlist_file, err);
+                        } else {
+                            info!("Detected unstable mirror: {}. Retrying by a new one...", mirror_name);
+                            let mut retry = retry_clone.lock().unwrap();
+                            *retry = true;
+                        }
+                    }
+                }
+            } else if line.contains("invalid or corrupted package") || line.contains("invalid key") {
+                let package_name = extract_package_name(&line);
+                let repository = get_repository_name(&package_name);
+                let mut mirrorlist_filename = String::new();
+                if pkgmanager_name == "pacstrap" {
+                    if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
+                        mirrorlist_filename = String::from("/etc/pacman.d/mirrorlist");
+                    }
+                    if repository == "chaotic-aur" {
+                        mirrorlist_filename = String::from("/etc/pacman.d/chaotic-mirrorlist");
+                    }
+                } else if pkgmanager_name == "pacman" {
+                    if repository == "core" || repository == "extra" || repository == "community" || repository == "multilib" {
+                        mirrorlist_filename = String::from("/mnt/etc/pacman.d/mirrorlist");
+                    }
+                    if repository == "chaotic-aur" {
+                        mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
+                    }
+                }
+
+                match get_first_mirror_name(&mirrorlist_filename) {
+                    Ok(mirror_name) => {
+                        if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
+                            error!("Failed to move 'Server' line in {}: {}", mirrorlist_filename, err);
+                        } else {
+                            info!("Detected issue on mirror: {}. Retrying by a new one...", mirror_name);
+                            let mut retry = retry_clone.lock().unwrap();
+                            *retry = true;
+                        }
+                    }
+                    Err(err) => eprintln!("Error: {}", err),
+                }
+            }
+        }
+    })
 }
 
 // Function to extract the mirror name from the error message
