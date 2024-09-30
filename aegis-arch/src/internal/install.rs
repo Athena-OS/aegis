@@ -83,11 +83,14 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
             if *retry_clone.lock().unwrap() {
                 break; // Exit the loop early if *retry is true
             }
-
+            info!("BOH");
             // Error handling logic
             if line.contains("failed retrieving file") && line.contains("from") {
+                info!("FLAG");
                 if let Some(mirror_name) = extract_mirror_name(&line) {
+                    info!("FLAG1");
                     if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, &pkgmanager_name) {
+                        info!("FLAG2");
                         if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
                             error!("Failed to move 'Server' line in {}: {}", mirrorlist_file, err);
                         } else {
@@ -98,6 +101,7 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                     }
                 }
             } else if line.contains("invalid or corrupted package") || line.contains("invalid key") {
+                info!("BIM");
                 let package_name = extract_package_name(&line);
                 let repository = get_repository_name(&package_name);
                 let mut mirrorlist_filename = String::new();
@@ -116,9 +120,10 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                         mirrorlist_filename = String::from("/mnt/etc/pacman.d/chaotic-mirrorlist");
                     }
                 }
-
+                info!("BIM1");
                 match get_first_mirror_name(&mirrorlist_filename) {
                     Ok(mirror_name) => {
+                        info!("BIM2");
                         if let Err(err) = move_server_line(&mirrorlist_filename, &mirror_name) {
                             error!("Failed to move 'Server' line in {}: {}", mirrorlist_filename, err);
                         } else {
