@@ -151,11 +151,11 @@ pub fn partition(
 ) {
     println!("{:?}", mode);
     match mode {
-        PartitionMode::Auto => {
+        PartitionMode::EraseDisk => {
             if !device.exists() {
                 crash(format!("The device {device:?} doesn't exist"), 1);
             }
-            debug!("automatically partitioning {device:?}");
+            debug!("Erase disk partitioning {device:?}");
             if efi {
                 partition_with_efi(&device, swap, swap_size);
             } else {

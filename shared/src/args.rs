@@ -153,16 +153,16 @@ pub enum Command {
 #[derive(Debug, Args)]
 pub struct PartitionArgs {
     /// The device to partition
-    #[arg(required_if_eq("mode", "PartitionMode::Auto"), required = false)]
+    #[arg(required_if_eq("mode", "PartitionMode::EraseDisk"), required = false)]
     pub device: PathBuf,
 
-    /// If aegis should automatically partition (mode = auto)
+    /// If aegis should automatically partition (mode = erase)
     /// or replace (mode = replace)
     /// or the user manually partitioned it (mode = manual)
     #[arg(value_enum)]
     pub mode: PartitionMode,
 
-    /// Encryption for Auto mode
+    /// Encryption for Erase Disk mode
     #[arg(long)]
     pub encrypt_check: bool,
 
@@ -221,8 +221,8 @@ pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewr
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PartitionMode {
-    #[value(name = "auto")]
-    Auto,
+    #[value(name = "erase")]
+    EraseDisk,
     #[value(name = "replace")]
     Replace,
     #[value(name = "manual")]
