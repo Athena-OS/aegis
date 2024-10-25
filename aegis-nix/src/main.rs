@@ -3,11 +3,13 @@ mod internal;
 use crate::functions::*;
 use shared::args::{BootloaderSubcommand, Command, Cli, UsersSubcommand};
 use shared::clap::Parser;
+use shared::exec::check_if_root;
 use shared::human_panic;
 use shared::logging;
 use shared::partition;
 
 fn main() -> Result<(), i32> {
+    check_if_root();
     human_panic::setup_panic!();
     let cli = Cli::parse();
     println!("verbose: {}", cli.verbose);
