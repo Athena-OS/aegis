@@ -95,6 +95,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "alacritty",
         "alsa-utils",
         "arch-install-scripts",
+        "bind",
         "broadcom-wl-dkms",
         "dhcpcd",
         "dialog",
