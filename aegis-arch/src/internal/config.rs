@@ -184,6 +184,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "nautilus",
         "ncdu",
         "networkmanager-openvpn",
+        "nvchad-git",
         "nyancat",
         "octopi",
         "onionshare",
@@ -216,7 +217,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         // Athena
         "athena-cyber-hub",
         "athena-neofetch-config",
-        "athena-nvim-config",
         "athena-powershell-config",
         "athena-config",
         "athena-theme-tweak",
