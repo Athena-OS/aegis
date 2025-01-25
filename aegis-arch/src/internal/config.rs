@@ -154,7 +154,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "bat",
         "bc",
         "bless",
-        "chatgpt-desktop-bin",
         "cmatrix",
         "cowsay",
         "cron",
