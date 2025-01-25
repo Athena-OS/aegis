@@ -75,6 +75,7 @@ pub fn configure_lightdm_neon(desktop: &str) {
 pub fn configure_sddm() {
     // File creation and configuration can still happen here if needed
     files::create_file("/mnt/etc/sddm.conf");
+    files::create_file("/mnt/etc/sddm.conf.d/virtualkbd.conf");
     files_eval(
         files::append_file(
             "/mnt/etc/sddm.conf",
@@ -82,7 +83,113 @@ pub fn configure_sddm() {
         ),
         "Add astronaut theme",
     );
+    files_eval(
+        files::append_file(
+            "/mnt/etc/sddm.conf.d/virtualkbd.conf",
+            "[General]\nInputMethod=qtvirtualkeyboard",
+        ),
+        "Add virtual keyboard support",
+    );
     enable_service("sddm");
+}
+
+pub fn configure_sddm_astronaut() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/astronaut.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_blackhole() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/black_hole.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_cyberpunk() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/cyberpunk.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_japan() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/japanese_aesthetic.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_jake() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/jake_the_dog.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_kath() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/hyprland_kath.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_pixelsakura() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/pixel_sakura.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_postapocalypse() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/post-apocalyptic_hacker.conf",
+        ),
+        "Set SDDM theme",
+    );
+}
+
+pub fn configure_sddm_purpleleaves() {
+    files_eval(
+        files::sed_file(
+            "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
+            "ConfigFile=.*",
+            "ConfigFile=Themes/purple_leaves.conf",
+        ),
+        "Set SDDM theme",
+    );
 }
 
 /**********************************/
