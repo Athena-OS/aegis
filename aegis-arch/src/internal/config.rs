@@ -506,7 +506,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "astronaut" => displaymanagers::configure_sddm_astronaut(),
         "black hole" => displaymanagers::configure_sddm_blackhole(),
         "cyberpunk" => displaymanagers::configure_sddm_cyberpunk(),
-        "japan" => displaymanagers::configure_sddm_japan(),
+        "cyborg" => displaymanagers::configure_sddm_cyborg(),
         "jake the dog" => displaymanagers::configure_sddm_jake(),
         "kath" => displaymanagers::configure_sddm_kath(),
         "pixel sakura" => displaymanagers::configure_sddm_pixelsakura(),

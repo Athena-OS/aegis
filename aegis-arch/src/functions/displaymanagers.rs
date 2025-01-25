@@ -126,7 +126,7 @@ pub fn configure_sddm_cyberpunk() {
     );
 }
 
-pub fn configure_sddm_japan() {
+pub fn configure_sddm_cyborg() {
     files_eval(
         files::sed_file(
             "/mnt/usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop",
