@@ -337,12 +337,13 @@ pub fn read_config(configpath: PathBuf) -> i32 {
 
     /*     DISPLAY MANAGER    */
     info!("Selected display manager : {:?}", config.displaymanager);
-    match config.displaymanager.to_lowercase().as_str() {
-        "gdm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Gdm)),
-        "lightdm neon" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::LightDMNeon)),
-        "sddm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Sddm)),
-        _ => info!("No display manager setup selected!"),
-    }
+    package_set.extend(displaymanagers::install_dm_setup(DMSetup::Sddm));
+    //match config.displaymanager.to_lowercase().as_str() {
+    //    "gdm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Gdm)),
+    //    "lightdm neon" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::LightDMNeon)),
+    //    "sddm" => package_set.extend(displaymanagers::install_dm_setup(DMSetup::Sddm)),
+    //    _ => info!("No display manager setup selected!"),
+    //}
     /**************************/
     println!();
     /* BROWSER PACKAGE SET */
@@ -498,7 +499,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     println!();
     /* DISPLAY MANAGER CONFIG */
     info!("Configuring display manager : {:?}", config.displaymanager);
-    displaymanagers::configure_sddm();
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => displaymanagers::configure_gdm(&config.desktop),
         "lightdm neon" => displaymanagers::configure_lightdm_neon(&config.desktop),
