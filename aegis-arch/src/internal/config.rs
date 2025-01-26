@@ -499,6 +499,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     println!();
     /* DISPLAY MANAGER CONFIG */
     info!("Configuring display manager : {:?}", config.displaymanager);
+    displaymanagers::configure_sddm();
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => displaymanagers::configure_gdm(&config.desktop),
         "lightdm neon" => displaymanagers::configure_lightdm_neon(&config.desktop),
