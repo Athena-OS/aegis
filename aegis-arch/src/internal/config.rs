@@ -493,6 +493,8 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Configuring desktop : {:?}", config.desktop);
     match config.desktop.to_lowercase().as_str() {
         "gnome" => desktops::configure_gnome(),
+        "xfce refined" => desktops::configure_xfce(),
+        "xfce picom" => desktops::configure_xfce(),
         _ => info!("No desktop configuration needed."),
     }
     /**************************/

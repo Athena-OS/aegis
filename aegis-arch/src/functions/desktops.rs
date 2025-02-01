@@ -220,6 +220,10 @@ pub fn configure_gnome() {
     disable_wsession("gnome-classic-wayland.desktop");
 }
 
+pub fn configure_xfce() {
+    disable_wsession("xfce-wayland.desktop"); //Currently XFCE Wayland session produces black screen after login (tested on VM)
+}
+
 /**********************************/
 
 pub fn disable_xsession(session: &str) {

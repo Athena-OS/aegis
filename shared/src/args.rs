@@ -7,7 +7,6 @@ use std::path::PathBuf;
 #[command(author=env!("CARGO_PKG_AUTHORS"))]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = env!("CARGO_PKG_DESCRIPTION"), long_about = None)]
-
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -51,7 +50,6 @@ pub enum Command {
     #[command(name = "setup-snapper")]
     SetupSnapper,
     */
-
     /// Install the bootloader
     #[command(name = "bootloader")]
     Bootloader {
@@ -78,7 +76,6 @@ pub enum Command {
     /// Set up hardened
     /*#[command(name = "hardened")]
     Hardened,*/
-
     /// Configure users and passwords
     #[command(name = "users")]
     Users {
