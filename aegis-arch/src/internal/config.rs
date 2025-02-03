@@ -319,8 +319,8 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "mate" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Mate)),
         "gnome" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Gnome)),
         "cinnamon" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Cinnamon)),
-        "xfce refined" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::XfceRefined)),
         "xfce picom" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::XfcePicom)),
+        "xfce refined" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::XfceRefined)),
         "budgie" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Budgie)),
         "enlightenment" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Enlightenment)),
         "lxqt" => package_set.extend(desktops::install_desktop_setup(DesktopSetup::Lxqt)),
@@ -493,8 +493,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Configuring desktop : {:?}", config.desktop);
     match config.desktop.to_lowercase().as_str() {
         "gnome" => desktops::configure_gnome(),
-        "xfce refined" => desktops::configure_xfce(),
+        "hyprland" => desktops::configure_hyprland(),
         "xfce picom" => desktops::configure_xfce(),
+        "xfce refined" => desktops::configure_xfce(),
         _ => info!("No desktop configuration needed."),
     }
     /**************************/
