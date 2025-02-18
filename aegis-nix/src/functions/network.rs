@@ -15,8 +15,6 @@ pub fn set_hostname(hostname: &str) {
     );
 }
 
-
-
 pub fn enable_ipv6() {
     files_eval(
         files::sed_file(

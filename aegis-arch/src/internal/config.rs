@@ -487,6 +487,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Hostname : {}", config.networking.hostname);
     network::set_hostname(config.networking.hostname.as_str());
     network::create_hosts();
+    files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
     /**************************/
     println!();
     /*     DESKTOP CONFIG     */

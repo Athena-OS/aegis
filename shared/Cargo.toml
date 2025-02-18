@@ -10,6 +10,7 @@ path = "src/mod.rs"
 
 [dependencies]
 clap = {version = "4.5.20", features = ["derive"] }
+glob = "0.3"
 serde_json = "1.0.132"
 serde = { version = "1.0.213", features = ["derive"] }
 log = "0.4.22"

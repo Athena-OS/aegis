@@ -281,6 +281,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Install Athena OS");
     let exit_code = install(config.params.cores, config.params.jobs);
     println!();
+    files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file("/tmp/aegis.log", "/mnt/var/log/aegis.log");
