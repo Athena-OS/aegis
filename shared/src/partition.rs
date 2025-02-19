@@ -143,6 +143,7 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
     }
 
     if partitiontype == "boot" {
+        let esp_num = extract_partition_number(&bdevice);
         exec_eval(
             exec(
                 "parted",
@@ -151,12 +152,12 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
                     diskdevice.to_string_lossy().to_string(),
                     String::from("--"),
                     String::from("set"),
-                    extract_partition_number(&bdevice), // It is the number ID of the EFI partition. i.e., if EFI partition is /dev/sda2, the number to set is 2
+                    String::from(esp_num.as_str()), // It is the number ID of the EFI partition. i.e., if EFI partition is /dev/sda2, the number to set is 2
                     String::from("esp"),
                     String::from("on"),
                 ],
             ),
-            "enable EFI system partition",
+            format!("Enable EFI system partition on partition number {}", esp_num).as_str(),
         );
     }
 
