@@ -12,6 +12,14 @@ use std::path::{Path, PathBuf};
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
 mkfs.btrfs mkfs.ext2  mkfs.ext4  mkfs.minix mkfs.vfat mkfs.f2fs */
 
+fn extract_partition_number(bdevice: &str) -> String {
+    bdevice
+        .rfind(|c: char| !c.is_ascii_digit())
+        .map(|pos| &bdevice[pos + 1..]) // Extract the digits
+        .unwrap_or("") // Return empty string if no match
+        .to_string() // Convert &str to String
+}
+
 fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     exec_eval(
         exec(
@@ -51,7 +59,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     );
 }
 
-pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encryption: bool) {
+fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesystem: &str, blockdevice: &str, encryption: bool) {
     let mut bdevice = String::from(blockdevice);
     // Extract the block device name (i.e., sda3)
     let cryptlabel = format!("{}crypted",bdevice.trim_start_matches("/dev/")); // i.e., sda3crypted
@@ -133,6 +141,25 @@ pub fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, encrypti
             );
         }
     }
+
+    if partitiontype == "boot" {
+        exec_eval(
+            exec(
+                "parted",
+                vec![
+                    String::from("-s"),
+                    diskdevice.to_string_lossy().to_string(),
+                    String::from("--"),
+                    String::from("set"),
+                    extract_partition_number(&bdevice), // It is the number ID of the EFI partition. i.e., if EFI partition is /dev/sda2, the number to set is 2
+                    String::from("esp"),
+                    String::from("on"),
+                ],
+            ),
+            "enable EFI system partition",
+        );
+    }
+
     exec_eval(
         exec("mkdir", vec![String::from("-p"), String::from(mountpoint)]),
         format!("Creating mountpoint {mountpoint} for {bdevice}").as_str(),
@@ -149,12 +176,12 @@ pub fn partition(
     swap_size: String,
     partitions: &mut Vec<args::Partition>,
 ) {
+    if !device.exists() {
+        crash(format!("The device {device:?} doesn't exist"), 1);
+    }
     println!("{:?}", mode);
     match mode {
         PartitionMode::EraseDisk => {
-            if !device.exists() {
-                crash(format!("The device {device:?} doesn't exist"), 1);
-            }
             debug!("Erase disk partitioning {device:?}");
             if efi {
                 partition_with_efi(&device, swap, swap_size);
@@ -169,11 +196,14 @@ pub fn partition(
             for i in 0..partitions.len() {
                 println!("{:?}", partitions);
                 println!("{}", partitions.len());
-                println!("{}", &partitions[i].mountpoint);
-                println!("{}", &partitions[i].filesystem);
-                println!("{}", &partitions[i].blockdevice);
-                println!("{}", partitions[i].encrypt);
+                println!("Partition Type: {}", &partitions[i].partitiontype);
+                println!("Mount point: {}", &partitions[i].mountpoint);
+                println!("Filesystem: {}", &partitions[i].filesystem);
+                println!("Block device: {}", &partitions[i].blockdevice);
+                println!("To encrypt? {}", partitions[i].encrypt);
                 fmt_mount(
+                    &device,
+                    &partitions[i].partitiontype,
                     &partitions[i].mountpoint,
                     &partitions[i].filesystem,
                     &partitions[i].blockdevice,

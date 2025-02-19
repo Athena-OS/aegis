@@ -188,6 +188,7 @@ pub struct InstallPackagesArgs {
 
 #[derive(Debug, Clone)]
 pub struct Partition {
+    pub partitiontype: String,
     pub mountpoint: String,
     pub blockdevice: String,
     pub filesystem: String,
@@ -195,8 +196,9 @@ pub struct Partition {
 }
 
 impl Partition {
-    pub fn new(mountpoint: String, blockdevice: String, filesystem: String, encrypt: bool) -> Self {
+    pub fn new(partitiontype: String, mountpoint: String, blockdevice: String, filesystem: String, encrypt: bool) -> Self {
         Self {
+            partitiontype,
             mountpoint,
             blockdevice,
             filesystem,
@@ -207,11 +209,12 @@ impl Partition {
 
 pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewrite
     println!("{}", s);
-    let to_encrypt: bool = s.split(':').collect::<Vec<&str>>()[3].parse().map_err(|_| "Invalid boolean value")?;
+    let to_encrypt: bool = s.split(':').collect::<Vec<&str>>()[4].parse().map_err(|_| "Invalid boolean value")?;
     Ok(Partition::new(
         s.split(':').collect::<Vec<&str>>()[0].to_string(),
         s.split(':').collect::<Vec<&str>>()[1].to_string(),
         s.split(':').collect::<Vec<&str>>()[2].to_string(),
+        s.split(':').collect::<Vec<&str>>()[3].to_string(),
         to_encrypt,
     ))
 }

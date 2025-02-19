@@ -136,11 +136,12 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Swap partition : {}", config.partition.swap);
     let mut partitions: Vec<args::Partition> = Vec::new();
     for partition in config.partition.partitions {
-        let to_encrypt: bool = partition.split(':').collect::<Vec<&str>>()[3].parse().map_err(|_| "Invalid boolean value").expect("Unable to get encrypt boolean value.");
+        let to_encrypt: bool = partition.split(':').collect::<Vec<&str>>()[4].parse().map_err(|_| "Invalid boolean value").expect("Unable to get encrypt boolean value.");
         partitions.push(args::Partition::new(
             partition.split(':').collect::<Vec<&str>>()[0].to_string(),
             partition.split(':').collect::<Vec<&str>>()[1].to_string(),
             partition.split(':').collect::<Vec<&str>>()[2].to_string(),
+            partition.split(':').collect::<Vec<&str>>()[3].to_string(),
             to_encrypt,
         ));
     }
