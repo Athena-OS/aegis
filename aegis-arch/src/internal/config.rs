@@ -175,6 +175,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         //"hw-probe, //HW probing
         "imagemagick",
         "jq",
+        "keepassxc",
         "lib32-glibc",
         "lolcat",
         "lsd",
