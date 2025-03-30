@@ -224,6 +224,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "athena-vscodium-themes",
         "athena-welcome",
         "htb-toolkit",
+        "kando-bin",
         "nist-feed",
     ];
     let data = std::fs::read_to_string(&configpath);
