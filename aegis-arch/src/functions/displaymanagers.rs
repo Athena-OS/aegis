@@ -80,7 +80,7 @@ pub fn configure_sddm() {
     files_eval(
         files::append_file(
             "/mnt/etc/sddm.conf",
-            "[Theme]\nCurrent=sddm-astronaut-theme",
+            "[Theme]\nCurrent=sddm-astronaut-theme\n[XDisplay]\nDisplayCommand=/usr/share/sddm/scripts/Xsetup",
         ),
         "Add astronaut theme",
     );
@@ -90,6 +90,13 @@ pub fn configure_sddm() {
             "[General]\nInputMethod=qtvirtualkeyboard",
         ),
         "Add virtual keyboard support",
+    );
+    files_eval(
+        files::append_file(
+            "/mnt/usr/share/sddm/scripts/Xsetup",
+            "current=\"\"\nfor next in $(xrandr --listmonitors | grep -E \" *[0-9]+:.*\" | cut -d\" \" -f6); do\n  [ -z \"$current\" ] && current=$next && continue\n  xrandr --output \"$current\" --auto --output \"$next\" --auto --right-of \"$current\"\n  current=$next\ndone",
+        ),
+        "Add multimonitor support",
     );
     enable_service("sddm");
 }
