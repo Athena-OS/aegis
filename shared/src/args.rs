@@ -367,9 +367,6 @@ pub enum DesktopSetup {
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ThemeSetup {
-    #[value(name = "akame")]
-    Akame,
-
     #[value(name = "cyborg")]
     Cyborg,
 
@@ -378,6 +375,9 @@ pub enum ThemeSetup {
 
     #[value(name = "hackthebox")]
     HackTheBox,
+
+    #[value(name = "redmoon")]
+    RedMoon,
 
     #[value(name = "samurai")]
     Samurai,

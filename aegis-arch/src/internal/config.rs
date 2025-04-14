@@ -417,10 +417,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /*         THEME         */
     info!("Selected theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
-        "akame" => package_set.extend(themes::install_theme_setup(ThemeSetup::Akame)),
         "cyborg" => package_set.extend(themes::install_theme_setup(ThemeSetup::Cyborg)),
         "graphite" => package_set.extend(themes::install_theme_setup(ThemeSetup::Graphite)),
         "hackthebox" => package_set.extend(themes::install_theme_setup(ThemeSetup::HackTheBox)), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
+        "redmoon" => package_set.extend(themes::install_theme_setup(ThemeSetup::RedMoon)),
         "samurai" => package_set.extend(themes::install_theme_setup(ThemeSetup::Samurai)),
         "sweet" => package_set.extend(themes::install_theme_setup(ThemeSetup::Sweet)),
         "temple" => package_set.extend(themes::install_theme_setup(ThemeSetup::Temple)),
@@ -541,10 +541,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /*      THEME CONFIG     */
     info!("Configuring theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
-        "akame" => themes::configure_akame(),
         "cyborg" => themes::configure_cyborg(),
         "graphite" => themes::configure_graphite(),
         "hackthebox" => themes::configure_hackthebox(),
+        "redmoon" => themes::configure_redmoon(),
         "samurai" => themes::configure_samurai(),
         "sweet" => themes::configure_sweet(),
         "temple" => themes::configure_temple(),

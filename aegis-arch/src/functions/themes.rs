@@ -7,10 +7,10 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
     debug!("Selecting {:?}", theme_setup);
 
     match theme_setup {
-        ThemeSetup::Akame => install_akame(),
         ThemeSetup::Cyborg => install_cyborg(),
         ThemeSetup::Graphite => install_graphite(),
         ThemeSetup::HackTheBox => install_hackthebox(),
+        ThemeSetup::RedMoon => install_redmoon(),
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
         ThemeSetup::Temple => install_temple(),
@@ -19,12 +19,6 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
             Vec::new() // Return empty vector if no theme setup is selected
         }
     }
-}
-
-fn install_akame() -> Vec<&'static str> {
-    vec![
-        "athena-akame-theme",
-    ]
 }
 
 fn install_cyborg() -> Vec<&'static str> {
@@ -42,6 +36,12 @@ fn install_graphite() -> Vec<&'static str> {
 fn install_hackthebox() -> Vec<&'static str> {
     vec![
         "athena-htb-theme",
+    ]
+}
+
+fn install_redmoon() -> Vec<&'static str> {
+    vec![
+        "athena-redmoon-theme",
     ]
 }
 
@@ -64,25 +64,6 @@ fn install_temple() -> Vec<&'static str> {
 }
 
 /**********************************/
-
-pub fn configure_akame() {
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
-            "\"workbench.colorTheme\":.*",
-            "\"workbench.colorTheme\": \"red-blood\",",
-        ),
-        "Apply Red Blood VSCodium theme",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/skel/.tmux.conf",
-            "set -g @tmux_power_theme.*",
-            "set -g @tmux_power_theme 'redwine'",
-        ),
-        "Apply Redwine Tmux theme",
-    );
-}
 
 pub fn configure_cyborg() {
     files_eval(
@@ -138,6 +119,25 @@ pub fn configure_hackthebox() {
             "set -g @tmux_power_theme 'forest'",
         ),
         "Apply Forest Tmux theme",
+    );
+}
+
+pub fn configure_redmoon() {
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
+            "\"workbench.colorTheme\":.*",
+            "\"workbench.colorTheme\": \"red-blood\",",
+        ),
+        "Apply Red Blood VSCodium theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.tmux.conf",
+            "set -g @tmux_power_theme.*",
+            "set -g @tmux_power_theme 'redwine'",
+        ),
+        "Apply Redwine Tmux theme",
     );
 }
 

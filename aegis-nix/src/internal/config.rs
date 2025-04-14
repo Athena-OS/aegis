@@ -203,10 +203,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Installing theme : {:?}", config.theme);
 
     match config.theme.to_lowercase().as_str() {
-        "akame" => themes::install_theme_setup(ThemeSetup::Akame),
         "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
         "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
         "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
+        "redmoon" => themes::install_theme_setup(ThemeSetup::RedMoon),
         "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
         "temple" => themes::install_theme_setup(ThemeSetup::Temple),

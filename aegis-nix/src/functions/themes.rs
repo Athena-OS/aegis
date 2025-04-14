@@ -6,26 +6,15 @@ use shared::returncode_eval::files_eval;
 pub fn install_theme_setup(theme_setup: ThemeSetup) {
     debug!("Installing {:?}", theme_setup);
     match theme_setup {
-        ThemeSetup::Akame => install_akame(),
         ThemeSetup::Cyborg => install_cyborg(),
         ThemeSetup::Graphite => install_graphite(),
         ThemeSetup::HackTheBox => install_hackthebox(),
+        ThemeSetup::RedMoon => install_redmoon(),
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
         ThemeSetup::Temple => install_temple(),
         ThemeSetup::None => debug!("No theme setup selected"),
     }
-}
-
-fn install_akame() {
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/nixos/configuration.nix",
-            "  theme =.*",
-            "  theme = \"akame\";",
-        ),
-        "Set Akame theme",
-    );
 }
 
 fn install_cyborg() {
@@ -58,6 +47,17 @@ fn install_hackthebox() {
             "  theme = \"hackthebox\";",
         ),
         "Set Hack The Box theme",
+    );
+}
+
+fn install_redmoon() {
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/nixos/configuration.nix",
+            "  theme =.*",
+            "  theme = \"redmoon\";",
+        ),
+        "Set Red Moon theme",
     );
 }
 
