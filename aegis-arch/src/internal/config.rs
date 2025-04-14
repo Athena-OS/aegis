@@ -219,7 +219,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "athena-neofetch-config",
         "athena-powershell-config",
         "athena-config",
-        "athena-theme-tweak",
         "athena-tmux-config",
         "athena-vim-config",
         "athena-vscodium-themes",
