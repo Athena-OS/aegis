@@ -157,7 +157,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     
     exec_eval(
         exec_chroot(
-            "grub-install",
+            "grub2-install",
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
@@ -170,7 +170,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
 
     exec_eval(
         exec_chroot(
-            "grub-install",
+            "grub2-install",
             vec![
                 String::from("--target=x86_64-efi"),
                 format!("--efi-directory={}", efi_str),
@@ -202,7 +202,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
 
     exec_eval(
         exec_chroot(
-            "grub-install",
+            "grub2-install",
             vec![String::from("--target=i386-pc"), device_str],
         ),
         "install grub as legacy",
