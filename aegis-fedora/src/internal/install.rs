@@ -1,5 +1,6 @@
 use shared::args::PackageManager;
 use shared::{debug, error, info};
+use shared::exec;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -18,6 +19,8 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         //let mut pkgmanager_name = String::new();
         match pkgmanager {
             PackageManager::Dnf => {
+                exec::mount_chroot_base().expect("Failed to mount chroot filesystems");
+
                 Command::new("dnf")
                     .arg("makecache")
                     .arg("--refresh")
@@ -74,6 +77,10 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
 
         if !exit_status.success() {
             error!("The package manager failed with exit code: {}", exit_status.code().unwrap_or(-1));
+        }
+
+        if let Err(e) = exec::unmount_chroot_base() {
+            eprintln!("Warning: Failed to unmount chroot base: {}", e);
         }
 
         retry_counter += 1;

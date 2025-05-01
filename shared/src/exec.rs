@@ -1,71 +1,66 @@
 use std::process::{Command, ExitStatus};
 use std::io::{self, ErrorKind};
-use std::path::Path;
 
-const CHROOT_DIR: &str = "/mnt";
+pub fn mount_chroot_base() -> io::Result<()> {
+    let mounts = vec![
+        ("proc", "/mnt/proc", "proc"),
+        ("sysfs", "/mnt/sys", "sysfs"),
+        ("/dev", "/mnt/dev", "bind"),
+        ("/run", "/mnt/run", "bind"),
+    ];
 
-/// Bind mounts a host directory into the chroot.
-fn bind_mount(source: &str, target: &str) -> io::Result<()> {
-    Command::new("mount")
-        .args(["--bind", source, target])
-        .status()
-        .and_then(|status| {
-            if status.success() {
-                Ok(())
-            } else {
-                Err(io::Error::new(ErrorKind::Other, format!("Failed to mount {}", target)))
-            }
-        })
-}
+    for (source, target, fstype) in mounts {
+        // Create target dir if it doesn't exist
+        std::fs::create_dir_all(target)?;
 
-/// Unmounts a directory inside the chroot.
-fn unmount(target: &str) -> io::Result<()> {
-    Command::new("umount")
-        .arg(target)
-        .status()
-        .and_then(|status| {
-            if status.success() {
-                Ok(())
-            } else {
-                Err(io::Error::new(ErrorKind::Other, format!("Failed to unmount {}", target)))
-            }
-        })
-}
+        let status = if fstype == "bind" {
+            Command::new("mount")
+                .args(["--bind", source, target])
+                .status()?
+        } else {
+            Command::new("mount")
+                .args(["-t", fstype, source, target])
+                .status()?
+        };
 
-/// Prepares /proc, /sys, /dev, /run in chroot.
-fn setup_chroot_env() -> io::Result<()> {
-    for dir in ["proc", "sys", "dev", "run"] {
-        let mountpoint = format!("{}/{}", CHROOT_DIR, dir);
-        if !Path::new(&mountpoint).exists() {
-            std::fs::create_dir_all(&mountpoint)?;
+        if !status.success() {
+            return Err(io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to mount {} to {}", source, target),
+            ));
         }
-        bind_mount(&format!("/{}", dir), &mountpoint)?;
     }
+
     Ok(())
 }
 
-/// Cleans up the mounted filesystems in the chroot.
-fn cleanup_chroot_env() -> io::Result<()> {
-    // Unmount in reverse order to avoid dependency issues
+pub fn unmount_chroot_base() -> io::Result<()> {
     for dir in ["run", "dev", "sys", "proc"] {
-        let mountpoint = format!("{}/{}", CHROOT_DIR, dir);
-        unmount(&mountpoint)?;
+        let target = format!("{}/{}", "/mnt", dir);
+        let status = Command::new("umount").arg(&target).status()?;
+
+        if !status.success() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to unmount {}", target),
+            ));
+        }
     }
     Ok(())
 }
 
 /// Executes a command inside the chroot environment.
 pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
-    setup_chroot_env()?;
+    mount_chroot_base().expect("Failed to mount chroot filesystems");
 
     let result = Command::new("chroot")
-        .arg(CHROOT_DIR)
+        .arg("/mnt")
         .arg(command)
         .args(args)
         .status();
 
     // Always attempt cleanup, even if command fails
-    if let Err(e) = cleanup_chroot_env() {
+    if let Err(e) = unmount_chroot_base() {
         eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
     }
 

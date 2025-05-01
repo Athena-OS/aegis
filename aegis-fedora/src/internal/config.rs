@@ -87,6 +87,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "nano",
         "sudo",
         "curl",
+        "dnf",
         // Extra Base Arch
         "accountsservice",
         "alacritty",
