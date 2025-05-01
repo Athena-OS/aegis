@@ -27,6 +27,21 @@ pub fn install_packages(mut packages: Vec<&str>) {
     // Add multiple strings from another Vec
     packages.append(&mut base_packages);
 
+    /***** CHECK IF BTRFS *****/
+    let output = std::process::Command::new("findmnt")
+        .args(["-n", "-o", "FSTYPE", "/"])
+        .output()
+        .expect("Failed to run findmnt");
+
+    let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if fstype == "btrfs" {
+        info!("Root partition is Btrfs");
+        packages.extend(["btrfs-progs"]);
+    } else {
+        info!("Root partition is {}", fstype);
+    }
+
     std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
     files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d");
 

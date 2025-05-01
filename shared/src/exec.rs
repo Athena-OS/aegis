@@ -7,10 +7,10 @@ pub fn mount_chroot_base() -> io::Result<()> {
         ("sysfs", "/mnt/sys", "sysfs"),
         ("/dev", "/mnt/dev", "bind"),
         ("/run", "/mnt/run", "bind"),
+        ("/sys/fs/selinux", "/mnt/sys/fs/selinux", "bind"),
     ];
 
     for (source, target, fstype) in mounts {
-        // Create target dir if it doesn't exist
         std::fs::create_dir_all(target)?;
 
         let status = if fstype == "bind" {
@@ -35,9 +35,14 @@ pub fn mount_chroot_base() -> io::Result<()> {
 }
 
 pub fn unmount_chroot_base() -> io::Result<()> {
-    for dir in ["run", "dev", "sys", "proc"] {
-        let target = format!("{}/{}", "/mnt", dir);
-        let status = Command::new("umount").arg(&target).status()?;
+    for target in [
+        "/mnt/sys/fs/selinux",
+        "/mnt/run",
+        "/mnt/dev",
+        "/mnt/sys",
+        "/mnt/proc",
+    ] {
+        let status = Command::new("umount").arg(target).status()?;
 
         if !status.success() {
             return Err(io::Error::new(
@@ -46,6 +51,7 @@ pub fn unmount_chroot_base() -> io::Result<()> {
             ));
         }
     }
+
     Ok(())
 }
 

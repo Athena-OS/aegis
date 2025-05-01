@@ -88,6 +88,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "sudo",
         "curl",
         "dnf",
+        "e2fsprogs", // needed to run chattr on post install scripts
         // Extra Base Arch
         "accountsservice",
         "alacritty",
