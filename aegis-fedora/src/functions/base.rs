@@ -44,6 +44,7 @@ pub fn install_packages(mut packages: Vec<&str>) {
 
     std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
     files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d");
+    files::copy_file("/etc/default/grub", "/mnt/etc/default/grub");
 
     let (virt_packages, virt_services, virt_params) = hardware::virt_check();
     let gpu_packages = hardware::cpu_gpu_check();
