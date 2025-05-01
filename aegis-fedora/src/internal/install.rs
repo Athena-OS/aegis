@@ -26,6 +26,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                 pkgmanager_cmd = Command::new("dnf")
                     .arg("--installroot=/mnt")
                     .arg("--setopt=install_weak_deps=False")
+                    .arg("--use-host-config")
                     .arg("install")
                     .arg("-y")
                     .args(&pkgs)
