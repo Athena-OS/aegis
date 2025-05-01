@@ -12,7 +12,7 @@ use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
 
-pub fn install_packages(mut packages: Vec<&str>) {
+pub fn install_packages(mut packages: Vec<&str>, excluded_packages: Vec<&str>) {
 
     let mut base_packages: Vec<&str> = vec![
         // Kernel
@@ -52,7 +52,7 @@ pub fn install_packages(mut packages: Vec<&str>) {
     packages.extend(gpu_packages);
 
     // These packages are installed by Dnf, so by using host repositories
-    install(PackageManager::Dnf, packages);
+    install(PackageManager::Dnf, packages, excluded_packages);
 
     // Enable the necessary services after installation
     for service in virt_services {

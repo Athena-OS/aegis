@@ -17,7 +17,7 @@ fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
         .status()
 }
 
-pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
+pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Vec<&str>) {
     // Create an Arc<Mutex<bool>> for the retry flag
     let mut retry = Arc::new(Mutex::new(true)); // Just to enter the first time in the while loop
 
@@ -49,6 +49,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
                     .arg("install")
                     .arg("-y")
                     .args(&pkgs)
+                    .arg(format!("--exclude={}", excluded_pkgs.join(",")))
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()

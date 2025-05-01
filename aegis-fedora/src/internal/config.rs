@@ -1,7 +1,6 @@
-use crate::internal::install::install;
 //use crate::internal::secure;
 use crate::functions::*;
-use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PackageManager, PartitionMode};
+use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
 use shared::{debug, info};
 use shared::files;
 use shared::partition;
@@ -195,6 +194,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "htb-toolkit",
         "kando",
         "nist-feed",
+    ];
+
+    let excluded_package_set: Vec<&str> = vec![
+        "gdm",
     ];
     let data = std::fs::read_to_string(&configpath);
     match &data {
@@ -421,7 +424,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     println!();
     /********** INSTALLATION **********/
 
-    base::install_packages(package_set);
+    base::install_packages(package_set, excluded_package_set);
 
     /**************************/
     println!();
@@ -524,12 +527,14 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     }*/
     
     /*    EXTRA PACKAGES    */
+    /*
     info!("Extra packages : {:?}", config.extra_packages);
     let mut extra_packages: Vec<&str> = Vec::new();
     for i in 0..config.extra_packages.len() {
         extra_packages.push(config.extra_packages[i].as_str());
     }
     install(PackageManager::Dnf, extra_packages);
+    */
     /**************************/
     println!();
     /*     SHELL CONFIG     */
