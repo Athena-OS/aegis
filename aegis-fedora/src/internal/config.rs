@@ -90,6 +90,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         // Extra Base Arch
         "accountsservice",
         "alacritty",
+        "alsa-sof-firmware",
         "alsa-utils",
         "bind",
         "dhcpcd",
@@ -105,14 +106,12 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "nbd",
         "net-tools",
         "nfs-utils",
-        "nohang",
         "nss-mdns",
         "ntfsprogs",
         "ntpsec",
         "pavucontrol",
         "pv",
         "rsync",
-        "sof-firmware",
         "squashfs-tools",
         "syslinux",
         "testdisk",
@@ -122,7 +121,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         // Fonts
         "google-noto-fonts-common",
         "google-noto-color-emoji-fonts",
-        "google-noto-sans-cjk",
+        "google-noto-sans-cjk-fonts",
         // Common packages for all desktops
         "pipewire",
         "pipewire-pulseaudio",
@@ -130,9 +129,8 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "pipewire-jack-audio-connection-kit",
         "wireplumber",
         "ntfs-3g",
-        "eza",
+        //"eza", //Fedora 41
         "pocl", // Hashcat dependency
-        "ananicy",
         "asciinema",
         "btop",
         "bat",
@@ -148,8 +146,8 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "fortune-mod",
         "git",
         "gparted",
-        "grub-customizer",
-        "gtk-engine-murrine",
+        //"grub-customizer", //Fedora 41
+        "gtk-murrine-engine",
         "gvfs-gphoto2",
         "gvfs-mtp",
         "hexedit",
@@ -269,7 +267,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
 
     /* BOOTLOADER PACKAGE SET */
     let boot_packages = vec![
-        "grub",
+        "grub2",
         "os-prober",
         //"athena-grub-theme",
     ];
