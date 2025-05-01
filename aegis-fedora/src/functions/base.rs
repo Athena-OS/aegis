@@ -6,68 +6,37 @@ use shared::exec::exec;
 use shared::exec::exec_chroot;
 use shared::encrypt::find_luks_partitions;
 use shared::files;
-use shared::{info, warn};
+use shared::info;
 use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
 
-pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
+pub fn install_packages(mut packages: Vec<&str>) {
 
-    let (kernel_to_install, kernel_headers_to_install) = if kernel.is_empty() {
-        ("linux-lts", "linux-lts-headers")
-    } else {
-        match kernel.as_str() {
-            "linux" => ("linux", "linux-headers"),
-            "linux lts" => ("linux-lts", "linux-lts-headers"),
-            "linux zen" => ("linux-zen", "linux-zen-headers"),
-            "linux hardened" => ("linux-hardened", "linux-hardened-headers"),
-            "linux real-time" => ("linux-rt", "linux-rt-headers"),
-            "linux real-time lts" => ("linux-rt-lts", "linux-rt-lts-headers"),
-            "linux liquorix" => ("linux-lqx", "linux-lqx-headers"),
-            "linux xanmod" => ("linux-xanmod", "linux-xanmod-headers"),
-            _ => {
-                warn!("Unknown kernel: {}, using default instead", kernel);
-                ("linux-lts", "linux-lts-headers")
-            }
-        }
-    };
     let mut base_packages: Vec<&str> = vec![
         // Kernel
-        kernel_to_install,
-        kernel_headers_to_install,
+        "kernel",
+        "kernel-modules",
+        "kernel-modules-extra",
+        "kernel-headers",
         "linux-firmware",
-        // Base Arch
-        "base",
-        "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
-        // Repositories
-        "athena-mirrorlist",
-        "chaotic-mirrorlist",
-        "rate-mirrors",
-        "archlinux-keyring",
-        "athena-keyring",
-        "chaotic-keyring",
+        "glibc-all-langpacks", // Prebuilt locales
         ];
 
     // Add multiple strings from another Vec
     packages.append(&mut base_packages);
 
-    std::fs::create_dir_all("/mnt/etc").unwrap();
-    init_keyrings_mirrors(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors for Arch and Chaotic AUR on the host
-    files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
+    std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
+    files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d/");
 
     let (virt_packages, virt_services, virt_params) = hardware::virt_check();
-    let gpu_packages = hardware::cpu_gpu_check(kernel_to_install);
+    let gpu_packages = hardware::cpu_gpu_check();
     packages.extend(virt_packages);
     packages.extend(gpu_packages);
 
-    // These packages are installed by Pacstrap, so by using host mirrors
-    install(PackageManager::Pacstrap, packages);
-
-    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
-    files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
-
-    hardware::set_cores();
+    // These packages are installed by Dnf, so by using host repositories
+    install(PackageManager::Dnf, packages);
 
     // Enable the necessary services after installation
     for service in virt_services {
@@ -81,32 +50,9 @@ pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
             &description,       // Log the description of the file change
         );
     }
-
-    exec_eval(
-        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
-            "sed",
-            vec![
-                String::from("-i"),
-                String::from("-e"),
-                String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g"),
-                String::from("/mnt/etc/mkinitcpio.conf"),
-            ],
-        ),
-        "Set mkinitcpio hooks",
-    );
     
-    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
-    files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
+    files::copy_file("/home/liveuser/.bashrc", "/mnt/etc/skel/.bashrc");
     files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
-
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/mkinitcpio.conf",
-            "#COMPRESSION=\"lz4\"",
-            "COMPRESSION=\"lz4\"",
-        ),
-        "Set compression algorithm",
-    );
 
     files_eval(
         files::sed_file(
@@ -115,83 +61,6 @@ pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
             "hosts: mymachines resolve [!UNAVAIL=return] files dns mdns wins myhostname",
         ),
         "Set nsswitch configuration",
-    );
-}
-
-pub fn preset_process() {
-    // mkinitcpio -P must be run after all the edits on /etc/mkinitcpio.conf file
-    exec_eval(
-        exec_chroot(
-            "mkinitcpio",
-            vec![
-                String::from("-P"),
-            ],
-        ),
-        "run mkinitcpio presets processing",
-    );
-}
-
-fn init_keyrings_mirrors() {
-    info!("Upgrade keyrings on the host");
-    exec_eval(
-        exec(
-            "rm",
-            vec![
-                String::from("-rf"),
-                String::from("/etc/pacman.d/gnupg"),
-            ],
-        ),
-        "Removing keys",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--init"),
-            ],
-        ),
-        "Initialize keys",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--populate"),
-            ],
-        ),
-        "Populate keys",
-    );
-    info!("Getting fastest Arch and Chaotic AUR mirrors for your location");
-    exec_eval(
-        exec( // It is done on the live system
-            "rate-mirrors",
-            vec![
-                String::from("--concurrency"),
-                String::from("40"),
-                String::from("--disable-comments"),
-                String::from("--allow-root"),
-                String::from("--save"),
-                String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
-                String::from("arch"),
-            ],
-        ),
-        "Set fastest Arch Linux mirrors on the host",
-    );
-    
-    exec_eval(
-        exec(
-            "rate-mirrors",
-            vec![
-                String::from("--concurrency"),
-                String::from("40"),
-                String::from("--disable-comments"),
-                String::from("--allow-root"),
-                String::from("--save"),
-                String::from("/etc/pacman.d/chaotic-mirrorlist"), //In chroot we don't need to specify /mnt
-                String::from("chaotic-aur"),
-            ],
-        ),
-        "Set fastest mirrors from Chaotic AUR on the target system",
     );
 }
 
@@ -409,14 +278,11 @@ pub fn configure_zram() {
 }
 
 pub fn enable_system_services() {
-    enable_service("ananicy");
     enable_service("auditd");
     enable_service("bluetooth");
     enable_service("cronie");
     enable_service("irqbalance");
     enable_service("NetworkManager");
-    enable_service("set-cfs-tweaks");
-    enable_service("systemd-timesyncd");
     enable_service("vnstat");
     //enable_service("nohang");
     //enable_service("cups");

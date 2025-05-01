@@ -29,9 +29,9 @@ fn main() -> Result<(), i32> {
                 &mut partitions,
             );
         }
-        Command::InstallPackages(args) => {
+        Command::InstallPackages(_args) => {
             let package_set: Vec<&str> = Vec::new();
-            base::install_packages(args.kernel, package_set);
+            base::install_packages(package_set);
         }
         Command::GenFstab => {
             base::genfstab();

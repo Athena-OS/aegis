@@ -21,7 +21,7 @@ fn install_bash() -> Vec<&'static str> {
     vec![
         "bash", 
         "bash-completion", 
-        "blesh-git",
+        //"blesh",
     ]
 }
 

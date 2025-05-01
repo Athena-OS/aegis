@@ -18,7 +18,7 @@ pub fn install_browser_setup(browser_setup: BrowserSetup) -> Vec<&'static str> {
 
 fn install_firefox() -> Vec<&'static str> {
     vec![
-        "athena-firefox-config",
+        "firefox-blackice",
     ]
 }
 

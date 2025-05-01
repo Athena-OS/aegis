@@ -80,13 +80,10 @@ struct Users {
 
 pub fn read_config(configpath: PathBuf) -> i32 {
     let mut package_set: Vec<&str> = vec![
-        "linux-firmware",
-        "systemd-sysvcompat",
-        "networkmanager",
+        "NetworkManager",
         "network-manager-applet",
         "man-db",
         "man-pages",
-        "texinfo",
         "nano",
         "sudo",
         "curl",
@@ -94,75 +91,59 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "accountsservice",
         "alacritty",
         "alsa-utils",
-        "arch-install-scripts",
         "bind",
-        "broadcom-wl-dkms",
         "dhcpcd",
         "dialog",
         "dosfstools",
-        "edk2-shell",
-        "inetutils",
         "irqbalance",
         "lvm2",
         "memtest86+",
-        "mesa",
-        "mesa-utils",
-        "mkinitcpio-nfs-utils",
-        "mkinitcpio-openswap",
+        "mesa-dri-drivers",
+        "mesa-vulkan-drivers",
         "most",
         "mtools",
         "nbd",
         "net-tools",
-        "netctl",
         "nfs-utils",
         "nohang",
         "nss-mdns",
         "ntfsprogs",
-        "ntp",
+        "ntpsec",
         "pavucontrol",
-        "profile-sync-daemon",
         "pv",
         "rsync",
-        "rtl8821cu-morrownr-dkms-git",
         "sof-firmware",
         "squashfs-tools",
         "syslinux",
         "testdisk",
-        "timelineproject-hg",
         "usbutils",
-        "wireless_tools",
         "wpa_supplicant",
         "xfsprogs",
         // Fonts
-        "noto-fonts",
-        "noto-fonts-emoji",
-        "noto-fonts-cjk",
+        "google-noto-fonts-common",
+        "google-noto-color-emoji-fonts",
+        "google-noto-sans-cjk",
         // Common packages for all desktops
         "pipewire",
-        "pipewire-pulse",
+        "pipewire-pulseaudio",
         "pipewire-alsa",
-        "pipewire-jack",
+        "pipewire-jack-audio-connection-kit",
         "wireplumber",
         "ntfs-3g",
-        "vi",
         "eza",
         "pocl", // Hashcat dependency
         "ananicy",
-        "goofcord-bin",
         "asciinema",
-        "bashtop",
+        "btop",
         "bat",
         "bc",
         "bless",
         "cmatrix",
         "cowsay",
-        "cron",
-        "cyberchef-electron",
-        "downgrade",
+        "cronie",
         "eog",
-        "espeakup",
+        "espeak",
         "figlet",
-        "figlet-fonts",
         "file-roller",
         "fortune-mod",
         "git",
@@ -173,58 +154,46 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "gvfs-mtp",
         "hexedit",
         //"hw-probe, //HW probing
-        "imagemagick",
+        "ImageMagick",
         "jq",
         "keepassxc",
-        "lib32-glibc",
         "lolcat",
         "lsd",
-        "mtpfs",
         "nano-syntax-highlighting",
         "nautilus",
         "ncdu",
-        "networkmanager-openvpn",
-        "nvchad-git",
+        "NetworkManager-openvpn",
+        "neovim-nvchad",
+        "netcat"
         "nyancat",
-        "octopi",
         "onionshare",
-        "openbsd-netcat",
         "openvpn",
         "orca",
         "p7zip",
-        "paru",
-        "pfetch",
         "polkit",
-        "python-pywhat",
-        "reflector",
         "sl",
         //"smartmontools", //hw-probe deps
-        "superbfetch-git",
-        "textart",
         "tidy",
-        "tk",
-        "toilet-fonts",
         "torbrowser-launcher",
         "tree",
         "ufw",
         "unzip",
         "vnstat",
-        "wget",
+        "wget2-wget",
         "which",
         "xclip",
         "xmlstarlet",
         "zoxide",
         // Athena
-        "athena-cyber-hub",
-        "athena-neofetch-config",
+        //"athena-cyber-hub",
+        //"athena-neofetch-config",
         "athena-powershell-config",
         "athena-config",
         "athena-tmux-config",
-        "athena-vim-config",
         "athena-vscodium-themes",
         "athena-welcome",
         "htb-toolkit",
-        "kando-bin",
+        "kando",
         "nist-feed",
     ];
     let data = std::fs::read_to_string(&configpath);
@@ -302,7 +271,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     let boot_packages = vec![
         "grub",
         "os-prober",
-        "athena-grub-theme",
+        //"athena-grub-theme",
     ];
     package_set.extend(boot_packages);
     if config.bootloader.r#type == "grub-efi" {
@@ -452,7 +421,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     println!();
     /********** INSTALLATION **********/
 
-    base::install_packages(config.kernel, package_set);
+    base::install_packages(package_set);
 
     /**************************/
     println!();
@@ -483,9 +452,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
     /**************************/
-    info!("Processing all presets.");
-    base::preset_process();
-    println!();
     info!("Hostname : {}", config.networking.hostname);
     network::set_hostname(config.networking.hostname.as_str());
     network::create_hosts();
@@ -563,7 +529,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     for i in 0..config.extra_packages.len() {
         extra_packages.push(config.extra_packages[i].as_str());
     }
-    install(PackageManager::Pacman, extra_packages);
+    install(PackageManager::Dnf, extra_packages);
     /**************************/
     println!();
     /*     SHELL CONFIG     */

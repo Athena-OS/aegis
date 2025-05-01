@@ -17,11 +17,11 @@ pub struct Cli {
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
 pub enum PackageManager {
-    #[value(name = "pacman")]
-    Pacman,
+    #[value(name = "dnf")]
+    Dnf,
 
-    #[value(name = "pacstrap")]
-    Pacstrap,
+    #[value(name = "rpmostree")]
+    RpmOSTree,
 
     #[value(name = "None")]
     None,
