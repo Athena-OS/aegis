@@ -88,12 +88,14 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "curl",
         "dnf5",
         "e2fsprogs", // needed to run chattr on post install scripts
-        // Extra Base Arch
+        // Extra Base Fedora
         "accountsservice",
         "alacritty",
         "alsa-sof-firmware",
         "alsa-utils",
+        "audit",
         "bind",
+        "bluez",
         "dhcpcd",
         "dialog",
         "dosfstools",
