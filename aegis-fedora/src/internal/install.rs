@@ -17,22 +17,23 @@ fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
         .status()
 }
 
-pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Vec<&str>) {
-    // Create an Arc<Mutex<bool>> for the retry flag
-    let mut retry = Arc::new(Mutex::new(true)); // Just to enter the first time in the while loop
+pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Option<Vec<&str>>) {
+    let mut retry = Arc::new(Mutex::new(true));
+    let mut retry_counter = 0;
 
-    let mut retry_counter = 0; // Initialize retry counter
     while *retry.lock().unwrap() && retry_counter < 15 {
         retry = Arc::new(Mutex::new(false));
+
         let mut pkgmanager_cmd = Command::new("true")
             .spawn()
-            .expect("Failed to initialize by 'true'"); // 'true' in bash is like a NOP command
-        //let mut pkgmanager_name = String::new();
+            .expect("Failed to initialize by 'true'");
+
         if selinux_enabled() {
             if let Err(err) = set_selinux_mode("0") {
                 eprintln!("Warning: Could not set SELinux to permissive: {}", err);
             }
         }
+
         match pkgmanager {
             PackageManager::Dnf => {
                 exec::mount_chroot_base().expect("Failed to mount chroot filesystems");
@@ -42,29 +43,36 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Vec<&
                     .arg("--refresh")
                     .status()
                     .expect("Failed to refresh dnf cache");
-                pkgmanager_cmd = Command::new("dnf")
-                    .arg("--installroot=/mnt")
+
+                let mut cmd = Command::new("dnf");
+                cmd.arg("--installroot=/mnt")
                     .arg("--setopt=install_weak_deps=False")
                     .arg("--use-host-config")
                     .arg("install")
                     .arg("-y")
-                    .args(&pkgs)
-                    .arg(format!("--exclude={}", excluded_pkgs.join(",")))
+                    .args(&pkgs);
+
+                if let Some(ref excludes) = excluded_pkgs {
+                    if !excludes.is_empty() {
+                        cmd.arg(format!("--exclude={}", excludes.join(",")));
+                    }
+                }
+
+                pkgmanager_cmd = cmd
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()
                     .expect("Failed to start dnf");
-                //pkgmanager_name = String::from("dnf");
-            },
+            }
+
             PackageManager::RpmOSTree => {
-                // Optionally refresh metadata
                 Command::new("chroot")
                     .arg("/mnt")
                     .arg("rpm-ostree")
                     .arg("refresh-md")
                     .status()
                     .expect("Failed to refresh rpm-ostree metadata");
-            
+
                 pkgmanager_cmd = Command::new("chroot")
                     .arg("/mnt")
                     .arg("rpm-ostree")
@@ -74,16 +82,14 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Vec<&
                     .stderr(Stdio::piped())
                     .spawn()
                     .expect("Failed to start rpm-ostree install in chroot");
-            
-                //pkgmanager_name = String::from("rpm-ostree");
             }
+
             PackageManager::None => debug!("No package manager selected"),
         };
 
         let stdout_handle = pkgmanager_cmd.stdout.take().unwrap();
         let stderr_handle = pkgmanager_cmd.stderr.take().unwrap();
 
-        // Wrap the stdout and stderr in BufReader to satisfy the BufRead trait
         let stdout_thread = spawn_log_thread(BufReader::new(stdout_handle));
         let stderr_thread = spawn_log_thread(BufReader::new(stderr_handle));
 

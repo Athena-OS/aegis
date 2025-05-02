@@ -196,9 +196,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "nist-feed",
     ];
 
-    let excluded_package_set: Vec<&str> = vec![
+    let excluded_package_set: Option<Vec<&str>> = Some(vec![
         "gdm",
-    ];
+    ]);
     let data = std::fs::read_to_string(&configpath);
     match &data {
         Ok(_) => {
