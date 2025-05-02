@@ -11,9 +11,9 @@ pub fn enable_service(dm: &str) {
 }
 
 pub fn disable_service(dm: &str) {
-    debug!("Enabling {}", dm);
+    debug!("Disabling {}", dm);
     exec_eval(
         exec_chroot("systemctl", vec![String::from("disable"), String::from(dm)]),
-        format!("Enable {}", dm).as_str(),
+        format!("Disable {}", dm).as_str(),
     );
 }
