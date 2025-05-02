@@ -212,12 +212,8 @@ fn install_onyx() -> Vec<&'static str> {
 
 pub fn configure_gnome() {
     disable_xsession("gnome.desktop");
-    disable_xsession("gnome-classic.desktop");
-    disable_xsession("gnome-classic-xorg.desktop");
     disable_wsession("gnome.desktop");
     disable_wsession("gnome-wayland.desktop");
-    disable_wsession("gnome-classic.desktop");
-    disable_wsession("gnome-classic-wayland.desktop");
 }
 
 pub fn configure_xfce() {
