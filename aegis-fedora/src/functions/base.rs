@@ -1,6 +1,7 @@
 use crate::internal::hardware;
 use crate::internal::install::install;
 use crate::internal::services::enable_service;
+use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::exec::exec;
 use shared::exec::exec_chroot;
@@ -12,7 +13,7 @@ use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
 
-pub fn install_packages(mut packages: Vec<&str>, excluded_packages: Option<Vec<&str>>) {
+pub fn install_packages(mut packages: Vec<&str>) {
 
     let mut base_packages: Vec<&str> = vec![
         // Kernel
@@ -22,6 +23,11 @@ pub fn install_packages(mut packages: Vec<&str>, excluded_packages: Option<Vec<&
         "kernel-headers",
         "linux-firmware",
         "glibc-all-langpacks", // Prebuilt locales
+        ];
+
+    let rm_packages: Vec<&str> = vec![
+        // Kernel
+        "gdm",
         ];
 
     // Add multiple strings from another Vec
@@ -53,7 +59,9 @@ pub fn install_packages(mut packages: Vec<&str>, excluded_packages: Option<Vec<&
     packages.extend(gpu_packages);
 
     // These packages are installed by Dnf, so by using host repositories
-    install(PackageManager::Dnf, packages, excluded_packages);
+    install(PackageManager::Dnf, packages, InstallMode::Install);
+
+    install(PackageManager::Dnf, rm_packages, InstallMode::Remove);
 
     // Enable the necessary services after installation
     for service in virt_services {

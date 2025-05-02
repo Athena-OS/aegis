@@ -1,3 +1,4 @@
+use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::{debug, error, info};
 use shared::exec;
@@ -17,7 +18,11 @@ fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
         .status()
 }
 
-pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Option<Vec<&str>>) {
+pub fn install(
+    pkgmanager: PackageManager,
+    pkgs: Vec<&str>,
+    mode: InstallMode,
+) {
     let mut retry = Arc::new(Mutex::new(true));
     let mut retry_counter = 0;
 
@@ -26,7 +31,7 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Optio
 
         let mut pkgmanager_cmd = Command::new("true")
             .spawn()
-            .expect("Failed to initialize by 'true'");
+            .expect("Failed to initialize dummy command");
 
         if selinux_enabled() {
             if let Err(err) = set_selinux_mode("0") {
@@ -46,15 +51,19 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Optio
 
                 let mut cmd = Command::new("dnf");
                 cmd.arg("--installroot=/mnt")
-                    .arg("--setopt=install_weak_deps=False")
-                    .arg("--use-host-config")
-                    .arg("install")
-                    .arg("-y")
-                    .args(&pkgs);
+                    .arg("--use-host-config");
 
-                if let Some(ref excludes) = excluded_pkgs {
-                    if !excludes.is_empty() {
-                        cmd.arg(format!("--exclude={}", excludes.join(",")));
+                match mode {
+                    InstallMode::Install => {
+                        cmd.arg("install")
+                            .arg("-y")
+                            .arg("--setopt=install_weak_deps=False")
+                            .args(&pkgs);
+                    }
+                    InstallMode::Remove => {
+                        cmd.arg("remove")
+                            .arg("-y")
+                            .args(&pkgs);
                     }
                 }
 
@@ -62,26 +71,28 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Optio
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()
-                    .expect("Failed to start dnf");
+                    .expect("Failed to start dnf command");
             }
 
             PackageManager::RpmOSTree => {
-                Command::new("chroot")
-                    .arg("/mnt")
-                    .arg("rpm-ostree")
-                    .arg("refresh-md")
-                    .status()
-                    .expect("Failed to refresh rpm-ostree metadata");
+                let mut cmd = Command::new("chroot");
+                cmd.arg("/mnt")
+                    .arg("rpm-ostree");
 
-                pkgmanager_cmd = Command::new("chroot")
-                    .arg("/mnt")
-                    .arg("rpm-ostree")
-                    .arg("install")
-                    .args(&pkgs)
+                match mode {
+                    InstallMode::Install => {
+                        cmd.arg("install").args(&pkgs);
+                    }
+                    InstallMode::Remove => {
+                        cmd.arg("override").arg("remove").args(&pkgs);
+                    }
+                }
+
+                pkgmanager_cmd = cmd
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()
-                    .expect("Failed to start rpm-ostree install in chroot");
+                    .expect("Failed to start rpm-ostree command");
             }
 
             PackageManager::None => debug!("No package manager selected"),
@@ -93,13 +104,16 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>, excluded_pkgs: Optio
         let stdout_thread = spawn_log_thread(BufReader::new(stdout_handle));
         let stderr_thread = spawn_log_thread(BufReader::new(stderr_handle));
 
-        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait for the package manager");
+        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait on package manager");
 
         stdout_thread.join().expect("stdout thread panicked");
         stderr_thread.join().expect("stderr thread panicked");
 
         if !exit_status.success() {
-            error!("The package manager failed with exit code: {}", exit_status.code().unwrap_or(-1));
+            error!(
+                "The package manager failed with exit code: {}",
+                exit_status.code().unwrap_or(-1)
+            );
         }
 
         if let Err(e) = exec::unmount_chroot_base() {

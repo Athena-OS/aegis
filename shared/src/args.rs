@@ -27,6 +27,11 @@ pub enum PackageManager {
     None,
 }
 
+pub enum InstallMode {
+    Install,
+    Remove,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Partition the install destination

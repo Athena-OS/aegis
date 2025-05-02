@@ -31,8 +31,7 @@ fn main() -> Result<(), i32> {
         }
         Command::InstallPackages(_args) => {
             let package_set: Vec<&str> = Vec::new();
-            let excluded_package_set: Option<Vec<&str>> = None; // or Some(vec!["foo", "bar"]) if needed
-            base::install_packages(package_set, excluded_package_set);
+            base::install_packages(package_set);
         }
         Command::GenFstab => {
             base::genfstab();
