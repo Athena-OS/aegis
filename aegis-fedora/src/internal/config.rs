@@ -115,6 +115,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "pavucontrol",
         "pv",
         "rsync",
+        "selinux-policy-targeted",
         "squashfs-tools",
         "syslinux",
         "testdisk",
