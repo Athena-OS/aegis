@@ -1,6 +1,6 @@
 use crate::internal::hardware;
 use crate::internal::install::install;
-use crate::internal::services::enable_service;
+use crate::internal::services;
 use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::exec::exec;
@@ -25,10 +25,11 @@ pub fn install_packages(mut packages: Vec<&str>) {
         "glibc-all-langpacks", // Prebuilt locales
         ];
 
+    /*
     let rm_packages: Vec<&str> = vec![
-        // Kernel
         "gdm",
-        ];
+    ];
+    */
 
     // Add multiple strings from another Vec
     packages.append(&mut base_packages);
@@ -60,12 +61,12 @@ pub fn install_packages(mut packages: Vec<&str>) {
 
     // These packages are installed by Dnf, so by using host repositories
     install(PackageManager::Dnf, packages, InstallMode::Install);
-
-    install(PackageManager::Dnf, rm_packages, InstallMode::Remove);
+    //install(PackageManager::Dnf, rm_packages, InstallMode::Remove);
+    services::disable_service("gdm");
 
     // Enable the necessary services after installation
     for service in virt_services {
-        enable_service(service);
+        services::enable_service(service);
     }
 
     // After the packages are installed, apply sed commands for virt service
@@ -193,7 +194,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     
     exec_eval(
         exec_chroot(
-            "grub-mkconfig",
+            "grub2-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
         ),
         "create grub.cfg",
@@ -221,7 +222,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
     
     exec_eval(
         exec_chroot(
-            "grub-mkconfig",
+            "grub2-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
         ),
         "create grub.cfg",
@@ -305,12 +306,12 @@ pub fn configure_zram() {
 }
 
 pub fn enable_system_services() {
-    enable_service("auditd");
-    enable_service("bluetooth");
-    enable_service("cronie");
-    enable_service("irqbalance");
-    enable_service("NetworkManager");
-    enable_service("vnstat");
-    //enable_service("nohang");
-    //enable_service("cups");
+    services::enable_service("auditd");
+    services::enable_service("bluetooth");
+    services::enable_service("cronie");
+    services::enable_service("irqbalance");
+    services::enable_service("NetworkManager");
+    services::enable_service("vnstat");
+    //services::enable_service("nohang");
+    //services::enable_service("cups");
 }

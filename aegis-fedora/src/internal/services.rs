@@ -9,3 +9,11 @@ pub fn enable_service(dm: &str) {
         format!("Enable {}", dm).as_str(),
     );
 }
+
+pub fn disable_service(dm: &str) {
+    debug!("Enabling {}", dm);
+    exec_eval(
+        exec_chroot("systemctl", vec![String::from("disable"), String::from(dm)]),
+        format!("Enable {}", dm).as_str(),
+    );
+}

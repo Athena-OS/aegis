@@ -30,6 +30,7 @@ pub fn set_locale(locale: String) {
         "edit locale.conf",
     );
     for i in (0..locale.split(' ').count()).step_by(2) {
+        /*
         files_eval(
             files::append_file(
                 "/mnt/etc/locale.gen",
@@ -41,6 +42,7 @@ pub fn set_locale(locale: String) {
             ),
             "add locales to locale.gen",
         );
+        */
         if locale.split(' ').collect::<Vec<&str>>()[i] != "en_US.UTF-8" {
             files_eval(
                 files::sed_file(
