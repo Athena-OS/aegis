@@ -1,5 +1,6 @@
 //use crate::internal::secure;
 use crate::functions::*;
+use crate::internal::secure;
 use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
 use shared::{debug, info};
 use shared::files;
@@ -239,6 +240,12 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         }
         Err(e) => {
             crash(format!("Parse config file {configpath:?}  ERROR: {}", e), 1);
+        }
+    }
+    /*****TEMPORARY DISABLE SELINUX*****/
+    if secure::selinux_enabled() {
+        if let Err(err) = secure::set_selinux_mode("0") {
+            eprintln!("Warning: Could not set SELinux to permissive: {}", err);
         }
     }
     /*    PARTITIONING    */
@@ -492,18 +499,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     }
     /**************************/
     println!();
-    /*     BROWSER CONFIG     */
-    info!("Configuring browser : {:?}", config.browser);
-    match config.browser.to_lowercase().as_str() {
-        "firefox" => browsers::configure_firefox(&config.desktop),
-        "brave" => browsers::configure_brave(&config.desktop),
-        _ => info!("No browser configuration needed."),
-    }
-    /**************************/
-    println!();
     /*    TERMINAL CONFIG    */
     info!("Configuring terminal : {}", config.terminal);
-    terminals::configure_terminal(terminal_choice, &config.desktop);
+    terminals::configure_terminal(terminal_choice);
     /**************************/
     println!();
     /*      THEME CONFIG     */
@@ -598,6 +596,11 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     }
     partition::umount("/mnt/home");
     partition::umount("/mnt");
+    if secure::selinux_enabled() {
+        if let Err(err) = secure::set_selinux_mode("1") {
+            eprintln!("Warning: Failed to re-enable SELinux: {}", err);
+        }
+    }
     println!("Installation finished! You may reboot now!");
     0
 }

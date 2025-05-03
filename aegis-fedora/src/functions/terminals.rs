@@ -95,7 +95,7 @@ fn install_xterm() -> Vec<&'static str> {
 
 /**********************************/
 
-pub fn configure_terminal(term: String, desktop: &str) {
+pub fn configure_terminal(term: String) {
     exec_eval(
         exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
             "sed",
@@ -116,14 +116,4 @@ pub fn configure_terminal(term: String, desktop: &str) {
         ),
         "Set terminal call on shell.desktop file",
     );
-    if desktop.contains("gnome") {
-        files_eval(
-            sed_file(
-                "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                "alacritty",
-                &term,
-            ),
-            "Set terminal call on dconf file",
-        );
-    }
 }

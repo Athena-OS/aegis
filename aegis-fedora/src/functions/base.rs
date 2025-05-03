@@ -5,6 +5,7 @@ use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::exec::exec;
 use shared::exec::exec_chroot;
+use shared::exec::exec_chroot_capture;
 use shared::encrypt::find_luks_partitions;
 use shared::files;
 use shared::info;
@@ -35,18 +36,24 @@ pub fn install_packages(mut packages: Vec<&str>) {
     packages.append(&mut base_packages);
 
     /***** CHECK IF BTRFS *****/
-    let output = std::process::Command::new("findmnt")
-        .args(["-n", "-o", "FSTYPE", "/"])
-        .output()
-        .expect("Failed to run findmnt");
-
-    let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-    if fstype == "btrfs" {
-        info!("Root partition is Btrfs");
-        packages.extend(["btrfs-progs"]);
-    } else {
-        info!("Root partition is {}", fstype);
+    match exec_chroot_capture(
+        "findmnt",
+        vec![
+            String::from("-n"),
+            String::from("-o"),
+            String::from("FSTYPE"),
+            String::from("/"),
+        ],
+    ) {
+        Ok(fstype) => {
+            if fstype == "btrfs" {
+                packages.extend(["btrfs-progs"]);
+            }
+            info!("Root partition is {}", fstype);
+        }
+        Err(e) => {
+            eprintln!("Failed to get filesystem type: {}", e);
+        }
     }
 
     std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
@@ -195,7 +202,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     exec_eval(
         exec_chroot(
             "grub2-mkconfig",
-            vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
+            vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
         ),
         "create grub.cfg",
     );
@@ -223,7 +230,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
     exec_eval(
         exec_chroot(
             "grub2-mkconfig",
-            vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
+            vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
         ),
         "create grub.cfg",
     );

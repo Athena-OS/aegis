@@ -58,7 +58,7 @@ pub fn set_locale(locale: String) {
             );
         }
     }
-    exec_eval(exec_chroot("locale-gen", vec![]), "generate locales");
+    //exec_eval(exec_chroot("locale-gen", vec![]), "generate locales");
 }
 
 pub fn set_keyboard(virtkeyboard: &str, x11keyboard: &str) -> Result<(), Box<dyn std::error::Error>> {

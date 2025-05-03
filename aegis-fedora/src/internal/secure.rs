@@ -1,7 +1,17 @@
-/*
-use shared::files;
-use shared::returncode_eval::files_eval;
+use std::path::Path;
+use std::process::{Command, ExitStatus};
 
+pub fn selinux_enabled() -> bool {
+    Path::new("/sys/fs/selinux/enforce").exists()
+}
+
+pub fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
+    Command::new("setenforce")
+        .arg(mode)
+        .status()
+}
+
+/*
 pub fn secure_password_config() {
     files_eval(
         files::sed_file(

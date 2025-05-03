@@ -73,6 +73,26 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
     result
 }
 
+pub fn exec_chroot_capture(command: &str, args: Vec<String>) -> io::Result<String> {
+    mount_chroot_base().expect("Failed to mount chroot filesystems");
+
+    let output = Command::new("chroot")
+        .arg("/mnt")
+        .arg(command)
+        .args(args)
+        .output();
+
+    if let Err(e) = unmount_chroot_base() {
+        eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
+    }
+
+    match output {
+        Ok(out) if out.status.success() => Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()),
+        Ok(out) => Err(io::Error::new(io::ErrorKind::Other, String::from_utf8_lossy(&out.stderr).to_string())),
+        Err(e) => Err(e),
+    }
+}
+
 pub fn exec(command: &str, args: Vec<String>) -> Result<std::process::ExitStatus, std::io::Error> {
     let returncode = Command::new(command).args(args).status();
     returncode

@@ -3,20 +3,9 @@ use shared::args::PackageManager;
 use shared::{debug, error, info};
 use shared::exec;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-fn selinux_enabled() -> bool {
-    Path::new("/sys/fs/selinux/enforce").exists()
-}
-
-fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
-    Command::new("setenforce")
-        .arg(mode)
-        .status()
-}
 
 pub fn install(
     pkgmanager: PackageManager,
@@ -32,12 +21,6 @@ pub fn install(
         let mut pkgmanager_cmd = Command::new("true")
             .spawn()
             .expect("Failed to initialize dummy command");
-
-        if selinux_enabled() {
-            if let Err(err) = set_selinux_mode("0") {
-                eprintln!("Warning: Could not set SELinux to permissive: {}", err);
-            }
-        }
 
         match pkgmanager {
             PackageManager::Dnf => {
@@ -118,12 +101,6 @@ pub fn install(
 
         if let Err(e) = exec::unmount_chroot_base() {
             eprintln!("Warning: Failed to unmount chroot base: {}", e);
-        }
-
-        if selinux_enabled() {
-            if let Err(err) = set_selinux_mode("1") {
-                eprintln!("Warning: Failed to re-enable SELinux: {}", err);
-            }
         }
 
         retry_counter += 1;
