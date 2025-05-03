@@ -13,6 +13,7 @@ use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
+use std::process::Command;
 
 pub fn install_packages(mut packages: Vec<&str>) {
 
@@ -36,29 +37,18 @@ pub fn install_packages(mut packages: Vec<&str>) {
     packages.append(&mut base_packages);
 
     /***** CHECK IF BTRFS *****/
-    info!("Root part TEST1");
-    match exec_chroot_capture(
-        "findmnt",
-        vec![
-            String::from("-n"),
-            String::from("-o"),
-            String::from("FSTYPE"),
-            String::from("/"),
-        ],
-    ) {
-        Ok(fstype) => {
-            info!("Root part TEST2");
-            if fstype == "btrfs" {
-                packages.extend(["btrfs-progs"]);
-            }
-            info!("Root partition is {}", fstype);
-        }
-        Err(e) => {
-            info!("Root part TESTERR");
-            eprintln!("Failed to get filesystem type: {}", e);
-        }
+    let output = std::process::Command::new("findmnt")
+        .args(["-n", "-o", "FSTYPE", "/mnt"])
+        .output()
+        .expect("Failed to run findmnt");
+
+    let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    if fstype == "btrfs" {
+        packages.extend(["btrfs-progs"]);
     }
-    info!("Root part TEST4");
+    info!("Root partition is {}", fstype);
+
     std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
     files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d");
     std::fs::create_dir_all("/mnt/etc/default").unwrap();
