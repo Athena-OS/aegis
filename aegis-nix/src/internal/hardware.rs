@@ -1,12 +1,17 @@
+use shared::exec::exec_output;
 use shared::files;
 use shared::info;
+use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
-use std::process::Command;
 
 pub fn virt_check() {
-    let output = Command::new("systemd-detect-virt")
-        .output()
-        .expect("Failed to run systemd-detect-virt");
+    let output = exec_eval_result(
+        exec_output(
+            "systemd-detect-virt",
+            vec![]
+        ),
+        "Detect the virtualization environment",
+    );
 
     let mut result = String::from_utf8_lossy(&output.stdout).to_string();
     result.pop(); //Removing the \n char from string
@@ -84,9 +89,13 @@ pub fn cpu_check() {
 }
 
 fn cpu_detect() -> String {
-    let lscpu_output = Command::new("lscpu")
-        .output()
-        .expect("Failed to run lscpu command");
+    let lscpu_output = exec_eval_result(
+        exec_output(
+            "lscpu",
+            vec![]
+        ),
+        "Detect the CPU",
+    );
 
     let lscpu_str = std::str::from_utf8(&lscpu_output.stdout)
         .expect("Failed to parse lscpu output as UTF-8");

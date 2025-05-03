@@ -5,10 +5,12 @@ use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::exec::exec;
 use shared::exec::exec_chroot;
+use shared::exec::exec_output;
 use shared::encrypt::find_luks_partitions;
 use shared::files;
 use shared::info;
 use shared::returncode_eval::exec_eval;
+use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
@@ -35,10 +37,18 @@ pub fn install_packages(mut packages: Vec<&str>) {
     packages.append(&mut base_packages);
 
     /***** CHECK IF BTRFS *****/
-    let output = std::process::Command::new("findmnt")
-        .args(["-n", "-o", "FSTYPE", "/mnt"])
-        .output()
-        .expect("Failed to run findmnt");
+    let output = exec_eval_result(
+        exec_output(
+            "findmnt",
+            vec![
+                String::from("-n"),
+                String::from("-o"),
+                String::from("FSTYPE"),
+                String::from("/mnt"),
+            ],
+        ),
+        "Detect file system type",
+    );
 
     let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
@@ -93,10 +103,10 @@ pub fn genfstab() {
         exec(
             "bash",
             vec![
-                "-c".into(),
-                "findmnt -R /mnt -o TARGET,UUID,FSTYPE,OPTIONS -n | \
+                String::from("-c"),
+                String::from("findmnt -R /mnt -o TARGET,UUID,FSTYPE,OPTIONS -n | \
                  awk '{ printf \"UUID=%s %s %s %s 0 1\\n\", $2, $1, $3, $4 }' \
-                 > /mnt/etc/fstab".into(),
+                 > /mnt/etc/fstab"),
             ],
         ),
         "Generate fstab",

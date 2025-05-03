@@ -244,9 +244,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     }
     /*****TEMPORARY DISABLE SELINUX*****/
     if secure::selinux_enabled() {
-        if let Err(err) = secure::set_selinux_mode("0") {
-            eprintln!("Warning: Could not set SELinux to permissive: {}", err);
-        }
+        secure::set_selinux_mode("0");
     }
     /*    PARTITIONING    */
     let config: Config = config.unwrap();
@@ -597,9 +595,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     partition::umount("/mnt/home");
     partition::umount("/mnt");
     if secure::selinux_enabled() {
-        if let Err(err) = secure::set_selinux_mode("1") {
-            eprintln!("Warning: Failed to re-enable SELinux: {}", err);
-        }
+        secure::set_selinux_mode("1");
     }
     println!("Installation finished! You may reboot now!");
     0

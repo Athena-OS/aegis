@@ -1,8 +1,9 @@
 use shared::exec::exec_chroot;
+use shared::exec::exec_output;
 use shared::files;
 use shared::returncode_eval::exec_eval;
+use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
-use std::process::Command;
 
 pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: bool, shell: &str) {
     let shell: &str = shell;
@@ -78,12 +79,17 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
 }
 
 pub fn hash_pass(password: &str) -> std::process::Output {
-    let output = Command::new("openssl")
-        .args(["passwd", "-6", password])
-        .output()
-        .expect("Failed to hash password");
-
-    output
+    exec_eval_result(
+        exec_output(
+            "openssl",
+            vec![
+                String::from("passwd"),
+                String::from("-6"),
+                password.to_string()
+            ]
+        ),
+        "Compute the password hash",
+    )
 }
 
 pub fn root_pass(root_pass: &str) {

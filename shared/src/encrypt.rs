@@ -1,5 +1,6 @@
+use crate::exec::exec_output;
+use crate::returncode_eval::exec_eval_result;
 use std::fs;
-use std::process::Command;
 
 pub fn find_luks_partitions() -> Vec<(String, String)> {
     let mut luks_partitions = Vec::new();
@@ -13,11 +14,16 @@ pub fn find_luks_partitions() -> Vec<(String, String)> {
                     let device_path = format!("/dev/{}", device_name);
 
                     // Check if the device is a LUKS partition
-                    let output = Command::new("cryptsetup")
-                        .arg("luksDump")
-                        .arg(&device_path)
-                        .output()
-                        .expect("Failed to execute cryptsetup");
+                    let output = exec_eval_result(
+                        exec_output(
+                            "cryptsetup",
+                            vec![
+                                String::from("luksDump"),
+                                device_path.to_string(),
+                            ],
+                        ),
+                        "Execute cryptsetup",
+                    );
                         
                     // Check if the output contains LUKS header information
                     if output.status.success() {

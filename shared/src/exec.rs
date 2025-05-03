@@ -1,4 +1,4 @@
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Output};
 use std::io::{self, ErrorKind};
 
 pub fn mount_chroot_base() -> io::Result<()> {
@@ -76,6 +76,19 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
 pub fn exec(command: &str, args: Vec<String>) -> Result<std::process::ExitStatus, std::io::Error> {
     let returncode = Command::new(command).args(args).status();
     returncode
+}
+
+pub fn exec_output(command: &str, args: Vec<String>) -> Result<Output, io::Error> {
+    let output = Command::new(command)
+        .args(args)
+        .output()?; // propagates std::io::Error if the command fails to run
+
+    if !output.status.success() {
+        let err_msg = String::from_utf8_lossy(&output.stderr);
+        return Err(io::Error::new(io::ErrorKind::Other, err_msg.to_string()));
+    }
+
+    Ok(output)
 }
 
 pub fn exec_workdir(

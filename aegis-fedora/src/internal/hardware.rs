@@ -1,14 +1,19 @@
 use shared::info;
-use std::process::Command;
+use shared::exec::exec_output;
+use shared::returncode_eval::exec_eval_result;
 
 type Packages = Vec<&'static str>;
 type Services = Vec<&'static str>;
 type SetParams = Vec<(String, Vec<String>)>;
 
 pub fn virt_check() -> (Packages, Services, SetParams) {
-    let output = Command::new("systemd-detect-virt")
-        .output()
-        .expect("Failed to run systemd-detect-virt");
+    let output = exec_eval_result(
+        exec_output(
+            "systemd-detect-virt",
+            vec![]
+        ),
+        "Detect the virtualization environment",
+    );
 
     let mut result = String::from_utf8_lossy(&output.stdout).to_string();
     result.pop(); //Removing the \n char from string
@@ -58,10 +63,15 @@ pub fn cpu_gpu_check() -> Vec<&'static str> {
     }
 
     // Detect GPU
-    let gpudetect_output = Command::new("lspci")
-        .arg("-k")
-        .output()
-        .expect("Failed to execute lspci -k command");
+    let gpudetect_output = exec_eval_result(
+        exec_output(
+            "lspci",
+            vec![
+                String::from("-k")
+            ]
+        ),
+        "Detect the GPU",
+    );
 
     let gpudetect = String::from_utf8_lossy(&gpudetect_output.stdout);
 
@@ -93,9 +103,13 @@ pub fn cpu_gpu_check() -> Vec<&'static str> {
 }
 
 fn cpu_detect() -> String {
-    let lscpu_output = Command::new("lscpu")
-        .output()
-        .expect("Failed to run lscpu command");
+    let lscpu_output = exec_eval_result(
+        exec_output(
+            "lscpu",
+            vec![]
+        ),
+        "Detect the CPU",
+    );
 
     let lscpu_str = std::str::from_utf8(&lscpu_output.stdout)
         .expect("Failed to parse lscpu output as UTF-8");

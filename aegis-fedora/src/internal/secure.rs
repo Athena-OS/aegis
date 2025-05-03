@@ -1,14 +1,21 @@
+use shared::exec::exec;
+use shared::returncode_eval::exec_eval;
 use std::path::Path;
-use std::process::{Command, ExitStatus};
 
 pub fn selinux_enabled() -> bool {
     Path::new("/sys/fs/selinux/enforce").exists()
 }
 
-pub fn set_selinux_mode(mode: &str) -> std::io::Result<ExitStatus> {
-    Command::new("setenforce")
-        .arg(mode)
-        .status()
+pub fn set_selinux_mode(mode: &str) {
+    exec_eval(
+        exec(
+            "setenforce",
+            vec![
+                mode.to_string(),
+            ],
+        ),
+        &format!("SELinux mode to {}", mode),
+    );
 }
 
 /*
