@@ -27,11 +27,15 @@ pub fn install_packages(mut packages: Vec<&str>) {
         "glibc-all-langpacks", // Prebuilt locales
         ];
 
-    /*
-    let rm_packages: Vec<&str> = vec![
-        "gdm",
+
+    let pre_packages: Vec<&str> = vec![
+        "gmp",
+        "libidn2",
+        "libqiolibproxy",
+        "libunistring",
+        "coreutils",
     ];
-    */
+    install(PackageManager::Dnf, pre_packages, InstallMode::Install);
 
     // Add multiple strings from another Vec
     packages.append(&mut base_packages);
@@ -53,6 +57,7 @@ pub fn install_packages(mut packages: Vec<&str>) {
     let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
     if fstype == "btrfs" {
+        info!("Ciao {}", fstype); //DELETE
         packages.extend(["btrfs-progs"]);
     }
     info!("Root partition is {}", fstype);
@@ -66,6 +71,7 @@ pub fn install_packages(mut packages: Vec<&str>) {
     let gpu_packages = hardware::cpu_gpu_check();
     packages.extend(virt_packages);
     packages.extend(gpu_packages);
+    info!("PackageCiao {:?}", packages); //DELETE
 
     // These packages are installed by Dnf, so by using host repositories
     install(PackageManager::Dnf, packages, InstallMode::Install);
