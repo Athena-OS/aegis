@@ -97,6 +97,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "audit",
         "bind",
         "bluez",
+        "cracklib-dicts",
         "dhcpcd",
         "dialog",
         "dosfstools",
