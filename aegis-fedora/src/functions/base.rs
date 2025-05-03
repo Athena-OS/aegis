@@ -5,7 +5,6 @@ use shared::args::InstallMode;
 use shared::args::PackageManager;
 use shared::exec::exec;
 use shared::exec::exec_chroot;
-use shared::exec::exec_chroot_capture;
 use shared::encrypt::find_luks_partitions;
 use shared::files;
 use shared::info;
@@ -13,7 +12,6 @@ use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 use shared::strings::crash;
 use std::path::PathBuf;
-use std::process::Command;
 
 pub fn install_packages(mut packages: Vec<&str>) {
 

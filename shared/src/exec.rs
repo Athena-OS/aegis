@@ -1,6 +1,39 @@
 use std::process::{Command, ExitStatus};
 use std::io::{self, ErrorKind};
 
+pub fn mount_chroot_base() -> io::Result<()> {
+    let mounts = vec![
+        ("proc", "/mnt/proc", "proc"),
+        ("sysfs", "/mnt/sys", "sysfs"),
+        ("/dev", "/mnt/dev", "bind"),
+        ("/run", "/mnt/run", "bind"),
+        ("/sys/fs/selinux", "/mnt/sys/fs/selinux", "bind"),
+    ];
+
+    for (source, target, fstype) in mounts {
+        std::fs::create_dir_all(target)?;
+
+        let status = if fstype == "bind" {
+            Command::new("mount")
+                .args(["--bind", source, target])
+                .status()?
+        } else {
+            Command::new("mount")
+                .args(["-t", fstype, source, target])
+                .status()?
+        };
+
+        if !status.success() {
+            return Err(io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to mount {} to {}", source, target),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 pub fn unmount_chroot_base() -> io::Result<()> {
     for target in [
         "/mnt/sys/fs/selinux",
@@ -38,26 +71,6 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
     }
 
     result
-}
-
-pub fn exec_chroot_capture(command: &str, args: Vec<String>) -> io::Result<String> {
-    mount_chroot_base().expect("Failed to mount chroot filesystems");
-
-    let output = Command::new("chroot")
-        .arg("/mnt")
-        .arg(command)
-        .args(args)
-        .output();
-
-    if let Err(e) = unmount_chroot_base() {
-        eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
-    }
-
-    match output {
-        Ok(out) if out.status.success() => Ok(String::from_utf8_lossy(&out.stdout).trim().to_string()),
-        Ok(out) => Err(io::Error::new(io::ErrorKind::Other, String::from_utf8_lossy(&out.stderr).to_string())),
-        Err(e) => Err(e),
-    }
 }
 
 pub fn exec(command: &str, args: Vec<String>) -> Result<std::process::ExitStatus, std::io::Error> {
