@@ -36,6 +36,7 @@ pub fn install_packages(mut packages: Vec<&str>) {
     packages.append(&mut base_packages);
 
     /***** CHECK IF BTRFS *****/
+    info!("Root part TEST1");
     match exec_chroot_capture(
         "findmnt",
         vec![
@@ -46,16 +47,18 @@ pub fn install_packages(mut packages: Vec<&str>) {
         ],
     ) {
         Ok(fstype) => {
+            info!("Root part TEST2");
             if fstype == "btrfs" {
                 packages.extend(["btrfs-progs"]);
             }
             info!("Root partition is {}", fstype);
         }
         Err(e) => {
+            info!("Root part TESTERR");
             eprintln!("Failed to get filesystem type: {}", e);
         }
     }
-
+    info!("Root part TEST4");
     std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
     files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d");
     std::fs::create_dir_all("/mnt/etc/default").unwrap();
