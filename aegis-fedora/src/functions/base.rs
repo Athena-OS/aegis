@@ -107,7 +107,7 @@ pub fn genfstab() {
             "bash",
             vec![
                 String::from("-c"),
-                String::from("genfstab -U /mnt | grep -Ev 'swap|zram0' >> /mnt/etc/fstab"),
+                String::from("genfstab -U -S /mnt >> /mnt/etc/fstab"),
             ],
         ),
         "Generate fstab",
