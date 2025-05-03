@@ -4,15 +4,18 @@ use shared::files;
 use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
+use shared::info; //DELETE
 
 pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: bool, shell: &str) {
     let shell: &str = shell;
     let mut _password = String::new();
     // Username cannot contain any space
     let sanitized_username = username.replace(' ', "");
+    info!("CIAO PW: {}", password); //DELETE
     if do_hash_pass {
         let hashed_pass = hash_pass(password).stdout;
         _password = String::from_utf8_lossy(&hashed_pass).into_owned();
+        info!("HASH PW: {}", _password); //DELETE
     }
     else {
         _password = password.to_string();
