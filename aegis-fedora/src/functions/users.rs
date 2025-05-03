@@ -4,7 +4,6 @@ use shared::files;
 use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
-use shared::info; //DELETE
 
 pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: bool, shell: &str) {
     let shell: &str = shell;
