@@ -31,7 +31,6 @@ pub fn install_packages(mut packages: Vec<&str>) {
     let pre_packages: Vec<&str> = vec![
         "gmp",
         "libidn2",
-        "glib-networking",
         "libunistring",
         "coreutils",
     ];
@@ -108,9 +107,7 @@ pub fn genfstab() {
             "bash",
             vec![
                 String::from("-c"),
-                String::from("findmnt -R /mnt -o TARGET,UUID,FSTYPE,OPTIONS -n | \
-                 awk '{ printf \"UUID=%s %s %s %s 0 1\\n\", $2, $1, $3, $4 }' \
-                 > /mnt/etc/fstab"),
+                String::from("genfstab -U /mnt >> /mnt/etc/fstab"),
             ],
         ),
         "Generate fstab",
