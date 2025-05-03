@@ -11,11 +11,9 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
     let mut _password = String::new();
     // Username cannot contain any space
     let sanitized_username = username.replace(' ', "");
-    info!("CIAO PW: {}", password); //DELETE
     if do_hash_pass {
         let hashed_pass = hash_pass(password).stdout;
         _password = String::from_utf8_lossy(&hashed_pass).into_owned();
-        info!("HASH PW: {}", _password); //DELETE
     }
     else {
         _password = password.to_string();
@@ -36,7 +34,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 String::from("-s"),
                 String::from(shell_path),
                 String::from("-p"),
-                format!("'{}'", _password.replace('\n', "")),
+                format!("'{}'", _password),
                 sanitized_username.clone(),
             ],
         ),
@@ -84,10 +82,8 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
 pub fn hash_pass(password: &str) -> std::process::Output {
     exec_eval_result(
         exec_output(
-            "openssl",
+            "mkpasswd",
             vec![
-                String::from("passwd"),
-                String::from("-6"),
                 password.to_string()
             ]
         ),
