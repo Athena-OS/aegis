@@ -184,7 +184,7 @@ fn install_budgie() -> Vec<&'static str> {
 
 fn install_kde() -> Vec<&'static str> {
     vec![
-        "athena-kde-base",
+        "athena-plasma-base",
     ]
 }
 
