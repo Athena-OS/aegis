@@ -172,31 +172,6 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     if !std::path::Path::new(&format!("/mnt{efi_str}")).exists() {
         crash(format!("The efidir {efidir:?} doesn't exist"), 1);
     }
-    
-    exec_eval(
-        exec_chroot(
-            "grub2-install",
-            vec![
-                String::from("--target=x86_64-efi"),
-                format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=GRUB"),
-                String::from("--removable"),
-            ],
-        ),
-        "install grub as efi with --removable",
-    );
-
-    exec_eval(
-        exec_chroot(
-            "grub2-install",
-            vec![
-                String::from("--target=x86_64-efi"),
-                format!("--efi-directory={}", efi_str),
-                String::from("--bootloader-id=GRUB"),
-            ],
-        ),
-        "install grub as efi without --removable",
-    );
 
     setting_grub_parameters(encrypt_check);
     

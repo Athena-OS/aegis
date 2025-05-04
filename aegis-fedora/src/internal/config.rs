@@ -288,7 +288,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     package_set.extend(boot_packages);
     if config.bootloader.r#type == "grub-efi" {
         package_set.push("efibootmgr");
+        package_set.push("grub2-efi");
         package_set.push("grub2-efi-x64-modules"); // Not sure if it works also for ARM CPU
+        package_set.push("shim-\*");
     }
     /**************************/
     /*        DESKTOP         */

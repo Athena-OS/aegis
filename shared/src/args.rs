@@ -284,7 +284,7 @@ pub enum UsersSubcommand {
     /// Set the password of the root user
     #[command(name="root-password", aliases=&["root-pass", "rootPass"])]
     RootPass {
-        /// The password to set. NOTE: Takes hashed password, use `openssl passwd -6 <password>` to generate the hash.
+        /// The password to set. NOTE: Takes hashed password, use `mkpasswd <password>` to generate the hash.
         password: String,
     },
 }
@@ -298,8 +298,8 @@ pub struct NewUserArgs {
     #[arg(long, aliases=&["has-root", "sudoer", "root"])]
     pub hasroot: bool,
 
-    /// The password to set. NOTE: Takes hashed password, use `openssl passwd -6 <password>` to generate the hash.
-    /// When not providing a password openssl jumps into an interactive masked input mode allowing you to hide your password
+    /// The password to set. NOTE: Takes hashed password, use `mkpasswd <password>` to generate the hash.
+    /// When not providing a password mkpasswd jumps into an interactive masked input mode allowing you to hide your password
     /// from the terminal history.
     pub password: String,
 
