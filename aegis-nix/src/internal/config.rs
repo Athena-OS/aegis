@@ -155,9 +155,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         config.partition.swap_size,
         &mut partitions,
     );
-    println!();
     base::install_nix_config();
-    println!();
     info!("Installing bootloader : {}", config.bootloader.r#type);
     info!("Installing bootloader to : {}", config.bootloader.location);
     if config.bootloader.r#type == "grub-efi" {
@@ -165,7 +163,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     } else if config.bootloader.r#type == "grub-legacy" {
         base::install_bootloader_legacy(PathBuf::from(config.bootloader.location));
     }
-    println!();
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locales : {:?}", config.locale.locale);
     locale::set_locale(config.locale.locale.join(" "));
@@ -174,15 +171,12 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     locale::set_keyboard(config.locale.virtkeymap.as_str(), config.locale.x11keymap.as_str());
     info!("Setting timezone : {}", config.locale.timezone);
     locale::set_timezone(config.locale.timezone.as_str());
-    println!();
     info!("Hostname : {}", config.networking.hostname);
     network::set_hostname(config.networking.hostname.as_str());
     info!("Enabling ipv6 : {}", config.networking.ipv6);
     if config.networking.ipv6 {
         network::enable_ipv6();
     }
-    println!();
-    println!("---------");
     info!("Enabling zramd : {}", config.zramd);
     if config.zramd {
         base::install_zram();
@@ -199,7 +193,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "none" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => info!("No desktop setup selected!"),
     }
-    println!();
     info!("Installing theme : {:?}", config.theme);
 
     match config.theme.to_lowercase().as_str() {
@@ -212,7 +205,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "temple" => themes::install_theme_setup(ThemeSetup::Temple),
         _ => info!("No theme setup selected!"),
     }
-    println!();
     info!("Installing display manager : {:?}", config.displaymanager);
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => {
@@ -223,8 +215,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         },
         _ => info!("No display manager setup selected!"),
     }
-
-    println!();
     info!("Installing browser : {:?}", config.browser);
     /*if let Some(browser) = &config.browser {
         browsers::install_browser_setup(*browser);
@@ -235,7 +225,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         },
         _ => info!("No browser setup selected!"),
     }
-    println!();
     // Terminal configuration //
     info!("Installing terminal : {:?}", config.terminal);
     match config.terminal.to_lowercase().as_str() {
@@ -248,13 +237,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No terminal setup selected!"),
     }
     // Misc Settings
-    println!();
     info!("Installing flatpak : {}", config.flatpak);
     if config.flatpak {
         base::install_flatpak();
     }
-    println!();
-    println!("---------");
     // Users
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
@@ -273,15 +259,11 @@ pub fn read_config(configpath: PathBuf) -> i32 {
             config.users[i].password.as_str(),
             false,
         );
-        println!("---------");
     }
-    println!();
     //info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
-    println!();
     info!("Install Athena OS");
     let exit_code = install(config.params.cores, config.params.jobs);
-    println!();
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
@@ -311,7 +293,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
 /*
 // Prompt the user to generate logs and return true if the answer is 'Y'
 fn prompt_user_for_logs() -> bool {
-    println!("\nDo you want to generate logs of the failed install to communicate to the team? (Y/n)");
+    info!("\nDo you want to generate logs of the failed install to communicate to the team? (Y/n)");
 
     let mut input = String::new();
     io::stdin().read_line(&mut input).expect("Failed to read user input");

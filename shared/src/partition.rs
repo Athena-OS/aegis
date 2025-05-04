@@ -180,7 +180,7 @@ pub fn partition(
     if !device.exists() {
         crash(format!("The device {device:?} doesn't exist"), 1);
     }
-    println!("{:?}", mode);
+    info!("{:?}", mode);
     match mode {
         PartitionMode::EraseDisk => {
             debug!("Erase disk partitioning {device:?}");
@@ -195,13 +195,13 @@ pub fn partition(
             debug!("Manual/Replace partitioning");
             partitions.sort_by(|a, b| a.mountpoint.len().cmp(&b.mountpoint.len()));
             for i in 0..partitions.len() {
-                println!("{:?}", partitions);
-                println!("{}", partitions.len());
-                println!("Partition Type: {}", &partitions[i].partitiontype);
-                println!("Mount point: {}", &partitions[i].mountpoint);
-                println!("Filesystem: {}", &partitions[i].filesystem);
-                println!("Block device: {}", &partitions[i].blockdevice);
-                println!("To encrypt? {}", partitions[i].encrypt);
+                info!("{:?}", partitions);
+                info!("{}", partitions.len());
+                info!("Partition Type: {}", &partitions[i].partitiontype);
+                info!("Mount point: {}", &partitions[i].mountpoint);
+                info!("Filesystem: {}", &partitions[i].filesystem);
+                info!("Block device: {}", &partitions[i].blockdevice);
+                info!("To encrypt? {}", partitions[i].encrypt);
                 fmt_mount(
                     &device,
                     &partitions[i].partitiontype,

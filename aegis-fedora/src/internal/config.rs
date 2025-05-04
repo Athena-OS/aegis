@@ -277,7 +277,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         config.partition.swap_size,
         &mut partitions,
     );
-    println!();
 
     /* BOOTLOADER PACKAGE SET */
     let boot_packages = vec![
@@ -290,7 +289,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         package_set.push("efibootmgr");
     }
     /**************************/
-    println!();
     /*        DESKTOP         */
     info!("Selected desktop : {:?}", config.desktop);
     /*if let Some(desktop) = &config.desktop {
@@ -328,7 +326,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     //    _ => info!("No display manager setup selected!"),
     //}
     /**************************/
-    println!();
     /* BROWSER PACKAGE SET */
     info!("Selected browser : {:?}", config.browser);
     match config.browser.to_lowercase().as_str() {
@@ -341,7 +338,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No browser setup selected!"),
     }
     /**************************/
-    println!();
     /*        TERMINAL       */
     info!("Selected terminal : {:?}", config.terminal);
     let mut terminal_choice = String::new();
@@ -393,7 +389,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No terminal setup selected!"),
     }
     /**************************/
-    println!();
     /*         THEME         */
     info!("Selected theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
@@ -407,7 +402,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No theme setup selected!"),
     }
     /**************************/
-    println!();
     /*          MISC         */
 
     if config.zramd {
@@ -419,7 +413,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         package_set.push("flatpak");
     }
     /**************************/
-    println!();
     /*         USERS         */
     for i in 0..config.users.len() {
         match config.users[i].shell.to_lowercase().as_str() {
@@ -430,13 +423,11 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         }
     }
     /**************************/
-    println!();
     /********** INSTALLATION **********/
 
     base::install_packages(package_set);
 
     /**************************/
-    println!();
     /********** CONFIGURATION **********/
 
     base::genfstab();
@@ -450,7 +441,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         base::configure_bootloader_legacy(PathBuf::from(config.bootloader.location), config.partition.encrypt_check);
     }
     /**************************/
-    println!();
     /*         LOCALES        */
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locales : {:?}", config.locale.locale);
@@ -469,7 +459,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     network::create_hosts();
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
     /**************************/
-    println!();
     /*     DESKTOP CONFIG     */
     info!("Configuring desktop : {:?}", config.desktop);
     match config.desktop.to_lowercase().as_str() {
@@ -480,7 +469,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No desktop configuration needed."),
     }
     /**************************/
-    println!();
     /* DISPLAY MANAGER CONFIG */
     info!("Configuring display manager : {:?}", config.displaymanager);
     displaymanagers::configure_sddm();
@@ -500,12 +488,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No display manager configuration needed."),
     }
     /**************************/
-    println!();
     /*    TERMINAL CONFIG    */
     info!("Configuring terminal : {}", config.terminal);
     terminals::configure_terminal(terminal_choice);
     /**************************/
-    println!();
     /*      THEME CONFIG     */
     info!("Configuring theme : {:?}", config.theme);
     match config.theme.to_lowercase().as_str() {
@@ -519,7 +505,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No theme configuration needed."),
     }
     /**************************/
-    println!();
 
     /*info!("Installing snapper : {}", config.snapper);
     if config.snapper {
@@ -536,7 +521,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     install(PackageManager::Dnf, extra_packages);
     */
     /**************************/
-    println!();
     /*     SHELL CONFIG     */
     // The shell of the first created user will be applied on shell.desktop and on SHELL variable
     match config.users[0].shell.to_lowercase().as_str() {
@@ -545,7 +529,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         _ => info!("No shell configuration needed."),
     }
     /**************************/
-    println!();
     /*          MISC         */
     info!("Enabling ipv6 : {}", config.networking.ipv6);
     if config.networking.ipv6 {
@@ -565,7 +548,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         secure::secure_ssh_config();
     }*/
     /**************************/
-    println!();
     /*      USER CONFIG      */
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
@@ -584,12 +566,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     //info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
     /**************************/
-    println!();
     /*    ENABLE SERVICES    */
     info!("Enabling system services...");
     base::enable_system_services();
     /**************************/
-    println!();
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file("/tmp/aegis.log", "/mnt/var/log/aegis.log");
@@ -601,6 +581,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     if secure::selinux_enabled() {
         secure::set_selinux_mode("1");
     }
-    println!("Installation finished! You may reboot now!");
+    info!("Installation finished! You may reboot now!");
     0
 }

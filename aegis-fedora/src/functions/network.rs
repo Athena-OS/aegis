@@ -2,7 +2,7 @@ use shared::files;
 use shared::returncode_eval::files_eval;
 
 pub fn set_hostname(hostname: &str) {
-    println!("Setting hostname to {}", hostname);
+    info!("Setting hostname to {}", hostname);
     files::create_file("/mnt/etc/hostname");
     files_eval(
         files::append_file("/mnt/etc/hostname", hostname),

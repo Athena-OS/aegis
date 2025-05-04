@@ -213,7 +213,7 @@ impl Partition {
 }
 
 pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewrite
-    println!("{}", s);
+    info!("{}", s);
     let to_encrypt: bool = s.split(':').collect::<Vec<&str>>()[4].parse().map_err(|_| "Invalid boolean value")?;
     Ok(Partition::new(
         s.split(':').collect::<Vec<&str>>()[0].to_string(),
