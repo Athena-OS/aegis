@@ -489,7 +489,12 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     );
     umount("/mnt");
     mount(&root_blockdevice, "/mnt/", "subvol=@");
-    files_eval(files::create_directory("/mnt/boot"), "create /mnt/boot");
+    let mount_path = if efi {
+        "/mnt/boot/efi".to_string()
+    } else {
+        "/mnt/boot".to_string()
+    };
+    files_eval(files::create_directory(&mount_path), &format!("create {}", mount_path));
     files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
     mount(
         &root_blockdevice,
@@ -497,7 +502,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         "subvol=@home",
     );
 
-    mount(format!("{}{}1", device, dsuffix).as_str(), "/mnt/boot", "");
+    mount(format!("{}{}1", device, dsuffix).as_str(), &mount_path, "");
 }
 
 pub fn mount(partition: &str, mountpoint: &str, options: &str) {
