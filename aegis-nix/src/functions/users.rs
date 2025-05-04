@@ -41,10 +41,8 @@ pub fn new_user(username: &str, password: &str, do_hash_pass: bool) {
 pub fn hash_pass(password: &str) -> std::process::Output {
     exec_eval_result(
         exec_output(
-            "openssl",
+            "mkpasswd",
             vec![
-                String::from("passwd"),
-                String::from("-6"),
                 password.to_string()
             ]
         ),
