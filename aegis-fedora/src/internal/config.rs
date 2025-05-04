@@ -572,6 +572,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     base::enable_system_services();
     /**************************/
     /*   SET SELINUX CONTEXT   */
+    info!("Applying security labels on files...");
     secure::set_security_context();
     /**************************/
     info!("Installation log file copied to /var/log/aegis.log");
