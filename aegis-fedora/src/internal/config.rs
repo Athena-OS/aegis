@@ -197,6 +197,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         //"athena-powershell-config",
         "athena-config",
         "athena-tmux-config",
+        "athena-tweak-tool",
         "athena-vscodium-themes",
         "athena-welcome",
         "htb-toolkit",
