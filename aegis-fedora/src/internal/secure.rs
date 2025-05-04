@@ -28,7 +28,7 @@ pub fn set_security_context() {
                 String::from("/"),
             ],
         ),
-        &format!("Set SELinux security context"),
+        "Set SELinux security context",
     );
 }
 

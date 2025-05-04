@@ -33,7 +33,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
                 String::from("-s"),
                 String::from(shell_path),
                 String::from("-p"),
-                format!("'{}'", _password),
+                format!("{}", _password),
                 sanitized_username.clone(),
             ],
         ),
