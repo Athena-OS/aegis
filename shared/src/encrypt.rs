@@ -1,5 +1,4 @@
 use crate::exec::exec_output;
-use crate::returncode_eval::exec_eval_result;
 use std::fs;
 
 pub fn find_luks_partitions() -> Vec<(String, String)> {
@@ -10,25 +9,26 @@ pub fn find_luks_partitions() -> Vec<(String, String)> {
         for entry in entries.flatten() {
             if let Some(device_name) = entry.file_name().to_str() {
                 // Check if the device is a block device
-                if device_name.starts_with("sd") || device_name.starts_with("nvme") || device_name.starts_with("mmcblk") {
+                if device_name.starts_with("sd") || device_name.starts_with("vd") || device_name.starts_with("nvme") || device_name.starts_with("mmcblk") {
                     let device_path = format!("/dev/{}", device_name);
 
                     // Check if the device is a LUKS partition
-                    let output = exec_eval_result(
-                        exec_output(
-                            "cryptsetup",
-                            vec![
-                                String::from("luksDump"),
-                                device_path.to_string(),
-                            ],
-                        ),
-                        "Execute cryptsetup",
-                    );
-                        
-                    // Check if the output contains LUKS header information
-                    if output.status.success() {
-                        if let Some(uuid) = parse_uuid_from_output(&output.stdout) {
-                            luks_partitions.push((device_path, uuid));
+                    // Try running cryptsetup, but don't exit on failure
+                    match exec_output(
+                        "cryptsetup",
+                        vec![String::from("luksDump"), device_path.to_string()],
+                    ) {
+                        Ok(output) => {
+                            // Check if the output contains LUKS header information
+                            if output.status.success() {
+                                if let Some(uuid) = parse_uuid_from_output(&output.stdout) {
+                                    luks_partitions.push((device_path, uuid));
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("{}", err);
+                            // Continue to next device without panicking
                         }
                     }
                 }
