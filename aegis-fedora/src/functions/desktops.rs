@@ -1,3 +1,4 @@
+use crate::internal::services;
 use shared::args::DesktopSetup;
 use shared::debug;
 use shared::files;
@@ -214,6 +215,7 @@ pub fn configure_gnome() {
     disable_xsession("gnome.desktop");
     disable_wsession("gnome.desktop");
     disable_wsession("gnome-wayland.desktop");
+    services::disable_service("gdm");
 }
 
 /*

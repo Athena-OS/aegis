@@ -73,7 +73,6 @@ pub fn install_packages(mut packages: Vec<&str>) {
     // These packages are installed by Dnf, so by using host repositories
     install(PackageManager::Dnf, packages, InstallMode::Install);
     //install(PackageManager::Dnf, rm_packages, InstallMode::Remove);
-    services::disable_service("gdm");
 
     // Enable the necessary services after installation
     for service in virt_services {
