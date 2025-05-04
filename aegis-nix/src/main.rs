@@ -5,6 +5,7 @@ use shared::args::{BootloaderSubcommand, Command, Cli, UsersSubcommand};
 use shared::clap::Parser;
 use shared::exec::check_if_root;
 use shared::human_panic;
+use shared::log::info;
 use shared::logging;
 use shared::partition;
 

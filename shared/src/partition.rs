@@ -3,7 +3,7 @@ use crate::args::PartitionMode;
 use crate::exec::exec;
 use crate::exec::exec_workdir;
 use crate::files;
-use crate::log::debug;
+use crate::log::{debug, info};
 use crate::returncode_eval::exec_eval;
 use crate::returncode_eval::files_eval;
 use crate::strings::crash;

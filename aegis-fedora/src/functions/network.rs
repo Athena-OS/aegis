@@ -1,4 +1,5 @@
 use shared::files;
+use shared::log::info;
 use shared::returncode_eval::files_eval;
 
 pub fn set_hostname(hostname: &str) {
