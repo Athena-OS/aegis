@@ -1,4 +1,5 @@
 use shared::exec::exec;
+use shared::exec::exec_chroot;
 use shared::returncode_eval::exec_eval;
 use std::path::Path;
 
@@ -15,6 +16,19 @@ pub fn set_selinux_mode(mode: &str) {
             ],
         ),
         &format!("SELinux mode to {}", mode),
+    );
+}
+
+pub fn set_security_context() {
+    exec_eval(
+        exec_chroot(
+            "restorecon",
+            vec![
+                String::from("-Rv"),
+                String::from("/"),
+            ],
+        ),
+        &format!("Set SELinux security context"),
     );
 }
 

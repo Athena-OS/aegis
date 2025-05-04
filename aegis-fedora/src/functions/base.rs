@@ -150,7 +150,7 @@ fn setting_grub_parameters(encrypt_check: bool) {
         files::sed_file(
             "/mnt/etc/default/grub",
             "GRUB_CMDLINE_LINUX_DEFAULT=.*",
-            &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{}quiet loglevel=3 audit=0 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"", luks_param),
+            &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{}quiet loglevel=3 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"", luks_param),
         ),
         "set kernel parameters",
     );
