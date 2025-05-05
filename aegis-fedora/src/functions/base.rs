@@ -30,8 +30,6 @@ pub fn install_packages(mut packages: Vec<&str>) {
 
     let pre_packages: Vec<&str> = vec![
         "gmp",
-        //"libidn2",
-        //"libunistring",
         "coreutils",
     ];
     install(PackageManager::Dnf, pre_packages, InstallMode::Install);
