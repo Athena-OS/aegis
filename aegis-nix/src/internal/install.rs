@@ -1,4 +1,6 @@
 use shared::{error, info};
+use shared::exec::exec_chroot;
+use shared::returncode_eval::exec_eval;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
@@ -57,6 +59,17 @@ pub fn install(cores: String, jobs: String) -> i32 {
     // Wait for the threads capturing output to finish before returning
     stdout_thread.join().expect("Failed to join stdout thread.");
     stderr_thread.join().expect("Failed to join stderr thread.");
+
+    // Update nix channels on the target system after installation
+    exec_eval(
+        exec_chroot(
+            "nix-channel",
+            vec![
+                String::from("--update"),
+            ],
+        ),
+        "Update nix channels on the target system",
+    );
 
     exit_code
 }

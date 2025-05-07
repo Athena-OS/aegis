@@ -16,11 +16,12 @@ pub fn install_nix_config() {
             vec![
                 String::from("--add"),
                 String::from("https://nixos.org/channels/nixos-unstable"),
-                String::from("nixpkgs"),
+                String::from("nixos"),
             ],
         ),
-        "Set nixpkgs nix channel",
+        "Set nixos nix channel on the host",
     );
+    // This update is done on the host, not on the target system
     exec_eval(
         exec(
             "nix-channel",
@@ -28,7 +29,7 @@ pub fn install_nix_config() {
                 String::from("--update"),
             ],
         ),
-        "Update nix channels",
+        "Update nix channels on the host",
     );
     std::fs::create_dir_all("/mnt/etc/nixos").unwrap();
     info!("Generate hardware configuration.");
