@@ -60,7 +60,6 @@ fn mount_nixroot_base() -> io::Result<()> {
         ("/proc", "/mnt/proc", "bind"),
         ("/sys", "/mnt/sys", "bind"),
         ("/dev", "/mnt/dev", "bind"),
-        ("/etc/resolv.conf", "/mnt/etc/resolv.conf", "bind"),
     ];
 
     for (source, target, fstype) in mounts {
@@ -89,7 +88,6 @@ fn mount_nixroot_base() -> io::Result<()> {
 
 fn unmount_nixroot_base() -> io::Result<()> {
     for target in [
-        "/mnt/etc/resolv.conf",
         "/mnt/dev",
         "/mnt/sys",
         "/mnt/proc",
