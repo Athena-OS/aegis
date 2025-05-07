@@ -16,10 +16,10 @@ pub fn install_nix_config() {
             vec![
                 String::from("--add"),
                 String::from("https://nixos.org/channels/nixos-unstable"),
-                String::from("nixos"),
+                String::from("nixpkgs"),
             ],
         ),
-        "Set nixos nix channel on the host",
+        "Set nixpkgs nix channel on the host",
     );
     // This update is done on the host, not on the target system
     exec_eval(
