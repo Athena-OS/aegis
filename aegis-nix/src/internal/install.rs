@@ -1,5 +1,5 @@
 use shared::{error, info};
-use shared::exec::exec_chroot;
+use shared::exec::exec_nixroot;
 use shared::returncode_eval::exec_eval;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
@@ -62,7 +62,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
 
     // Update nix channels on the target system after installation
     exec_eval(
-        exec_chroot(
+        exec_nixroot(
             "nix-channel",
             vec![
                 String::from("--update"),

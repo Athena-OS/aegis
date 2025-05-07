@@ -55,6 +55,56 @@ pub fn unmount_chroot_base() -> io::Result<()> {
     Ok(())
 }
 
+fn mount_nixroot_base() -> io::Result<()> {
+    let mounts = vec![
+        ("proc", "/mnt/proc", "bind"),
+        ("sysfs", "/mnt/sys", "bind"),
+        ("/dev", "/mnt/dev", "bind"),
+    ];
+
+    for (source, target, fstype) in mounts {
+        std::fs::create_dir_all(target)?;
+
+        let status = if fstype == "bind" {
+            Command::new("mount")
+                .args(["-o", "bind", source, target])
+                .status()?
+        } else {
+            Command::new("mount")
+                .args(["-t", fstype, source, target])
+                .status()?
+        };
+
+        if !status.success() {
+            return Err(io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to mount {} to {}", source, target),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn unmount_nixroot_base() -> io::Result<()> {
+    for target in [
+        "/mnt/dev",
+        "/mnt/sys",
+        "/mnt/proc",
+    ] {
+        let status = Command::new("umount").arg(target).status()?;
+
+        if !status.success() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to unmount {}", target),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 /// Executes a command inside the chroot environment.
 pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
     mount_chroot_base().expect("Failed to mount chroot filesystems");
@@ -67,6 +117,37 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
 
     // Always attempt cleanup, even if command fails
     if let Err(e) = unmount_chroot_base() {
+        eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
+    }
+
+    result
+}
+
+/// Executes a command inside the nix chroot environment.
+pub fn exec_nixroot(
+    command: &str,
+    args: Vec<String>,
+) -> Result<ExitStatus, std::io::Error> {
+    mount_nixroot_base().expect("Failed to mount chroot filesystems");
+
+    // First: run system activation
+    let activate_status = Command::new("chroot")
+        .arg("/mnt")
+        .arg("/nix/var/nix/profiles/system/activate")
+        .status()?;
+
+    if !activate_status.success() {
+        eprintln!("System activation failed with exit code: {:?}", activate_status.code());
+    }
+
+    // Second: enter bash inside the new system
+    let result = Command::new("chroot")
+        .arg("/mnt")
+        .arg(format!("/run/current-system/sw/bin/{} {}", command, args.join(" ")).as_str())
+        .status();
+
+    // Always attempt cleanup
+    if let Err(e) = unmount_nixroot_base() {
         eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
     }
 
