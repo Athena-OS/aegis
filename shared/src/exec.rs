@@ -58,7 +58,7 @@ pub fn unmount_chroot_base() -> io::Result<()> {
 fn mount_nixroot_base() -> io::Result<()> {
     let mounts = vec![
         ("/proc", "/mnt/proc", "bind"),
-        ("/sysfs", "/mnt/sys", "bind"),
+        ("/sys", "/mnt/sys", "bind"),
         ("/dev", "/mnt/dev", "bind"),
     ];
 
