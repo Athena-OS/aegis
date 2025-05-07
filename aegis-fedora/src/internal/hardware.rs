@@ -1,53 +1,72 @@
 use shared::info;
 use shared::exec::exec_output;
 use shared::returncode_eval::exec_eval_result;
+use std::process::Output;
 
 type Packages = Vec<&'static str>;
 type Services = Vec<&'static str>;
 type SetParams = Vec<(String, Vec<String>)>;
 
 pub fn virt_check() -> (Packages, Services, SetParams) {
-    let output = exec_eval_result(
-        exec_output(
-            "systemd-detect-virt",
-            vec![]
-        ),
-        "Detect the virtualization environment",
-    );
+    let output_result = exec_output("systemd-detect-virt", vec![]);
+
+    let output: Output = match output_result {
+        Ok(out) => out,
+        Err(e) => {
+            panic!("Failed to execute systemd-detect-virt: {}", e);
+        }
+    };
 
     let mut result = String::from_utf8_lossy(&output.stdout).to_string();
-    result.pop(); //Removing the \n char from string
+    result.pop(); // Remove trailing newline
+
+    // Allow "none" with exit code 1
+    if output.status.code() != Some(0) && !(result == "none" && output.status.code() == Some(1)) {
+        panic!(
+            "Unexpected systemd-detect-virt failure: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 
     let mut packages = Vec::new();
     let mut services = Vec::new();
-    let mut set_params = Vec::new(); // To store the commands for file changes by sed
+    let mut set_params = Vec::new();
 
-    if result == "oracle" {
-        packages.push("virtualbox-guest-additions");
-        services.push("vboxservice");
-    } else if result == "vmware" {
-        packages.extend(vec!["open-vm-tools", "xorg-x11-drv-vmware"]);
-        services.extend(vec!["vmtoolsd"]);
-    
-    } else if result == "qemu" || result == "kvm" {
-        packages.extend(vec!["qemu-guest-agent", "spice-vdagent"]);
-        services.push("qemu-guest-agent");
-    } else if result == "microsoft" {
-        packages.extend(vec!["hyperv-tools"]);
-
-        // Add the file change for Hyper-V kernel parameter
-        set_params.push((
-            "Set hyperv kernel parameter".to_string(),
-            vec![
-                "-i".to_string(),
-                "-e".to_string(),
-                "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g".to_string(),
-                "/mnt/etc/default/grub".to_string(),
-            ],
-        ));
+    match result.as_str() {
+        "oracle" => {
+            packages.push("virtualbox-guest-additions");
+            services.push("vboxservice");
+        }
+        "vmware" => {
+            packages.extend(vec!["open-vm-tools", "xorg-x11-drv-vmware"]);
+            services.push("vmtoolsd");
+        }
+        "qemu" | "kvm" => {
+            packages.extend(vec!["qemu-guest-agent", "spice-vdagent"]);
+            services.push("qemu-guest-agent");
+        }
+        "microsoft" => {
+            packages.push("hyperv-tools");
+            set_params.push((
+                "Set hyperv kernel parameter".to_string(),
+                vec![
+                    "-i".to_string(),
+                    "-e".to_string(),
+                    "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"
+                        .to_string(),
+                    "/mnt/etc/default/grub".to_string(),
+                ],
+            ));
+        }
+        "none" => {
+            // Not virtualized - no-op
+        }
+        _ => {
+            // Unknown virtualization type - optional handling
+        }
     }
 
-    (packages, services, set_params) // Return packages, services, and file changes
+    (packages, services, set_params)
 }
 
 pub fn cpu_gpu_check() -> Vec<&'static str> {
