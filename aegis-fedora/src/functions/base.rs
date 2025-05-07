@@ -27,12 +27,13 @@ pub fn install_packages(mut packages: Vec<&str>) {
         "glibc-all-langpacks", // Prebuilt locales
         ];
 
-
+/*
     let pre_packages: Vec<&str> = vec![
         "gmp",
         "coreutils",
     ];
     install(PackageManager::Dnf, pre_packages, InstallMode::Install);
+*/
 
     // Add multiple strings from another Vec
     packages.append(&mut base_packages);
