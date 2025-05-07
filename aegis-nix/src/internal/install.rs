@@ -1,6 +1,4 @@
 use shared::{error, info};
-use shared::exec::exec_nixroot;
-use shared::returncode_eval::exec_eval;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
@@ -60,6 +58,8 @@ pub fn install(cores: String, jobs: String) -> i32 {
     stdout_thread.join().expect("Failed to join stdout thread.");
     stderr_thread.join().expect("Failed to join stderr thread.");
 
+    /* Nix Channel cannot be run in chroot (File not found despite exists)
+       Users must run it once they login on the system.
     // Update nix channels on the target system after installation
     exec_eval(
         exec_nixroot(
@@ -70,6 +70,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
         ),
         "Update nix channels on the target system",
     );
+    */
 
     exit_code
 }
