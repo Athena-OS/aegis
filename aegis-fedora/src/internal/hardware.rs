@@ -1,14 +1,17 @@
 use shared::info;
 use shared::exec::exec_output;
 use shared::returncode_eval::exec_eval_result;
-use std::process::Output;
+use std::process::{Command,Output};
 
 type Packages = Vec<&'static str>;
 type Services = Vec<&'static str>;
 type SetParams = Vec<(String, Vec<String>)>;
 
 pub fn virt_check() -> (Packages, Services, SetParams) {
-    let output_result = exec_output("systemd-detect-virt", vec![]);
+    let output_result = Command::new("systemd-detect-virt")
+        .output(); // Directly call command
+        // in baremetal, systemd-detect-virt returns exit status 1.
+        // Here above I prevent it panics the application
 
     let output: Output = match output_result {
         Ok(out) => out,
@@ -17,8 +20,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
         }
     };
 
-    let mut result = String::from_utf8_lossy(&output.stdout).to_string();
-    result.pop(); // Remove trailing newline
+    let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
     // Allow "none" with exit code 1
     if output.status.code() != Some(0) && !(result == "none" && output.status.code() == Some(1)) {
@@ -52,17 +54,16 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                 vec![
                     "-i".to_string(),
                     "-e".to_string(),
-                    "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g"
-                        .to_string(),
+                    "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g".to_string(),
                     "/mnt/etc/default/grub".to_string(),
                 ],
             ));
         }
         "none" => {
-            // Not virtualized - no-op
+            println!("Running on bare metal.");
         }
         _ => {
-            // Unknown virtualization type - optional handling
+            println!("Unknown virtualization type: {}", result);
         }
     }
 
