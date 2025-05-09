@@ -25,6 +25,8 @@ pub fn install_packages(mut packages: Vec<&str>) {
         "kernel-headers",
         "linux-firmware",
         "glibc-all-langpacks", // Prebuilt locales
+        "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm",
+        "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm",
         ];
 
 /*
@@ -72,6 +74,8 @@ pub fn install_packages(mut packages: Vec<&str>) {
     // These packages are installed by Dnf, so by using host repositories
     install(PackageManager::Dnf, packages, InstallMode::Install);
     //install(PackageManager::Dnf, rm_packages, InstallMode::Remove);
+
+
 
     // Enable the necessary services after installation
     for service in virt_services {
