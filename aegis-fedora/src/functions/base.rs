@@ -17,18 +17,17 @@ use std::path::PathBuf;
 
 pub fn install_packages(mut packages: Vec<&str>) {
 
-    let mut base_packages: Vec<&str> = vec![
-        // Kernel
+    packages.extend(vec![
         "kernel",
         "kernel-modules",
         "kernel-modules-extra",
         "kernel-headers",
         "linux-firmware",
-        "glibc-all-langpacks", // Prebuilt locales
-        "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm",
-        "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm",
-        ];
-
+        "glibc-all-langpacks",
+    ]);
+    
+    //packages.push(&rpmfusion_free);
+    //packages.push(&rpmfusion_nonfree);
 /*
     let pre_packages: Vec<&str> = vec![
         "gmp",
@@ -36,9 +35,6 @@ pub fn install_packages(mut packages: Vec<&str>) {
     ];
     install(PackageManager::Dnf, pre_packages, InstallMode::Install);
 */
-
-    // Add multiple strings from another Vec
-    packages.append(&mut base_packages);
 
     /***** CHECK IF BTRFS *****/
     let output = exec_eval_result(

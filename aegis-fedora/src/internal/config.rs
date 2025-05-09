@@ -3,9 +3,11 @@ use crate::functions::*;
 use crate::internal::secure;
 use shared::args::{self, DesktopSetup, ThemeSetup, DMSetup, ShellSetup, BrowserSetup, TerminalSetup, PartitionMode};
 use shared::{debug, info};
+use shared::exec::exec_output;
 use shared::files;
 use shared::partition;
 use shared::returncode_eval::files_eval;
+use shared::returncode_eval::exec_eval_result;
 use shared::serde::{self, Deserialize, Serialize};
 use shared::serde_json;
 use shared::strings::crash;
@@ -78,8 +80,39 @@ struct Users {
     shell: String,
 }
 
+fn get_fedora_version() -> String {
+    let output = exec_eval_result(
+        exec_output(
+            "rpm",
+            vec![
+                String::from("-E"),
+                String::from("%fedora"),
+            ],
+        ),
+        "Get Athena version",
+    );
+
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
 pub fn read_config(configpath: PathBuf) -> i32 {
-    let mut package_set: Vec<&str> = vec![
+
+    let fedora_version = get_fedora_version();
+    let mut packages_repo: Vec<String> = Vec::new();
+    let rpmfusion_free = format!(
+        "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-{}.noarch.rpm",
+        fedora_version
+    );
+    let rpmfusion_nonfree = format!(
+        "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{}.noarch.rpm",
+        fedora_version
+    );
+
+    packages_repo.push(rpmfusion_free);
+    packages_repo.push(rpmfusion_nonfree);
+
+    let mut package_set: Vec<&str> = packages_repo.iter().map(|s| s.as_str()).collect();
+    package_set.extend(vec![
         "NetworkManager",
         "network-manager-applet",
         "man-db",
@@ -220,7 +253,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "htb-toolkit",
         "kando",
         "nist-feed",
-    ];
+    ]);
 
     let data = std::fs::read_to_string(&configpath);
     match &data {
