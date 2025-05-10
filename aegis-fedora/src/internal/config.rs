@@ -342,6 +342,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         package_set.push("grub2-efi-x64-modules"); // Not sure if it works also for ARM CPU
         package_set.push("grubby");
         package_set.push("shim-*");
+        files::remove_file("/mnt/boot/efi/EFI/fedora/grub.cfg"); // Existing grub.cfg file with old UUID won't be updated during the GRUB installation. This removal is needed to allow GRUB to recreate a new grub.cfg with the right root partition UUID
     }
     /**************************/
     /*        DESKTOP         */
