@@ -164,7 +164,6 @@ fn setting_grub_parameters(encrypt_check: bool) {
 
 pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
 
-    let efidir = std::path::Path::new("/mnt").join(&efidir);
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {}", efi_str);
     
