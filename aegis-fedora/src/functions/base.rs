@@ -120,7 +120,7 @@ fn setting_grub_parameters(encrypt_check: bool) {
             "GRUB_DISTRIBUTOR=.*",
             "GRUB_DISTRIBUTOR=\"Athena OS\"",
         ),
-        "set distributor name",
+        "Set distributor name",
     );
     if encrypt_check {
         /*Set UUID of encrypted partition as kernel parameter*/
@@ -141,7 +141,7 @@ fn setting_grub_parameters(encrypt_check: bool) {
                 "#GRUB_ENABLE_CRYPTODISK=.*",
                 "GRUB_ENABLE_CRYPTODISK=y",
             ),
-            "set grub encrypt parameter",
+            "Set grub encrypt parameter",
         );
     }
     files_eval(
@@ -150,7 +150,7 @@ fn setting_grub_parameters(encrypt_check: bool) {
             "GRUB_CMDLINE_LINUX_DEFAULT=.*",
             &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{}quiet loglevel=3 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\"", luks_param),
         ),
-        "set kernel parameters",
+        "Set kernel parameters",
     );
     files_eval(
         files::sed_file(
@@ -158,17 +158,17 @@ fn setting_grub_parameters(encrypt_check: bool) {
             "#GRUB_DISABLE_OS_PROBER=.*",
             "GRUB_DISABLE_OS_PROBER=false",
         ),
-        "enable os prober",
+        "Enable OS prober",
     );
 }
 
 pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
 
     let efi_str = efidir.to_str().unwrap();
-    info!("EFI bootloader installing at {}", efi_str);
+    info!("EFI bootloader installing at /mnt{}", efi_str);
     
     if !std::path::Path::new(&format!("/mnt{efi_str}")).exists() {
-        crash(format!("The efidir {efidir:?} doesn't exist"), 1);
+        crash(format!("The efidir /mnt{efidir:?} doesn't exist"), 1);
     }
 
     setting_grub_parameters(encrypt_check);
@@ -178,7 +178,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
             "grub2-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
         ),
-        "create grub.cfg",
+        "Create grub.cfg",
     );
 }
 
@@ -196,7 +196,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
             "grub2-install",
             vec![String::from("--target=i386-pc"), device_str],
         ),
-        "install grub as legacy",
+        "Install GRUB as legacy",
     );
 
     setting_grub_parameters(encrypt_check);
@@ -206,7 +206,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
             "grub2-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
         ),
-        "create grub.cfg",
+        "Create grub.cfg",
     );
 }
 
@@ -274,7 +274,7 @@ pub fn configure_flatpak() {
                 String::from("https://flathub.org/repo/flathub.flatpakrepo"),
             ],
         ),
-        "add flathub remote",
+        "Add flathub remote",
     )
 }
 
