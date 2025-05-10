@@ -633,6 +633,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file("/tmp/aegis.log", "/mnt/var/log/aegis.log");
     if config.bootloader.r#type == "grub-efi" {
+        partition::umount("/mnt/boot/efi");
+    }
+    else {
         partition::umount("/mnt/boot");
     }
     partition::umount("/mnt/home");
