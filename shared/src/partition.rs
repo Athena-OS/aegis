@@ -131,7 +131,7 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
             );
             umount("/mnt");
             mount(&bdevice, "/mnt/", "subvol=@");
-            files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
+            files_eval(files::create_directory("/mnt/home"), "Create /mnt/home");
             mount(
                 &bdevice,
                 "/mnt/home",
@@ -474,7 +474,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
                 "mkfs.fat",
                 vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("BOOT"), format!("{}{}1", device, dsuffix)],
             ),
-            format!("format {}{}1 as fat32", device, dsuffix).as_str(),
+            format!("Format {}{}1 as fat32", device, dsuffix).as_str(),
         );
     } else if !efi {
         /* Format GRUB Legacy partition */
@@ -551,8 +551,8 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     } else {
         "/mnt/boot".to_string()
     };
-    files_eval(files::create_directory(&mount_path), &format!("create {}", mount_path));
-    files_eval(files::create_directory("/mnt/home"), "create /mnt/home");
+    files_eval(files::create_directory(&mount_path), &format!("Create {}", mount_path));
+    files_eval(files::create_directory("/mnt/home"), "Create /mnt/home");
     mount(
         &root_blockdevice,
         "/mnt/home",
@@ -575,7 +575,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
                 ],
             ),
             format!(
-                "mount {} with options {} at {}",
+                "Mount {} with options {} at {}",
                 partition, options, mountpoint
             )
             .as_str(),
@@ -586,7 +586,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
                 "mount",
                 vec![String::from(partition), String::from(mountpoint)],
             ),
-            format!("mount {} with no options at {}", partition, mountpoint).as_str(),
+            format!("Mount {} with no options at {}", partition, mountpoint).as_str(),
         );
     }
 }
@@ -594,6 +594,6 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
 pub fn umount(mountpoint: &str) {
     exec_eval(
         exec("umount", vec![String::from("-R"), String::from(mountpoint)]),
-        format!("unmount command processed on {}", mountpoint).as_str(),
+        format!("Unmount command processed on {}", mountpoint).as_str(),
     );
 }
