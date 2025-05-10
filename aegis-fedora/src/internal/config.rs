@@ -11,7 +11,7 @@ use shared::returncode_eval::exec_eval_result;
 use shared::serde::{self, Deserialize, Serialize};
 use shared::serde_json;
 use shared::strings::crash;
-use std::path::{PathBuf};
+use std::path::{Path, PathBuf};
 
 
 #[derive(Serialize, Deserialize)]
@@ -342,7 +342,11 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         package_set.push("grub2-efi-x64-modules"); // Not sure if it works also for ARM CPU
         package_set.push("grubby");
         package_set.push("shim-*");
-        files::remove_file("/mnt/boot/efi/EFI/fedora/grub.cfg"); // Existing grub.cfg file with old UUID won't be updated during the GRUB installation. This removal is needed to allow GRUB to recreate a new grub.cfg with the right root partition UUID
+        let grub_cfg_path = "/mnt/boot/efi/EFI/fedora/grub.cfg";
+        let path = Path::new(grub_cfg_path);
+        if path.exists() && path.is_file() {
+            files::remove_file(grub_cfg_path);
+        }
     }
     /**************************/
     /*        DESKTOP         */
