@@ -79,6 +79,7 @@ pub fn install(
             }
 
             PackageManager::None => debug!("No package manager selected"),
+            PackageManager::Pacman | PackageManager::Pacstrap => todo!(),
         };
 
         let stdout_handle = pkgmanager_cmd.stdout.take().unwrap();

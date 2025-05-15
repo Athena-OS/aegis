@@ -2,6 +2,7 @@
 
 members = [
     "shared",
+    "aegis-arch",
     "aegis-fedora",
     "aegis-nix",
 ]

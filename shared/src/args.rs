@@ -24,6 +24,12 @@ pub enum PackageManager {
     #[value(name = "rpmostree")]
     RpmOSTree,
 
+    #[value(name = "pacman")]
+    Pacman,
+
+    #[value(name = "pacstrap")]
+    Pacstrap,
+
     #[value(name = "None")]
     None,
 }
