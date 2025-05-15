@@ -3,7 +3,7 @@ use crate::internal::install::install;
 use crate::internal::services::enable_service;
 use shared::args::PackageManager;
 use shared::exec::exec;
-use shared::exec::exec_chroot;
+use shared::exec::exec_archchroot;
 use shared::encrypt::find_luks_partitions;
 use shared::files;
 use shared::{info, warn};
@@ -83,7 +83,7 @@ pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
     }
 
     exec_eval(
-        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
+        exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
             "sed",
             vec![
                 String::from("-i"),
@@ -121,7 +121,7 @@ pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
 pub fn preset_process() {
     // mkinitcpio -P must be run after all the edits on /etc/mkinitcpio.conf file
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "mkinitcpio",
             vec![
                 String::from("-P"),
@@ -269,7 +269,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     }
     
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "grub-install",
             vec![
                 String::from("--target=x86_64-efi"),
@@ -282,7 +282,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     );
 
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "grub-install",
             vec![
                 String::from("--target=x86_64-efi"),
@@ -296,7 +296,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf, encrypt_check: bool) {
     setting_grub_parameters(encrypt_check);
     
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "grub-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
         ),
@@ -314,7 +314,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
     info!("Legacy bootloader installing at {}", device_str);
 
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "grub-install",
             vec![String::from("--target=i386-pc"), device_str],
         ),
@@ -324,7 +324,7 @@ pub fn configure_bootloader_legacy(device: PathBuf, encrypt_check: bool) {
     setting_grub_parameters(encrypt_check);
     
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "grub-mkconfig",
             vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
         ),
@@ -370,7 +370,7 @@ pub fn setup_snapper() {
         "Not show the total number of Grub Btrfs snapshots found",
     );
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "btrfs",
             vec![
                 String::from("subvolume"),
@@ -387,7 +387,7 @@ pub fn setup_snapper() {
 
 pub fn configure_flatpak() {
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "flatpak",
             vec![
                 String::from("remote-add"),

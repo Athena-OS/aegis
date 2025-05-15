@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::io::Write;
-use shared::exec::exec_chroot;
+use shared::exec::exec_archchroot;
 use shared::files;
 use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
 
 pub fn set_timezone(timezone: &str) {
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "ln",
             vec![
                 "-sf".to_string(),
@@ -18,7 +18,7 @@ pub fn set_timezone(timezone: &str) {
         "Set timezone",
     );
     exec_eval(
-        exec_chroot("hwclock", vec!["--systohc".to_string()]),
+        exec_archchroot("hwclock", vec!["--systohc".to_string()]),
         "Set system clock",
     );
 }
@@ -56,7 +56,7 @@ pub fn set_locale(locale: String) {
             );
         }
     }
-    exec_eval(exec_chroot("locale-gen", vec![]), "generate locales");
+    exec_eval(exec_archchroot("locale-gen", vec![]), "generate locales");
 }
 
 pub fn set_keyboard(virtkeyboard: &str, x11keyboard: &str) -> Result<(), Box<dyn std::error::Error>> {

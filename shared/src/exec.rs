@@ -123,6 +123,19 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
     result
 }
 
+pub fn exec_archchroot(
+    command: &str,
+    args: Vec<String>,
+) -> Result<ExitStatus, std::io::Error> {
+    let returncode = Command::new("bash")
+        .args([
+            "-c",
+            format!("arch-chroot /mnt {} {}", command, args.join(" ")).as_str(),
+        ])
+        .status();
+    returncode
+}
+
 /// Executes a command inside the nix chroot environment.
 pub fn exec_nixroot(
     command: &str,

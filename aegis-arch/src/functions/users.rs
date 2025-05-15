@@ -1,4 +1,4 @@
-use shared::exec::exec_chroot;
+use shared::exec::exec_archchroot;
 use shared::files;
 use shared::returncode_eval::exec_eval;
 use shared::returncode_eval::files_eval;
@@ -25,7 +25,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
         &_ => "/usr/bin/bash",
     };
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "useradd",
             vec![
                 String::from("-m"),
@@ -40,7 +40,7 @@ pub fn new_user(username: &str, hasroot: bool, password: &str, do_hash_pass: boo
     );
     if hasroot {
         exec_eval(
-            exec_chroot(
+            exec_archchroot(
                 "usermod",
                 vec![
                     String::from("-aG"),
@@ -88,7 +88,7 @@ pub fn hash_pass(password: &str) -> std::process::Output {
 
 pub fn root_pass(root_pass: &str) {
     exec_eval(
-        exec_chroot(
+        exec_archchroot(
             "usermod",
             vec![
                 String::from("--password"),

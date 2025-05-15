@@ -97,7 +97,7 @@ fn install_xterm() -> Vec<&'static str> {
 
 pub fn configure_terminal(term: String, desktop: &str) {
     exec_eval(
-        exec( // Using exec instead of exec_chroot because in exec_chroot, these sed arguments need some chars to be escaped
+        exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
             "sed",
             vec![
                 String::from("-i"),
