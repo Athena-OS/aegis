@@ -1,7 +1,7 @@
 use shared::files;
 use shared::info;
 use shared::returncode_eval::files_eval;
-use std::process::Command;
+use std::process::{Command,Output};
 use std::thread::available_parallelism;
 
 type Packages = Vec<&'static str>;
@@ -9,12 +9,27 @@ type Services = Vec<&'static str>;
 type SetParams = Vec<(String, Vec<String>)>;
 
 pub fn virt_check() -> (Packages, Services, SetParams) {
-    let output = Command::new("systemd-detect-virt")
-        .output()
-        .expect("Failed to run systemd-detect-virt");
+    let output_result = Command::new("systemd-detect-virt")
+        .output(); // Directly call command
+        // in baremetal, systemd-detect-virt returns exit status 1.
+        // Here above I prevent it panics the application
 
-    let mut result = String::from_utf8_lossy(&output.stdout).to_string();
-    result.pop(); //Removing the \n char from string
+    let output: Output = match output_result {
+        Ok(out) => out,
+        Err(e) => {
+            panic!("Failed to execute systemd-detect-virt: {}", e);
+        }
+    };
+
+    let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    // Allow "none" with exit code 1
+    if output.status.code() != Some(0) && !(result == "none" && output.status.code() == Some(1)) {
+        panic!(
+            "Unexpected systemd-detect-virt failure: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 
     let mut packages = Vec::new();
     let mut services = Vec::new();

@@ -3,18 +3,30 @@ use shared::files;
 use shared::info;
 use shared::returncode_eval::exec_eval_result;
 use shared::returncode_eval::files_eval;
+use std::process::{Command,Output};
 
 pub fn virt_check() {
-    let output = exec_eval_result(
-        exec_output(
-            "systemd-detect-virt",
-            vec![]
-        ),
-        "Detect the virtualization environment",
-    );
+    let output_result = Command::new("systemd-detect-virt")
+        .output(); // Directly call command
+        // in baremetal, systemd-detect-virt returns exit status 1.
+        // Here above I prevent it panics the application
 
-    let mut result = String::from_utf8_lossy(&output.stdout).to_string();
-    result.pop(); //Removing the \n char from string
+    let output: Output = match output_result {
+        Ok(out) => out,
+        Err(e) => {
+            panic!("Failed to execute systemd-detect-virt: {}", e);
+        }
+    };
+
+    let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    // Allow "none" with exit code 1
+    if output.status.code() != Some(0) && !(result == "none" && output.status.code() == Some(1)) {
+        panic!(
+            "Unexpected systemd-detect-virt failure: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 
     if result == "oracle" {
         files_eval(
