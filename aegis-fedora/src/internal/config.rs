@@ -245,6 +245,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         //"athena-cyber-hub",
         //"athena-neofetch-config",
         //"athena-powershell-config",
+        "athena-bash",
         "athena-config",
         "athena-tmux-config",
         "athena-tweak-tool",
