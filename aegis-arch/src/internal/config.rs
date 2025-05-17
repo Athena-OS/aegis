@@ -205,10 +205,10 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "xmlstarlet",
         "zoxide",
         // Athena
+        "athena-bash",
         "athena-cyber-hub",
-        "athena-neofetch-config",
-        "athena-powershell-config",
         "athena-config",
+        "athena-powershell-config",
         "athena-tmux-config",
         "athena-vim-config",
         "athena-vscodium-themes",
