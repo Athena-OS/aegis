@@ -96,7 +96,7 @@ pub fn install_packages(kernel: String, mut packages: Vec<&str>) {
     );
     
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
-    files::copy_file("/mnt/usr/lib/os-release-athena", "/mnt/usr/lib/os-release");
+    files::copy_file("/mnt/usr/local/share/athena/release/os-release-athena", "/mnt/usr/lib/os-release");
     files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
 
     files_eval(
