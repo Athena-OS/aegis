@@ -114,12 +114,12 @@ pub enum Command {
         desktop: DesktopSetup,
     },
 
-    /// Install a graphical theme
+    /// Install a graphical design
     #[command(name = "themes")]
     Themes {
         /// The theme setup to use
         #[arg(value_enum)]
-        theme: ThemeSetup,
+        design: ThemeSetup,
     },
 
     /// Install a display manager

@@ -22,7 +22,7 @@ struct Config {
     users: Vec<Users>,
     rootpass: String,
     desktop: String,
-    theme: String,
+    design: String,
     displaymanager: String,
     browser: String,
     terminal: String,
@@ -403,9 +403,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     }
     /**************************/
     println!();
-    /*         THEME         */
-    info!("Selected theme : {:?}", config.theme);
-    match config.theme.to_lowercase().as_str() {
+    /*         DESIGN         */
+    info!("Selected design : {:?}", config.design);
+    match config.design.to_lowercase().as_str() {
         "cyborg" => package_set.extend(themes::install_theme_setup(ThemeSetup::Cyborg)),
         "graphite" => package_set.extend(themes::install_theme_setup(ThemeSetup::Graphite)),
         "hackthebox" => package_set.extend(themes::install_theme_setup(ThemeSetup::HackTheBox)), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
@@ -413,7 +413,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "samurai" => package_set.extend(themes::install_theme_setup(ThemeSetup::Samurai)),
         "sweet" => package_set.extend(themes::install_theme_setup(ThemeSetup::Sweet)),
         "temple" => package_set.extend(themes::install_theme_setup(ThemeSetup::Temple)),
-        _ => info!("No theme setup selected!"),
+        _ => info!("No design setup selected!"),
     }
     /**************************/
     println!();
@@ -527,9 +527,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     terminals::configure_terminal(terminal_choice, &config.desktop);
     /**************************/
     println!();
-    /*      THEME CONFIG     */
-    info!("Configuring theme : {:?}", config.theme);
-    match config.theme.to_lowercase().as_str() {
+    /*      DESIGN CONFIG     */
+    info!("Configuring design : {:?}", config.design);
+    match config.design.to_lowercase().as_str() {
         "cyborg" => themes::configure_cyborg(),
         "graphite" => themes::configure_graphite(),
         "hackthebox" => themes::configure_hackthebox(),
@@ -537,7 +537,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "samurai" => themes::configure_samurai(),
         "sweet" => themes::configure_sweet(),
         "temple" => themes::configure_temple(),
-        _ => info!("No theme configuration needed."),
+        _ => info!("No design configuration needed."),
     }
     /**************************/
     println!();

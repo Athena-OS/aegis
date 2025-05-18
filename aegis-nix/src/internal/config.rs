@@ -24,7 +24,7 @@ struct Config {
     rootpass: String,
     params: InstallParams,
     desktop: String,
-    theme: String,
+    design: String,
     displaymanager: String,
     browser: String,
     terminal: String,
@@ -193,9 +193,9 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "none" => desktops::install_desktop_setup(DesktopSetup::None),
         _ => info!("No desktop setup selected!"),
     }
-    info!("Installing theme : {:?}", config.theme);
+    info!("Installing design : {:?}", config.design);
 
-    match config.theme.to_lowercase().as_str() {
+    match config.design.to_lowercase().as_str() {
         "cyborg" => themes::install_theme_setup(ThemeSetup::Cyborg),
         "graphite" => themes::install_theme_setup(ThemeSetup::Graphite),
         "hackthebox" => themes::install_theme_setup(ThemeSetup::HackTheBox), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
@@ -203,7 +203,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "samurai" => themes::install_theme_setup(ThemeSetup::Samurai),
         "sweet" => themes::install_theme_setup(ThemeSetup::Sweet),
         "temple" => themes::install_theme_setup(ThemeSetup::Temple),
-        _ => info!("No theme setup selected!"),
+        _ => info!("No design setup selected!"),
     }
     info!("Installing display manager : {:?}", config.displaymanager);
     match config.displaymanager.to_lowercase().as_str() {

@@ -99,8 +99,8 @@ fn main() -> Result<(), i32> {
         Command::Desktops { desktop } => {
             desktops::install_desktop_setup(desktop);
         }
-        Command::Themes { theme } => {
-            themes::install_theme_setup(theme);
+        Command::Themes { design } => {
+            themes::install_theme_setup(design);
         }
         Command::DisplayManagers { displaymanager } => {
             displaymanagers::install_dm_setup(displaymanager);

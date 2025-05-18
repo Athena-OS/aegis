@@ -13,7 +13,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) {
         ThemeSetup::Samurai => install_samurai(),
         ThemeSetup::Sweet => install_sweet(),
         ThemeSetup::Temple => install_temple(),
-        ThemeSetup::None => debug!("No theme setup selected"),
+        ThemeSetup::None => debug!("No design setup selected"),
     }
 }
 
@@ -24,7 +24,7 @@ fn install_cyborg() {
             "  theme =.*",
             "  theme = \"cyborg\";",
         ),
-        "Set Cyborg theme",
+        "Set Cyborg design",
     );
 }
 
@@ -35,7 +35,7 @@ fn install_graphite() {
             "  theme =.*",
             "  theme = \"graphite\";",
         ),
-        "Set Graphite theme",
+        "Set Graphite design",
     );
 }
 
@@ -46,7 +46,7 @@ fn install_hackthebox() {
             "  theme =.*",
             "  theme = \"hackthebox\";",
         ),
-        "Set Hack The Box theme",
+        "Set Hack The Box design",
     );
 }
 
@@ -57,7 +57,7 @@ fn install_redmoon() {
             "  theme =.*",
             "  theme = \"redmoon\";",
         ),
-        "Set Red Moon theme",
+        "Set Red Moon design",
     );
 }
 
@@ -68,7 +68,7 @@ fn install_samurai() {
             "  theme =.*",
             "  theme = \"samurai\";",
         ),
-        "Set Samurai theme",
+        "Set Samurai design",
     );
 }
 
@@ -79,7 +79,7 @@ fn install_sweet() {
             "  theme =.*",
             "  theme = \"sweet\";",
         ),
-        "Set Sweet theme",
+        "Set Sweet design",
     );
 }
 
@@ -90,6 +90,6 @@ fn install_temple() {
             "  theme =.*",
             "  theme = \"temple\";",
         ),
-        "Set Temple theme",
+        "Set Temple design",
     );
 }
