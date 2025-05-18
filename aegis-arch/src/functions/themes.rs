@@ -16,50 +16,50 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
         ThemeSetup::Temple => install_temple(),
         ThemeSetup::None => {
             debug!("No theme setup selected");
-            Vec::new() // Return empty vector if no theme setup is selected
+            Vec::new() // Return empty vector if no design setup is selected
         }
     }
 }
 
 fn install_cyborg() -> Vec<&'static str> {
     vec![
-        "athena-cyborg-theme",
+        "athena-cyborg-design",
     ]
 }
 
 fn install_graphite() -> Vec<&'static str> {
     vec![
-        "athena-graphite-theme",
+        "athena-graphite-design",
     ]
 }
 
 fn install_hackthebox() -> Vec<&'static str> {
     vec![
-        "athena-htb-theme",
+        "athena-htb-design",
     ]
 }
 
 fn install_redmoon() -> Vec<&'static str> {
     vec![
-        "athena-redmoon-theme",
+        "athena-redmoon-design",
     ]
 }
 
 fn install_samurai() -> Vec<&'static str> {
     vec![
-        "athena-samurai-theme",
+        "athena-samurai-design",
     ]
 }
 
 fn install_sweet() -> Vec<&'static str> {
     vec![
-        "athena-sweetdark-theme",
+        "athena-sweetdark-design",
     ]
 }
 
 fn install_temple() -> Vec<&'static str> {
     vec![
-        "athena-temple-theme",
+        "athena-temple-design",
     ]
 }
 
