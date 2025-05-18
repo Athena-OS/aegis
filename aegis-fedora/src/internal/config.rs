@@ -135,6 +135,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "dialog",
         "dosfstools",
         "iproute",
+        "iputils",
         "irqbalance",
         "lvm2",
         "memtest86+",
