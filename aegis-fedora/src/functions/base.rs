@@ -292,6 +292,7 @@ pub fn enable_system_services() {
     services::enable_service("crond");
     services::enable_service("irqbalance");
     services::enable_service("NetworkManager");
+    services::enable_service("podman");
     services::enable_service("vnstat");
     //services::enable_service("nohang");
     //services::enable_service("cups");
