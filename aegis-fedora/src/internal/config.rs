@@ -229,6 +229,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "openvpn",
         "orca",
         "p7zip",
+        "podman",
         "polkit",
         "sl",
         //"smartmontools", //hw-probe deps
