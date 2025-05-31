@@ -178,6 +178,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "atmel-firmware",
         "zd1211-firmware",
         // Fonts
+        "default-fonts",
         "google-noto-fonts-common",
         "google-noto-color-emoji-fonts",
         "google-noto-sans-cjk-fonts",
