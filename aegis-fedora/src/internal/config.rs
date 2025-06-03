@@ -222,7 +222,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
         "nautilus",
         "ncdu",
         "NetworkManager-openvpn",
-        "neovim-nvchad",
+        "neovim",
         "netcat",
         "nyancat",
         "onionshare",
