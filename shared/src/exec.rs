@@ -1,5 +1,5 @@
 use std::process::{Command, ExitStatus, Output};
-use std::io::{self, ErrorKind};
+use std::io;
 
 pub fn mount_chroot_base() -> io::Result<()> {
     let mounts = vec![
@@ -24,8 +24,7 @@ pub fn mount_chroot_base() -> io::Result<()> {
         };
 
         if !status.success() {
-            return Err(io::Error::new(
-                ErrorKind::Other,
+            return Err(io::Error::other(
                 format!("Failed to mount {} to {}", source, target),
             ));
         }
@@ -45,8 +44,7 @@ pub fn unmount_chroot_base() -> io::Result<()> {
         let status = Command::new("umount").arg(target).status()?;
 
         if !status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 format!("Failed to unmount {}", target),
             ));
         }
@@ -76,8 +74,7 @@ fn mount_nixroot_base() -> io::Result<()> {
         };
 
         if !status.success() {
-            return Err(io::Error::new(
-                ErrorKind::Other,
+            return Err(io::Error::other(
                 format!("Failed to mount {} to {}", source, target),
             ));
         }
@@ -95,8 +92,7 @@ fn unmount_nixroot_base() -> io::Result<()> {
         let status = Command::new("umount").arg(target).status()?;
 
         if !status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
+            return Err(io::Error::other(
                 format!("Failed to unmount {}", target),
             ));
         }
@@ -179,7 +175,7 @@ pub fn exec_output(command: &str, args: Vec<String>) -> Result<Output, io::Error
 
     if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(io::Error::new(io::ErrorKind::Other, err_msg.to_string()));
+        return Err(io::Error::other(err_msg.to_string()));
     }
 
     Ok(output)

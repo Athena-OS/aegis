@@ -241,7 +241,7 @@ pub fn partition(
         PartitionMode::EraseDisk => {
             debug!("Erase disk partitioning {device:?}");
             if efi {
-                partition_with_efi(&device, swap, swap_size);
+                partition_with_efi(&device, swap, swap_size, encrypt_check);
             } else {
                 partition_no_efi(&device, swap, swap_size);
             }
@@ -272,7 +272,7 @@ pub fn partition(
     }
 }
 
-fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
+fn partition_with_efi(device: &Path, swap: bool, swap_size: String, encrypt_check: bool) {
     let device = device.to_string_lossy().to_string();
     exec_eval(
         exec(
@@ -318,11 +318,38 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
         ),
         "Enable EFI system partition",
     );
-    let boundary_partition_size = if swap {
-        swap_size
+
+    let boundary_grub_partition_size = if encrypt_check {
+        String::from("1536MiB") // 1024 MiB + 512 MiB
     } else {
         String::from("512MiB")
     };
+
+    if encrypt_check {
+        exec_eval(
+            exec(
+                "parted",
+                vec![
+                    String::from("-s"),
+                    String::from(&device),
+                    String::from("--"),
+                    String::from("mkpart"),
+                    String::from("primary"),
+                    String::from("ext4"),
+                    String::from("512MiB"),
+                    String::from(&boundary_grub_partition_size),
+                ],
+            ),
+            "Create grub boot partition",
+        );
+    }
+
+    let boundary_partition_size = if swap {
+        swap_size
+    } else {
+        String::from(&boundary_grub_partition_size)
+    };
+
     if swap {
         exec_eval(
             exec(
@@ -334,13 +361,14 @@ fn partition_with_efi(device: &Path, swap: bool, swap_size: String) {
                     String::from("mkpart"),
                     String::from("swap"),
                     String::from("linux-swap"),
-                    String::from("512MiB"),
+                    String::from(&boundary_grub_partition_size),
                     String::from(&boundary_partition_size),
                 ],
             ),
             "Create swap partition",
         );
     }
+
     exec_eval(
         exec(
             "parted",
@@ -461,48 +489,54 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         ""
     };
 
-    let bdsuffix = if swap {
-        format!("{}3", dsuffix)
-    } else {
-        format!("{}2", dsuffix)
-    };
+    let mut dindex = 1;
 
     if efi {
         /* Format EFI partition */
         exec_eval(
             exec(
                 "mkfs.fat",
-                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("BOOT"), format!("{}{}1", device, dsuffix)],
+                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("BOOT"), format!("{}{}{}", device, dsuffix, dindex)],
             ),
-            format!("Format {}{}1 as fat32", device, dsuffix).as_str(),
+            format!("Format {}{}{} as fat32", device, dsuffix, dindex).as_str(),
         );
-    } else if !efi {
+
+        if encrypt_check {
+            dindex += 1; // Next partition index
+            exec_eval(
+                exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}{}", device, dsuffix, dindex)]),
+                format!("Format {}{}{} as ext4", device, dsuffix, dindex).as_str(),
+            );
+        }
+
+    } else {
         /* Format GRUB Legacy partition */
         exec_eval(
-            exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}1", device, dsuffix)]),
-            format!("Format {}{}1 as ext4", device, dsuffix).as_str(),
+            exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}{}", device, dsuffix, dindex)]),
+            format!("Format {}{}{} as ext4", device, dsuffix, dindex).as_str(),
         );
     }
 
     /* Format Swap partition */
     if swap {
+        dindex += 1; // Next partition index
         exec_eval(
             exec(
                 "mkswap",
-                vec![String::from("-L"), String::from("swap"), format!("{}{}2", device, dsuffix)],
+                vec![String::from("-L"), String::from("swap"), format!("{}{}{}", device, dsuffix, dindex)],
             ),
-            format!("Make {}{}2 as swap partition", device, dsuffix).as_str(),
+            format!("Make {}{}{} as swap partition", device, dsuffix, dindex).as_str(),
         );
         exec_eval(
             exec(
                 "swapon",
-                vec![format!("{}{}2", device, dsuffix)],
+                vec![format!("{}{}{}", device, dsuffix, dindex)],
             ),
-            format!("Activate {}{}2 swap device", device, dsuffix).as_str(),
+            format!("Activate {}{}{} swap device", device, dsuffix, dindex).as_str(),
         );
     }
-
-    let mut root_blockdevice = format!("{device}{bdsuffix}"); // i.e., /dev/sda3
+    dindex += 1; // Next partition index
+    let mut root_blockdevice = format!("{device}{dsuffix}{dindex}"); // i.e., /dev/sda3
     let root_blockdevice_name = root_blockdevice.trim_start_matches("/dev/"); // i.e., sda3
 
     if encrypt_check {
