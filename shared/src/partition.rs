@@ -593,6 +593,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     );
 
     if efi && encrypt_check {
+        files_eval(files::create_directory("/mnt/boot"), &format!("Create {}", "/mnt/boot"));
         mount(format!("{}{}2", device, dsuffix).as_str(), "/mnt/boot", "");
     }
     files_eval(files::create_directory(&mount_path), &format!("Create {}", mount_path));
