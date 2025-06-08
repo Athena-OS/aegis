@@ -585,7 +585,6 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     } else {
         "/mnt/boot".to_string()
     };
-    files_eval(files::create_directory(&mount_path), &format!("Create {}", mount_path));
     files_eval(files::create_directory("/mnt/home"), "Create /mnt/home");
     mount(
         &root_blockdevice,
@@ -596,6 +595,7 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
     if efi && encrypt_check {
         mount(format!("{}{}2", device, dsuffix).as_str(), "/mnt/boot", "");
     }
+    files_eval(files::create_directory(&mount_path), &format!("Create {}", mount_path));
     mount(format!("{}{}1", device, dsuffix).as_str(), &mount_path, "");
 }
 
