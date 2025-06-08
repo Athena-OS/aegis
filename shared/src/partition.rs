@@ -593,10 +593,10 @@ fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
         "subvol=@home",
     );
 
-    mount(format!("{}{}1", device, dsuffix).as_str(), &mount_path, "");
     if efi && encrypt_check {
         mount(format!("{}{}2", device, dsuffix).as_str(), "/mnt/boot", "");
     }
+    mount(format!("{}{}1", device, dsuffix).as_str(), &mount_path, "");
 }
 
 pub fn mount(partition: &str, mountpoint: &str, options: &str) {
