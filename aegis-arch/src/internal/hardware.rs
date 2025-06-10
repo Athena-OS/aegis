@@ -39,7 +39,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
         packages.push("virtualbox-guest-utils");
         services.push("vboxservice");
     } else if result == "vmware" {
-        packages.extend(vec!["open-vm-tools", "xf86-video-vmware"]);
+        packages.extend(vec!["open-vm-tools"]);
         services.extend(vec!["vmware-vmblock-fuse", "vmtoolsd"]);
 
         // Add the file change for vmware modules
