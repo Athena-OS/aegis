@@ -55,10 +55,10 @@ pub fn install(pkgmanager: PackageManager, pkgs: Vec<&str>) {
         let stdout_thread = spawn_log_thread(BufReader::new(stdout_handle), retry_clone.clone(), &pkgmanager_name);
         let stderr_thread = spawn_log_thread(BufReader::new(stderr_handle), retry_clone.clone(), &pkgmanager_name);
 
-        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait for the package manager");
-
         stdout_thread.join().expect("stdout thread panicked");
         stderr_thread.join().expect("stderr thread panicked");
+        
+        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait for the package manager");
 
         if !exit_status.success() {
             error!("The package manager failed with exit code: {}", exit_status.code().unwrap_or(-1));

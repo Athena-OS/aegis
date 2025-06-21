@@ -88,10 +88,10 @@ pub fn install(
         let stdout_thread = spawn_log_thread(BufReader::new(stdout_handle));
         let stderr_thread = spawn_log_thread(BufReader::new(stderr_handle));
 
-        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait on package manager");
-
         stdout_thread.join().expect("stdout thread panicked");
         stderr_thread.join().expect("stderr thread panicked");
+        
+        let exit_status = pkgmanager_cmd.wait().expect("Failed to wait on package manager");
 
         if !exit_status.success() {
             error!(
