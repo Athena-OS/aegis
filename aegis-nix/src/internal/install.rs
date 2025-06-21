@@ -1,4 +1,4 @@
-use shared::{error, info};
+    use shared::{error, info};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
@@ -36,6 +36,10 @@ pub fn install(cores: String, jobs: String) -> i32 {
         }
     });
 
+    // Wait for the threads capturing output to finish before returning
+    stdout_thread.join().expect("Failed to join stdout thread.");
+    stderr_thread.join().expect("Failed to join stderr thread.");
+
     // Wait for the installation process to complete
     let status = install_cmd.wait();
     let exit_code = match status {
@@ -53,10 +57,6 @@ pub fn install(cores: String, jobs: String) -> i32 {
             -1
         }
     };
-
-    // Wait for the threads capturing output to finish before returning
-    stdout_thread.join().expect("Failed to join stdout thread.");
-    stderr_thread.join().expect("Failed to join stderr thread.");
 
     /* Nix Channel cannot be run in chroot (File not found despite exists)
        Users must run it once they login on the system.
