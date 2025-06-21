@@ -79,7 +79,6 @@ pub fn install_nix_config() {
                 String::from("/tmp/athena-nix-main/nixos/hosts"),
                 String::from("/tmp/athena-nix-main/nixos/modules"),
                 String::from("/tmp/athena-nix-main/nixos/pkgs"),
-                String::from("/tmp/athena-nix-main/nixos/users"),
                 String::from("/tmp/athena-nix-main/nixos/configuration.nix"),
                 String::from("/tmp/athena-nix-main/nixos/default.nix"),
                 String::from("/mnt/etc/nixos/"),
