@@ -23,7 +23,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
     let stdout_handle = install_cmd.stdout.take().expect("Failed to open stdout pipe.");
     let stdout_thread = std::thread::spawn(move || {
         let reader = BufReader::new(stdout_handle);
-        for line in reader.lines().map_while(Result::ok) {
+        for line in reader.lines().flatten() {
             info!("{}", line);
         }
     });
@@ -31,7 +31,7 @@ pub fn install(cores: String, jobs: String) -> i32 {
     let stderr_handle = install_cmd.stderr.take().expect("Failed to open stderr pipe.");
     let stderr_thread = std::thread::spawn(move || {
         let reader = BufReader::new(stderr_handle);
-        for line in reader.lines().map_while(Result::ok) {
+        for line in reader.lines().flatten() {
             info!("{}", line);
         }
     });
