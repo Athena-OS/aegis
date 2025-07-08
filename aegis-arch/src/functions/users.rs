@@ -92,7 +92,7 @@ pub fn root_pass(root_pass: &str) {
             "usermod",
             vec![
                 String::from("--password"),
-                format!("{}", root_pass.replace('\n', "")),
+                format!("'{}'", root_pass.replace('\n', "")),
                 String::from("root"),
             ],
         ),
