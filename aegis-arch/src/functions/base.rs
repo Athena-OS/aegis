@@ -132,35 +132,6 @@ pub fn preset_process() {
 }
 
 fn init_keyrings_mirrors() {
-    info!("Upgrade keyrings on the host");
-    exec_eval(
-        exec(
-            "rm",
-            vec![
-                String::from("-rf"),
-                String::from("/etc/pacman.d/gnupg"),
-            ],
-        ),
-        "Removing keys",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--init"),
-            ],
-        ),
-        "Initialize keys",
-    );
-    exec_eval(
-        exec(
-            "pacman-key",
-            vec![
-                String::from("--populate"),
-            ],
-        ),
-        "Populate keys",
-    );
     info!("Getting fastest Arch and Chaotic AUR mirrors for your location");
     exec_eval(
         exec( // It is done on the live system
@@ -192,6 +163,36 @@ fn init_keyrings_mirrors() {
             ],
         ),
         "Set fastest mirrors from Chaotic AUR on the target system",
+    );
+    
+    info!("Upgrade keyrings on the host");
+    exec_eval(
+        exec(
+            "rm",
+            vec![
+                String::from("-rf"),
+                String::from("/etc/pacman.d/gnupg"),
+            ],
+        ),
+        "Removing keys",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--init"),
+            ],
+        ),
+        "Initialize keys",
+    );
+    exec_eval(
+        exec(
+            "pacman-key",
+            vec![
+                String::from("--populate"),
+            ],
+        ),
+        "Populate keys",
     );
 }
 
