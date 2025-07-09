@@ -2,10 +2,10 @@
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
-pub fn install(cores: String, jobs: String) -> i32 {
+pub fn install() -> i32 {
     // The init logging is called at the beginning of main.rs
 
-    let install_nixos_args = format!("nixos-install --no-root-password --cores {} --max-jobs {} --keep-going", cores, jobs);
+    let install_nixos_args = format!("nixos-install --no-root-password --keep-going");
     let install_args = vec![
         "-p",
         "nixos-install-tools",

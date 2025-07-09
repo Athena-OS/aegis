@@ -85,11 +85,6 @@ fn main() -> Result<(), i32> {
         Command::Flatpak => {
             base::configure_flatpak();
         }
-        Command::InstallParams(args) => {
-            //internal::install::install(args.cores, args.jobs);
-            println!("{} {}", args.cores, args.jobs); //Just to delete the warning about unused args variable
-            //todo!()
-        }
         Command::Config { config } => {
             let exit_code = internal::config::read_config(config);
             if exit_code != 0 {

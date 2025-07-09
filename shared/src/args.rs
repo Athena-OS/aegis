@@ -95,10 +95,6 @@ pub enum Command {
         subcommand: UsersSubcommand,
     },
 
-    /// Set install parameters
-    #[command(name = "params")]
-    InstallParams(InstallArgs),
-
     /// Read Aegis installation config
     #[command(name = "config")]
     Config {
@@ -312,15 +308,6 @@ pub struct NewUserArgs {
     /// The shell to use for the user. The current options are bash, csh, fish, tcsh, and zsh.
     /// If a shell is not specified or unknown, it defaults to fish.
     pub shell: String,
-}
-
-#[derive(Debug, Args)]
-pub struct InstallArgs {
-    /// The number of cores to use
-    pub cores: String,
-
-    /// The number of jobs to use
-    pub jobs: String,
 }
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]

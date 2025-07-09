@@ -22,7 +22,6 @@ struct Config {
     networking: Networking,
     users: Vec<Users>,
     rootpass: String,
-    params: InstallParams,
     desktop: String,
     design: String,
     displaymanager: String,
@@ -76,13 +75,6 @@ struct Users {
     password: String,
     hasroot: bool,
     shell: String,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "self::serde")] // must be below the derive attribute
-struct InstallParams {
-    cores: String,
-    jobs: String,
 }
 
 pub fn read_config(configpath: PathBuf) -> i32 {
@@ -263,7 +255,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     //info!("Setting root password : {}", config.rootpass);
     users::root_pass(config.rootpass.as_str());
     info!("Install Athena OS");
-    let exit_code = install(config.params.cores, config.params.jobs);
+    let exit_code = install();
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");

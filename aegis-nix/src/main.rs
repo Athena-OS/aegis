@@ -67,9 +67,6 @@ fn main() -> Result<(), i32> {
             UsersSubcommand::RootPass { password } => {
                 users::root_pass(&password);
             }
-        },
-        Command::InstallParams(args) => {
-            internal::install::install(args.cores, args.jobs);
         }
         Command::Config { config } => {
             let exit_code = internal::config::read_config(config);
