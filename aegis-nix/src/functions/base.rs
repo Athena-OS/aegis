@@ -8,6 +8,18 @@ use shared::strings::crash;
 use std::path::PathBuf;
 
 pub fn install_nix_config() {
+    // Increase the rootfs size
+    exec_eval(
+        exec(
+            "mount",
+            vec![
+                String::from("-o"),
+                String::from("remount,size=4G"),
+                String::from("/run"),
+            ],
+        ),
+        "Increase the rootfs partition size",
+    );
     info!("Set nix channels.");
     // As channel we use nixos-unstable instead of nixpkgs-unstable because 'nixos-' has additional tests that ensure kernel and bootloaders actually work. And some other critical packages.
     exec_eval(
