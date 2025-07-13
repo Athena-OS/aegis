@@ -448,9 +448,7 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     /**************************/
     println!();
     /********** CONFIGURATION **********/
-    partition::partition_info();
     base::genfstab();
-    partition::partition_info();
 
     /*    BOOTLOADER CONFIG     */
     info!("Configuring bootloader : {}", config.bootloader.r#type);
@@ -614,7 +612,6 @@ pub fn read_config(configpath: PathBuf) -> i32 {
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file("/tmp/aegis.log", "/mnt/var/log/aegis.log");
-    partition::partition_info();
     if config.bootloader.r#type == "grub-efi" {
         partition::umount("/mnt/boot/efi");
     }

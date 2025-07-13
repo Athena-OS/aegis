@@ -645,6 +645,6 @@ pub fn partition_info() {
                 String::from("NAME,SIZE,FSTYPE,UUID,MOUNTPOINT"),
             ],
         ),
-        "Partition details shown",
+        "Partition details",
     );
 }

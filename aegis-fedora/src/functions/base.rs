@@ -105,7 +105,7 @@ pub fn genfstab() {
             "bash",
             vec![
                 String::from("-c"),
-                String::from("genfstab-fedora -U -S /mnt >> /mnt/etc/fstab"),
+                String::from("genfstab-fedora -U /mnt >> /mnt/etc/fstab"),
             ],
         ),
         "Generate fstab",
