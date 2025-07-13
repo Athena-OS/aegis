@@ -635,3 +635,16 @@ pub fn umount(mountpoint: &str) {
         format!("Unmount command processed on {}", mountpoint).as_str(),
     );
 }
+
+pub fn partition_info() {
+    exec_eval(
+        exec(
+            "lsblk",
+            vec![
+                String::from("-o"),
+                String::from("NAME,SIZE,FSTYPE,UUID,MOUNTPOINT"),
+            ],
+        ),
+        "Partition details shown",
+    );
+}
