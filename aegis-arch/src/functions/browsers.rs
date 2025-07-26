@@ -36,7 +36,7 @@ pub fn configure_firefox(desktop: &str) {
             files::sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
                 "\\{\\\\\"name\\\\\":\\\\\"Brave\\\\\",\\\\\"icon\\\\\":\\\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\\\",\\\\\"type\\\\\":\\\\\"Command\\\\\",\\\\\"data\\\\\":\\{\\\\\"command\\\\\":\\\\\"brave\\\\\"\\},\\\\\"angle\\\\\":-1\\}",
-                "{\\\"name\\\":\\\"Firefox ESR\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox-esr\\\"},\\\"angle\\\":-1}",
+                "{\\\"name\\\":\\\"Firefox\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"firefox\\\"},\\\"angle\\\":-1}",
             ),
             "Apply Browser info on dconf shell",
         );
@@ -48,7 +48,7 @@ pub fn configure_brave(desktop: &str) {
         files_eval(
             files::sed_file(
                 "/mnt/usr/share/athena-gnome-config/dconf-shell.ini",
-                "\\{\\\\\"name\\\\\":\\\\\"Firefox ESR\\\\\",\\\\\"icon\\\\\":\\\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\\\",\\\\\"type\\\\\":\\\\\"Command\\\\\",\\\\\"data\\\\\":\\{\\\\\"command\\\\\":\\\\\"firefox-esr\\\\\"\\},\\\\\"angle\\\\\":-1\\}",
+                "\\{\\\\\"name\\\\\":\\\\\"Firefox\\\\\",\\\\\"icon\\\\\":\\\\\"/usr/share/icons/hicolor/scalable/apps/firefox-logo.svg\\\\\",\\\\\"type\\\\\":\\\\\"Command\\\\\",\\\\\"data\\\\\":\\{\\\\\"command\\\\\":\\\\\"firefox\\\\\"\\},\\\\\"angle\\\\\":-1\\}",
                 "{\\\"name\\\":\\\"Brave\\\",\\\"icon\\\":\\\"/usr/share/icons/hicolor/scalable/apps/brave.svg\\\",\\\"type\\\":\\\"Command\\\",\\\"data\\\":{\\\"command\\\":\\\"brave\\\"},\\\"angle\\\":-1}",
             ),
             "Apply Browser info on dconf shell",
