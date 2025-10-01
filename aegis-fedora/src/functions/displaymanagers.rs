@@ -1,4 +1,3 @@
-use crate::desktops;
 use crate::internal::services::enable_service;
 use shared::args::DMSetup;
 use shared::debug;
@@ -48,11 +47,6 @@ fn install_sddm() -> Vec<&'static str> {
 pub fn configure_gdm(desktop: &str) {
     if ! desktop.contains("gnome") {
         files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
-        desktops::disable_xsession("gnome.desktop");
-        desktops::disable_xsession("gnome-xorg.desktop");
-        desktops::disable_wsession("gnome.desktop");
-        desktops::disable_wsession("gnome-wayland.desktop");
-        // Note that gnome-classic sessions belong to gnome-shell-extensions pkg that is not installed by GDM
     }
     else {
         files_eval(

@@ -1,6 +1,5 @@
 use shared::args::DesktopSetup;
 use shared::debug;
-use shared::files;
 
 pub fn install_desktop_setup(desktop_setup: DesktopSetup) -> Vec<&'static str> {
     debug!("Selecting {:?}", desktop_setup);
@@ -206,36 +205,4 @@ fn install_onyx() -> Vec<&'static str> {
         "wireplumber",
         "gdm",
     ]
-}
-
-/**********************************/
-
-pub fn configure_gnome() {
-    disable_xsession("gnome.desktop");
-    disable_xsession("gnome-classic.desktop");
-    disable_xsession("gnome-classic-xorg.desktop");
-    disable_wsession("gnome.desktop");
-    disable_wsession("gnome-wayland.desktop");
-    disable_wsession("gnome-classic.desktop");
-    disable_wsession("gnome-classic-wayland.desktop");
-}
-
-pub fn configure_xfce() {
-    disable_wsession("xfce-wayland.desktop"); //Currently XFCE Wayland session produces black screen after login (tested on VM)
-}
-
-pub fn configure_hyprland() {
-    disable_wsession("hyprland-uwsm.desktop"); //Currently Hyprland UWSM does not work well
-}
-
-/**********************************/
-
-pub fn disable_xsession(session: &str) {
-    debug!("Disabling {}", session);
-    files::rename_file(&("/mnt/usr/share/xsessions/".to_owned()+session), &("/mnt/usr/share/xsessions/".to_owned()+session+".disable"));
-}
-
-pub fn disable_wsession(session: &str) {
-    debug!("Disabling {}", session);
-    files::rename_file(&("/mnt/usr/share/wayland-sessions/".to_owned()+session), &("/mnt/usr/share/wayland-sessions/".to_owned()+session+".disable"));
 }
