@@ -1,5 +1,5 @@
-use crate::log::{info};
 use crate::strings::crash;
+use log::{info};
 use std::io;
 
 pub fn exec_eval(
@@ -8,11 +8,11 @@ pub fn exec_eval(
 ) {
     match &return_code {
         Ok(_) => {
-            info!("{}", logmsg);
+            info!("{logmsg}");
         }
         Err(e) => {
             crash(
-                format!("{}  ERROR: {}", logmsg, e),
+                format!("{logmsg}  ERROR: {e}"),
                 return_code.unwrap_err().raw_os_error().unwrap(),
             );
         }
@@ -25,12 +25,12 @@ pub fn exec_eval_result<T>(
 ) -> T {
     match result {
         Ok(val) => {
-            info!("{}", logmsg);
+            info!("{logmsg}");
             val
         }
         Err(e) => {
             crash(
-                format!("{}  ERROR: {}", logmsg, e),
+                format!("{logmsg}  ERROR: {e}"),
                 e.raw_os_error().unwrap_or(1),
             );
         }
@@ -40,12 +40,12 @@ pub fn exec_eval_result<T>(
 pub fn files_eval(return_code: std::result::Result<(), std::io::Error>, logmsg: &str) {
     match &return_code {
         Ok(_) => {
-            info!("{}", logmsg);
+            info!("{logmsg}");
         }
         Err(e) => {
-            info!("{} ERROR: {}", logmsg, e);
+            info!("{logmsg} ERROR: {e}");
             crash(
-                format!("{} ERROR: {}", logmsg, e),
+                format!("{logmsg} ERROR: {e}"),
                 return_code.unwrap_err().raw_os_error().unwrap(),
             );
         }
