@@ -1,7 +1,6 @@
 use flexi_logger::{style, DeferredNow, FileSpec, LogSpecification, Logger, Duplicate};
 use log::LevelFilter;
-use std::fs;
-use std::io::Write;
+use std::{fs, io::Write, path::Path};
 use crate::files;
 
 pub fn init(verbosity: u8, log_file_path: &str) {
@@ -22,18 +21,30 @@ pub fn init(verbosity: u8, log_file_path: &str) {
         // If an old log file exists, remove it
         files::remove_file(log_file_path);
     }
-    
+
+    let p = Path::new(log_file_path);
+    let dir = p.parent().unwrap_or_else(|| Path::new("."));
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("aegis");
+    let ext  = p.extension().and_then(|s| s.to_str()); // e.g. "log"
+
+    let mut spec = FileSpec::default()
+        .directory(dir)
+        .basename(stem)
+        .suppress_timestamp();
+
+    // Only add suffix if there is one; avoids trailing dot
+    if let Some(ext) = ext {
+        if !ext.is_empty() {
+            spec = spec.suffix(ext);
+        }
+    }
+
     // Create a file-based logger and specify the log file path
     Logger::with(log_specification)
-        .log_to_file(
-            FileSpec::default()
-                .basename(log_file_path)
-                .suffix("log") // log file extension. Not using .log because does not apply ANSI color code
-                .suppress_timestamp(),
-        )
-        .duplicate_to_stderr(Duplicate::All) // Duplicate logs to stderr for console output
+        .log_to_file(spec)
+        .duplicate_to_stderr(Duplicate::All)
         .format(format_log_entry)
-        .start() // It will create the new log file
+        .start()
         .unwrap();
 }
 

@@ -1,12 +1,8 @@
-use crate::args;
-use crate::args::PartitionMode;
-use crate::exec::exec;
-use crate::exec::exec_workdir;
-use crate::files;
-use crate::log::{debug, info};
+use crate::args::{self, MountSpec};
+use crate::exec::{exec, exec_workdir};
 use crate::returncode_eval::exec_eval;
-use crate::returncode_eval::files_eval;
 use crate::strings::crash;
+use log::{debug, info};
 use std::path::{Path, PathBuf};
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
@@ -59,19 +55,19 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     );
 }
 
-fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesystem: &str, blockdevice: &str, encryption: bool, is_efi: bool) {
+fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {
+    let mut plan = Vec::new();
     let mut bdevice = String::from(blockdevice);
     // Extract the block device name (i.e., sda3)
     let cryptlabel = format!("{}crypted",bdevice.trim_start_matches("/dev/")); // i.e., sda3crypted
+    let encryption = flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt"));
     if encryption {
         encrypt_blockdevice(&bdevice, &cryptlabel);
         bdevice = format!("/dev/mapper/{cryptlabel}");
     }
 
-    let mut needs_final_mount = true;
-
     match filesystem {
-        "vfat" => exec_eval(
+        "vfat" | "fat32" => exec_eval(
             exec("mkfs.vfat", vec![String::from("-F32"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as vfat").as_str(),
         ),
@@ -100,44 +96,54 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
             format!("Formatting {bdevice} as xfs").as_str(),
         ),
         "btrfs" => {
+            exec_eval(exec("mkfs.btrfs", vec!["-f".into(), bdevice.clone()]),
+                      &format!("Formatting {bdevice} as btrfs"));
+
+            // Create subvolumes in a temporary staging mount (not /mnt)
+            // Use a device-specific staging dir to avoid collisions
+            let stage = format!("/mnt/.staging-btrfs-{}", bdevice.trim_start_matches("/dev/").replace('/', "_"));
+            exec_eval(exec("mkdir", vec!["-p".into(), stage.clone()]),
+                      &format!("Create staging dir {stage}"));
+
+            // Temporary mount only for subvolume creation
+            mount(&bdevice, &stage, "");
             exec_eval(
-                exec("mkfs.btrfs", vec![String::from("-f"), String::from(&bdevice)]),
-                format!("Formatting {bdevice} as btrfs").as_str(),
-            );
-            mount(&bdevice, "/mnt", "");
-            exec_eval(
-                exec_workdir(
-                    "btrfs",
-                    "/mnt",
-                    vec![
-                        String::from("subvolume"),
-                        String::from("create"),
-                        String::from("@"),
-                    ],
-                ),
+                exec_workdir("btrfs", &stage, vec!["subvolume".into(), "create".into(), "@".into()]),
                 "Create btrfs subvolume @",
             );
             exec_eval(
-                exec_workdir(
-                    "btrfs",
-                    "/mnt",
-                    vec![
-                        String::from("subvolume"),
-                        String::from("create"),
-                        String::from("@home"),
-                    ],
-                ),
+                exec_workdir("btrfs", &stage, vec!["subvolume".into(), "create".into(), "@home".into()]),
                 "Create btrfs subvolume @home",
             );
-            umount("/mnt");
-            mount(&bdevice, "/mnt/", "subvol=@");
-            files_eval(files::create_directory("/mnt/home"), "Create /mnt/home");
-            mount(
-                &bdevice,
-                "/mnt/home",
-                "subvol=@home",
-            );
-            needs_final_mount = false;
+            umount(&stage);
+
+            // Final btrfs mounts are QUEUED (mounted later in correct order):
+            // Root gets subvol=@; /home gets subvol=@home if root was requested.
+            if mountpoint == "/" {
+                plan.push(MountSpec {
+                    device: bdevice.clone(),
+                    mountpoint: "/".into(),
+                    options: "subvol=@".into(),
+                    is_swap: false,
+                });
+                plan.push(MountSpec {
+                    device: bdevice.clone(),
+                    mountpoint: "/home".into(),
+                    options: "subvol=@home".into(),
+                    is_swap: false,
+                });
+            } else if !mountpoint.is_empty() {
+                // Non-root btrfs mount without subvols (rare, but support it)
+                plan.push(MountSpec {
+                    device: bdevice.clone(),
+                    mountpoint: mountpoint.to_string(),
+                    options: String::new(),
+                    is_swap: false,
+                });
+            }
+
+            // btrfs path handled fully; return the plan now
+            return plan;
         }
         "ext2" => exec_eval(
             exec("mkfs.ext2", vec![String::from("-F"), String::from(&bdevice)]),
@@ -155,19 +161,20 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
             exec("mkfs.f2fs", vec![String::from("-f"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as f2fs").as_str(),
         ),
-        "linux-swap" => {
-            exec_eval(
-                exec("mkswap", vec![String::from("-L"), String::from("swap"), String::from(&bdevice)]),
-                format!("Formatting {bdevice} as linux-swap").as_str(),
-            );
-            exec_eval(
-                exec("swapon", vec![String::from(&bdevice)]),
-                format!("Activate {bdevice} swap device").as_str(),
-            );
-            needs_final_mount = false;
+        "linux-swap" | "swap" => {
+            exec_eval(exec("mkswap", vec!["-L".into(), "swap".into(), bdevice.clone()]),
+                      &format!("Formatting {bdevice} as linux-swap"));
+            // Queue swap activation (no mountpoint)
+            plan.push(MountSpec {
+                device: bdevice.clone(),
+                mountpoint: String::new(),
+                options: String::new(),
+                is_swap: true,
+            });
+            return plan; // nothing else to do
         }
         "don't format" => {
-            debug!("Not formatting {}", bdevice);
+            debug!("Not formatting {bdevice}");
         }
         _ => {
             crash(
@@ -177,8 +184,8 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
         }
     }
 
-    if partitiontype == "boot" {
-        if is_efi {
+    if flags.iter().any(|f| f.eq_ignore_ascii_case("esp") || f.eq_ignore_ascii_case("boot")) {
+        if is_uefi() {
         let esp_num = extract_partition_number(&bdevice);
             exec_eval(
                 exec(
@@ -193,10 +200,11 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
                         String::from("on"),
                     ],
                 ),
-                format!("Enable EFI system partition on partition number {}", esp_num).as_str(),
+                format!("Enable EFI system partition on partition number {esp_num}").as_str(),
             );
         }
         else {
+            let boot_num = extract_partition_number(&bdevice);
             exec_eval(
                 exec(
                     "parted",
@@ -205,7 +213,7 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
                         diskdevice.to_string_lossy().to_string(),
                         String::from("--"),
                         String::from("set"),
-                        String::from("1"),
+                        String::from(boot_num.as_str()),
                         String::from("boot"),
                         String::from("on"),
                     ],
@@ -215,389 +223,67 @@ fn fmt_mount(diskdevice: &Path, partitiontype: &str, mountpoint: &str, filesyste
         }
     }
 
-    if needs_final_mount {
-        exec_eval(
-            exec("mkdir", vec![String::from("-p"), String::from(mountpoint)]),
-            format!("Creating mountpoint {mountpoint} for {bdevice}").as_str(),
-        );
-        mount(&bdevice, mountpoint, "");
+    if !mountpoint.is_empty() {
+        plan.push(MountSpec {
+            device: bdevice.clone(),
+            mountpoint: mountpoint.to_string(),
+            options: String::new(),
+            is_swap: false,
+        });
     }
+
+    plan
 }
 
 pub fn partition(
     device: PathBuf,
-    mode: PartitionMode,
-    encrypt_check: bool,
-    efi: bool,
-    swap: bool,
-    swap_size: String,
-    partitions: &mut Vec<args::Partition>,
+    table_type: &str,
+    partitions: &mut [args::Partition],
 ) {
+    let mut plan: Vec<MountSpec> = Vec::new();
+
     if !device.exists() {
         crash(format!("The device {device:?} doesn't exist"), 1);
     }
-    info!("{:?}", mode);
-    match mode {
-        PartitionMode::EraseDisk => {
-            debug!("Erase disk partitioning {device:?}");
-            if efi {
-                partition_with_efi(&device, swap, swap_size, encrypt_check);
-            } else {
-                partition_no_efi(&device, swap, swap_size);
-            }
-            part_disk(&device, efi, encrypt_check, swap);
-        }
-        PartitionMode::Manual | PartitionMode::Replace => {
-            debug!("Manual/Replace partitioning");
-            partitions.sort_by(|a, b| a.mountpoint.len().cmp(&b.mountpoint.len()));
-            for i in 0..partitions.len() {
-                info!("{:?}", partitions);
-                info!("{}", partitions.len());
-                info!("Partition Type: {}", &partitions[i].partitiontype);
-                info!("Mount point: {}", &partitions[i].mountpoint);
-                info!("Filesystem: {}", &partitions[i].filesystem);
-                info!("Block device: {}", &partitions[i].blockdevice);
-                info!("To encrypt? {}", partitions[i].encrypt);
-                fmt_mount(
-                    &device,
-                    &partitions[i].partitiontype,
-                    &partitions[i].mountpoint,
-                    &partitions[i].filesystem,
-                    &partitions[i].blockdevice,
-                    partitions[i].encrypt,
-                    efi,
-                );
-            }
+    debug!("Partitioning process");
+
+    // --- Phase A: deletes first ---
+    for p in partitions.iter() {
+        if p.action == "delete" {
+            info!("Deleting {}", &p.blockdevice);
+            delete_partition(&device, &p.blockdevice, p.mountpoint.as_deref().unwrap_or(""));
         }
     }
-}
 
-fn partition_with_efi(device: &Path, swap: bool, swap_size: String, encrypt_check: bool) {
-    let device = device.to_string_lossy().to_string();
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mklabel"),
-                String::from("gpt"),
-            ],
-        ),
-        format!("Create gpt label on {}", &device).as_str(),
-    );
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("ESP"),
-                String::from("fat32"),
-                String::from("1MiB"),
-                String::from("512MiB"),
-            ],
-        ),
-        "Create EFI partition",
-    );
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("set"),
-                String::from("1"), // It is the number ID of the EFI partition. It is 1 because we create it for first
-                String::from("esp"),
-                String::from("on"),
-            ],
-        ),
-        "Enable EFI system partition",
-    );
-
-    let boundary_grub_partition_size = if encrypt_check {
-        String::from("1536MiB") // 1024 MiB + 512 MiB
-    } else {
-        String::from("512MiB")
-    };
-
-    if encrypt_check {
-        exec_eval(
-            exec(
-                "parted",
-                vec![
-                    String::from("-s"),
-                    String::from(&device),
-                    String::from("--"),
-                    String::from("mkpart"),
-                    String::from("primary"),
-                    String::from("ext4"),
-                    String::from("512MiB"),
-                    String::from(&boundary_grub_partition_size),
-                ],
-            ),
-            "Create grub boot partition",
-        );
-    }
-
-    let boundary_partition_size = if swap {
-        swap_size
-    } else {
-        String::from(&boundary_grub_partition_size)
-    };
-
-    if swap {
-        exec_eval(
-            exec(
-                "parted",
-                vec![
-                    String::from("-s"),
-                    String::from(&device),
-                    String::from("--"),
-                    String::from("mkpart"),
-                    String::from("swap"),
-                    String::from("linux-swap"),
-                    String::from(&boundary_grub_partition_size),
-                    String::from(&boundary_partition_size),
-                ],
-            ),
-            "Create swap partition",
-        );
-    }
-
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("btrfs"),
-                String::from(&boundary_partition_size),
-                String::from("100%"),
-            ],
-        ),
-        "Create btrfs root partition",
-    );
-}
-
-fn partition_no_efi(device: &Path, swap: bool, swap_size: String) {
-    let device = device.to_string_lossy().to_string();
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mklabel"),
-                String::from("msdos"),
-            ],
-        ),
-        format!("Create msdos label on {}", device).as_str(),
-    );
-    /* Create a dedicated legacy boot partition. Needed mostly in case of LUKS: https://bbs.archlinux.org/viewtopic.php?pid=2160947 */
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("ext4"),
-                String::from("1MiB"),
-                String::from("512MiB"),
-            ],
-        ),
-        "Create bios boot partition",
-    );
-    let boundary_partition_size = if swap {
-        swap_size
-    } else {
-        String::from("512MiB")
-    };
-
-    if swap {
-        exec_eval(
-            exec(
-                "parted",
-                vec![
-                    String::from("-s"),
-                    String::from(&device),
-                    String::from("--"),
-                    String::from("mkpart"),
-                    String::from("primary"),
-                    String::from("linux-swap"),
-                    String::from("512MiB"),
-                    String::from(&boundary_partition_size),
-                ],
-            ),
-            "Create swap partition",
-        );
-    }
-
-    /* Root Partition. Created as last partition to allow users to shrink or extend*/
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("mkpart"),
-                String::from("primary"),
-                String::from("btrfs"),
-                String::from(&boundary_partition_size),
-                String::from("100%"),
-            ],
-        ),
-        "Create btrfs root partition",
-    );
-    // The following is needed because boot GRUB partition is inside the 'device' disk
-    exec_eval(
-        exec(
-            "parted",
-            vec![
-                String::from("-s"),
-                String::from(&device),
-                String::from("--"),
-                String::from("set"),
-                String::from("1"),
-                String::from("boot"),
-                String::from("on"),
-            ],
-        ),
-        "Set the root partition's boot flag to on",
-    );
-}
-
-fn part_disk(device: &Path, efi: bool, encrypt_check: bool, swap: bool) {
-    let device = device.to_string_lossy().to_string(); // i.e., /dev/sda
-
-    let dsuffix = if device.contains("nvme") || device.contains("mmcblk") || device.contains("loop") {
-        "p"
-    }
-    else {
-        ""
-    };
-
-    let mut dindex = 1;
-
-    if efi {
-        /* Format EFI partition */
-        exec_eval(
-            exec(
-                "mkfs.fat",
-                vec![String::from("-F"), String::from("32"), String::from("-n"), String::from("BOOT"), format!("{}{}{}", device, dsuffix, dindex)],
-            ),
-            format!("Format {}{}{} as fat32", device, dsuffix, dindex).as_str(),
-        );
-
-        if encrypt_check {
-            dindex += 1; // Next partition index
-            exec_eval(
-                exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}{}", device, dsuffix, dindex)]),
-                format!("Format {}{}{} as ext4", device, dsuffix, dindex).as_str(),
+    // --- Phase B: creates / modifies ---
+    for p in partitions.iter_mut() {
+        if p.action == "create" {
+            info!("Creating {}", &p.blockdevice);
+            create_partition(
+                &device,
+                &p.blockdevice,
+                &p.start,
+                &p.end,
+                p.filesystem.as_deref().unwrap_or(""),
+                &p.flags,
+                table_type,
             );
         }
-
-    } else {
-        /* Format GRUB Legacy partition */
-        exec_eval(
-            exec("mkfs.ext4", vec![String::from("-F"), format!("{}{}{}", device, dsuffix, dindex)]),
-            format!("Format {}{}{} as ext4", device, dsuffix, dindex).as_str(),
-        );
+        
+        if p.action == "create" || p.action == "modify" {
+            // Format + mount (or just mount if "don't format")
+            let specs = fmt_mount(
+                &device,
+                p.mountpoint.as_deref().unwrap_or(""),
+                p.filesystem.as_deref().unwrap_or(""),
+                &p.blockdevice,
+                &p.flags,
+            );
+            plan.extend(specs);
+        }
     }
 
-    /* Format Swap partition */
-    if swap {
-        dindex += 1; // Next partition index
-        exec_eval(
-            exec(
-                "mkswap",
-                vec![String::from("-L"), String::from("swap"), format!("{}{}{}", device, dsuffix, dindex)],
-            ),
-            format!("Make {}{}{} as swap partition", device, dsuffix, dindex).as_str(),
-        );
-        exec_eval(
-            exec(
-                "swapon",
-                vec![format!("{}{}{}", device, dsuffix, dindex)],
-            ),
-            format!("Activate {}{}{} swap device", device, dsuffix, dindex).as_str(),
-        );
-    }
-    dindex += 1; // Next partition index
-    let mut root_blockdevice = format!("{device}{dsuffix}{dindex}"); // i.e., /dev/sda3
-    let root_blockdevice_name = root_blockdevice.trim_start_matches("/dev/"); // i.e., sda3
-
-    if encrypt_check {
-        let cryptlabel = format!("{root_blockdevice_name}crypted"); // i.e., sda3crypted will be the name of the opened LUKS partition
-        encrypt_blockdevice(&root_blockdevice, &cryptlabel);
-        root_blockdevice =  format!("/dev/mapper/{cryptlabel}");
-    }
-
-    /* Format root partition */
-    exec_eval(
-        exec(
-            "mkfs.btrfs",
-            vec![String::from("-L"), String::from("athenaos"), String::from("-f"), format!("{}", root_blockdevice)],
-        ),
-        format!("Format {} as btrfs", root_blockdevice).as_str(),
-    );
-    mount(&root_blockdevice, "/mnt", "");
-    exec_eval(
-        exec_workdir(
-            "btrfs",
-            "/mnt",
-            vec![
-                String::from("subvolume"),
-                String::from("create"),
-                String::from("@"),
-            ],
-        ),
-        "Create btrfs subvolume @",
-    );
-    exec_eval(
-        exec_workdir(
-            "btrfs",
-            "/mnt",
-            vec![
-                String::from("subvolume"),
-                String::from("create"),
-                String::from("@home"),
-            ],
-        ),
-        "Create btrfs subvolume @home",
-    );
-    umount("/mnt");
-    mount(&root_blockdevice, "/mnt/", "subvol=@");
-    let mount_path = if efi {
-        "/mnt/boot/efi".to_string()
-    } else {
-        "/mnt/boot".to_string()
-    };
-    files_eval(files::create_directory("/mnt/home"), "Create /mnt/home");
-    mount(
-        &root_blockdevice,
-        "/mnt/home",
-        "subvol=@home",
-    );
-
-    if efi && encrypt_check {
-        files_eval(files::create_directory("/mnt/boot"), &format!("Create {}", "/mnt/boot"));
-        mount(format!("{}{}2", device, dsuffix).as_str(), "/mnt/boot", "");
-    }
-    files_eval(files::create_directory(&mount_path), &format!("Create {}", mount_path));
-    mount(format!("{}{}1", device, dsuffix).as_str(), &mount_path, "");
+    mount_queue(plan);
 }
 
 pub fn mount(partition: &str, mountpoint: &str, options: &str) {
@@ -613,8 +299,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
                 ],
             ),
             format!(
-                "Mount {} with options {} at {}",
-                partition, options, mountpoint
+                "Mount {partition} with options {options} at {mountpoint}"
             )
             .as_str(),
         );
@@ -624,16 +309,20 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
                 "mount",
                 vec![String::from(partition), String::from(mountpoint)],
             ),
-            format!("Mount {} with no options at {}", partition, mountpoint).as_str(),
+            format!("Mount {partition} with no options at {mountpoint}").as_str(),
         );
     }
 }
 
 pub fn umount(mountpoint: &str) {
     exec_eval(
-        exec("umount", vec![String::from("-R"), String::from(mountpoint)]),
-        format!("Unmount command processed on {}", mountpoint).as_str(),
+        exec("umount", vec![String::from(mountpoint)]),
+        format!("Unmount command processed on {mountpoint}").as_str(),
     );
+}
+
+pub fn is_uefi() -> bool {
+    Path::new("/sys/firmware/efi").is_dir()
 }
 
 pub fn partition_info() {
@@ -645,6 +334,288 @@ pub fn partition_info() {
                 String::from("NAME,SIZE,FSTYPE,UUID,MOUNTPOINT"),
             ],
         ),
-        "Partition details",
+        "Show lsblk",
     );
+}
+
+fn fs_to_parted_fs(filesystem: &str) -> Option<&'static str> {
+    match filesystem {
+        // parted wants "fat32" (you still mkfs.vfat later)
+        "vfat" | "fat32" | "fat16" | "fat12" => Some("fat32"),
+
+        // return literals, not `filesystem`
+        "ext4" => Some("ext4"),
+        "ext3" => Some("ext3"),
+        "ext2" => Some("ext2"),
+        "btrfs" => Some("btrfs"),
+        "xfs"   => Some("xfs"),
+
+        // swap GUID/type
+        "linux-swap" | "swap" => Some("linux-swap"),
+
+        _ => None,
+    }
+}
+
+/// Create a partition in sectors and set flags appropriately:
+/// - if flags contain "esp": create ESP (mkpart with fat32 + `set esp on`)
+/// - else if flags contain "boot" (but NOT "esp"): create BIOS/GRUB partition (`set bios_grub on`)
+/// - else if filesystem is swap: create Linux swap (mkpart linux-swap)
+/// - else: create a regular data/root partition (mkpart <fs> or no fs-type)
+fn create_partition(
+    device: &Path,
+    blockdevice: &str,      // e.g. "/dev/sda2" (used to extract the number)
+    start_sector: &str,
+    end_sector: &str,
+    filesystem: &str,       // e.g. "ext4" | "btrfs" | "vfat" | "swap" | "don't format"
+    flags: &[String],
+    disklabel: &str,
+) {
+
+    info!("Filesystem: {filesystem}");
+    info!("Block device: {blockdevice}");
+    info!("Start Sector: {start_sector}");
+    info!("End Sector: {end_sector}");
+    info!("Flags: {flags:?}");
+
+    let dev = device.to_string_lossy().to_string();
+    let partnum = extract_partition_number(blockdevice);
+    if partnum.is_empty() {
+        crash(
+            format!("Cannot derive partition number from {blockdevice}. It must be like /dev/sda3."),
+            1,
+        );
+    }
+
+    let is_gpt = disklabel.eq_ignore_ascii_case("gpt");
+    let is_mbr = disklabel.eq_ignore_ascii_case("msdos");
+
+    let has_esp  = flags.iter().any(|f| f.eq_ignore_ascii_case("esp"));
+    let has_boot = flags.iter().any(|f| f.eq_ignore_ascii_case("boot"));
+    let is_swap  = filesystem.eq_ignore_ascii_case("swap") || filesystem.eq_ignore_ascii_case("linux-swap");
+
+    // Decide a human label (optional). We set it after mkpart with `name N <LABEL>`.
+    let label = if has_esp {
+        "EFI"
+    } else if has_boot && !has_esp {
+        "BIOS_GRUB"
+    } else if is_swap {
+        "SWAP"
+    } else {
+        "" // no label
+    };
+
+    // Build mkpart command in sectors.
+    let mut args = vec![
+        String::from("-s"),
+        dev.clone(),
+        String::from("unit"),
+        String::from("s"),
+        String::from("--"),
+        String::from("mkpart"),
+    ];
+
+    // Special-cases for GUID/type selection
+    if is_gpt {
+        if has_esp {
+            // ESP is FAT; parted flag will mark it on GPT
+            args.push(String::from("ESP"));
+            args.push(String::from("fat32"));
+        } else if is_swap {
+            // Use linux-swap so GUID becomes 8200
+            args.push(String::from("swap"));
+            args.push(String::from("linux-swap"));
+        } else if let Some(pfs) = fs_to_parted_fs(filesystem) {
+            // Regular data partition with a known fs-type (gives 8300 on GPT)
+            args.push(String::from(pfs));
+        }
+    } else if is_mbr {
+        args.push("primary".into());
+        if is_swap {
+            args.push(String::from("linux-swap"));
+        } else if let Some(pfs) = fs_to_parted_fs(filesystem) {
+            // Regular data partition with a known fs-type (gives 8300 on GPT)
+            args.push(String::from(pfs));
+        }
+    }
+
+    args.push(start_sector.to_string());
+    args.push(end_sector.to_string());
+
+    info!("Running: parted {args:?}");
+    exec_eval(
+        exec("parted", args),
+        &format!("Create partition {blockdevice} from {start_sector} to {end_sector}"),
+    );
+
+    // Name it by setting a label
+    if is_gpt && !label.is_empty() {
+        exec_eval(
+            exec(
+                "parted",
+                vec![
+                    "-s".into(),
+                    dev.clone(),
+                    "--".into(),
+                    "name".into(),
+                    partnum.clone(),
+                    label.into(),
+                ],
+            ),
+            &format!("Name partition #{partnum} as {label}"),
+        );
+    }
+
+    // Only set flags on the current created partition if applicable
+    if is_gpt && has_esp {
+        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "esp".into(), "on".into()]),
+            &format!("Enable ESP on partition #{partnum}"));
+    } else if is_gpt && has_boot && !has_esp {
+        // For real BIOS-on-GPT you'd typically have a tiny bios_grub partition; this flag is for that case.
+        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bios_grub".into(), "on".into()]),
+            &format!("Enable BIOS_GRUB on partition #{partnum}"));
+    } else if is_mbr && has_boot {
+        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "boot".into(), "on".into()]),
+            &format!("Enable boot flag on partition #{partnum}"));
+    }
+
+    /*
+    // Inform kernel so /dev nodes appear quickly
+    exec_eval(
+        exec("partprobe", vec![dev.clone()]),
+        &format!("Inform kernel of new partition on {}", device.display()),
+    );
+    // optional but often helpful
+    exec_eval(exec("udevadm", vec!["settle".into()]), "Wait for /dev nodes");
+    */
+}
+
+fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
+    // --- inline helpers ------------------------------------------------------
+    // NOTE: these are *inline* and not defined as separate functions.
+    info!("Mount point: {mountpoint}");
+    info!("Block device: {blockdevice}");
+
+    // Best-effort swapoff (non-fatal if not active)
+    exec_eval(
+        exec(
+            "sh",
+            vec![
+                String::from("-c"),
+                format!("swapoff '{}' || true", blockdevice),
+            ],
+        ),
+        format!("Swapoff {blockdevice} (if active)").as_str(),
+    );
+
+    // Best-effort recursive unmount by mountpoint (non-fatal if not mounted)
+    exec_eval(
+        exec(
+            "sh",
+            vec![
+                String::from("-c"),
+                format!("umount -R '{}' || true", mountpoint),
+            ],
+        ),
+        format!("Umount {mountpoint} (best-effort)").as_str(),
+    );
+
+    // If it's a mapper path, best-effort close it (non-fatal if not open)
+    if blockdevice.starts_with("/dev/mapper/") {
+        let name = blockdevice.trim_start_matches("/dev/mapper/").to_string();
+        exec_eval(
+            exec(
+                "sh",
+                vec![
+                    String::from("-c"),
+                    format!("cryptsetup luksClose '{}' || true", name),
+                ],
+            ),
+            format!("Close LUKS mapper for {blockdevice} (if open)").as_str(),
+        );
+    }
+
+    // --- figure out partition number on the physical disk --------------------
+    let partnum = extract_partition_number(blockdevice);
+    if partnum.is_empty() {
+        crash(
+            format!(
+                "Cannot extract partition number from {blockdevice}. \
+                 Provide a real partition path like /dev/sda3 (not a /dev/mapper/* node)."
+            ),
+            1,
+        );
+    }
+
+    // --- delete the partition from the label (via parted) --------------------
+    exec_eval(
+        exec(
+            "parted",
+            vec![
+                String::from("-s"),
+                device.to_string_lossy().to_string(),
+                String::from("--"),
+                String::from("rm"),
+                partnum.clone(),
+            ],
+        ),
+        format!("Delete partition #{partnum} on {}", device.display()).as_str(),
+    );
+
+    // --- inform the kernel about the table change ----------------------------
+    /*
+    exec_eval(
+        exec("partprobe", vec![device.to_string_lossy().to_string()]),
+        format!(
+            "Inform kernel of partition table changes on {}",
+            device.display()
+        )
+        .as_str(),
+    );
+    */
+}
+
+fn path_depth(mp: &str) -> usize {
+    if mp == "/" || mp.is_empty() {
+        return 0;
+    }
+    mp.trim_matches('/').split('/').filter(|s| !s.is_empty()).count()
+}
+
+fn sort_mount_queue(plan: &mut [MountSpec]) {
+    plan.sort_by_key(|m| {
+        // order: swap first, then root, then shallower paths
+        let swap_key = if m.is_swap { 0 } else { 1 };
+        let root_key = if m.mountpoint == "/" { 0 } else { 1 };
+        (swap_key, root_key, path_depth(&m.mountpoint))
+    });
+}
+
+fn mount_queue(mut plan: Vec<MountSpec>) {
+    exec_eval(exec("mkdir", vec!["-p".into(), "/mnt".into()]), "Create /mnt");
+
+    sort_mount_queue(&mut plan);
+
+    for m in plan {
+        if m.is_swap {
+            exec_eval(exec("swapon", vec![m.device.clone()]),
+                      &format!("Activate swap {}", m.device));
+            continue;
+        }
+
+        let target = if m.mountpoint == "/" {
+            "/mnt".to_string()
+        } else {
+            format!("/mnt{}", m.mountpoint)
+        };
+
+        exec_eval(exec("mkdir", vec!["-p".into(), target.clone()]),
+                  &format!("Create {target}"));
+
+        if m.options.is_empty() {
+            mount(&m.device, &target, "");
+        } else {
+            mount(&m.device, &target, &m.options);
+        }
+    }
 }

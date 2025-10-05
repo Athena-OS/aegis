@@ -1,7 +1,27 @@
-use crate::log::info;
+use crate::exec::exec_output;
+use crate::returncode_eval::exec_eval_result;
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::OnceLock;
+
+pub trait ExtendIntoString {
+    fn extend_into<I>(&mut self, src: I)
+    where
+        I: IntoIterator,
+        I::Item: Into<String>;
+}
+
+impl ExtendIntoString for Vec<String> {
+    fn extend_into<I>(&mut self, src: I)
+    where
+        I: IntoIterator,
+        I::Item: Into<String>,
+    {
+        self.extend(src.into_iter().map(Into::into));
+    }
+}
 
 #[derive(Debug, Parser)]
 #[command(name = "aegis-installer")]
@@ -9,11 +29,68 @@ use std::path::PathBuf;
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = env!("CARGO_PKG_DESCRIPTION"), long_about = None)]
 pub struct Cli {
-    #[command(subcommand)]
-    pub command: Command,
-
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
+
+    /// Use an existing system config JSON file (TUI will pass this to aegis-core)
+    #[arg(long = "system-file")]
+    pub system_file: Option<std::path::PathBuf>,
+
+    /// Use an existing drives/partition JSON file (TUI will pass this to aegis-core)
+    #[arg(long = "drives-file")]
+    pub drives_file: Option<std::path::PathBuf>,
+
+    /// Additional JSON fragments to merge (forwarded to aegis-core or used to build temps)
+    #[arg(long = "json", short = 'j', value_name = "JSON")]
+    pub json: Vec<String>,
+
+    /// Dry-run: validate only; do not install (TUI forwards this to aegis-core)
+    #[arg(long = "dry", short = 'n', visible_alias = "dry-run")]
+    pub dry: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum ConfigInput {
+    File(PathBuf),
+    JsonString(String),
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    // ----- system config (first JSON) -----
+    pub base: String,
+    pub design: String,
+
+    #[serde(rename = "desktop_environment")]
+    pub desktop: String,
+
+    #[serde(rename = "display_manager")]
+    pub displaymanager: String,
+
+    // Flat hostname (old code used Networking{ hostname })
+    pub hostname: String,
+
+    // Optional extras coming from system JSON
+    #[serde(default)]
+    pub keyboard_layout: Option<String>,
+
+    #[serde(default)]
+    pub language: Option<String>,
+
+    // New schema has locale as a single string (old code expected Vec<String>)
+    pub locale: String,
+
+    pub timezone: String,
+
+    #[serde(rename = "root_passwd_hash")]
+    pub rootpass: String,
+
+    pub users: Vec<User>,
+
+    // ----- disk/partition config (second JSON, top-level) -----
+    // The disk JSON lives at the top level, so flatten its fields into Config.
+    #[serde(flatten)]
+    pub partition: Disk,
 }
 
 #[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -30,6 +107,9 @@ pub enum PackageManager {
     #[value(name = "pacstrap")]
     Pacstrap,
 
+    #[value(name = "nix")]
+    Nix,
+
     #[value(name = "None")]
     None,
 }
@@ -39,219 +119,141 @@ pub enum InstallMode {
     Remove,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum Command {
-    /// Partition the install destination
-    #[command(name = "partition")]
-    Partition(PartitionArgs),
-
-    /// Install base packages
-    #[command(name = "install-base")]
-    InstallBase,
-
-    /// Install packages, optionally define a different kernel
-    #[command(name = "install-packages")]
-    InstallPackages(InstallPackagesArgs),
-
-    /// Generate fstab file for mounting partitions
-    #[command(name = "genfstab")]
-    GenFstab,
-    
-    /// Setup Snapper
-    /*
-    #[command(name = "setup-snapper")]
-    SetupSnapper,
-    */
-    /// Install the bootloader
-    #[command(name = "bootloader")]
-    Bootloader {
-        #[clap(subcommand)]
-        subcommand: BootloaderSubcommand,
-    },
-
-    /// Set locale
-    #[command(name = "locale")]
-    Locale(LocaleArgs),
-
-    /// Set up networking
-    #[command(name = "networking")]
-    Networking(NetworkingArgs),
-
-    /// Set up zramd
-    #[command(name = "zramd")]
-    Zram,
-
-    /// Install Flatpak and enable FlatHub
-    #[command(name = "flatpak")]
-    Flatpak,
-
-    /// Set up hardened
-    /*#[command(name = "hardened")]
-    Hardened,*/
-    /// Configure users and passwords
-    #[command(name = "users")]
-    Users {
-        #[command(subcommand)]
-        subcommand: UsersSubcommand,
-    },
-
-    /// Read Aegis installation config
-    #[command(name = "config")]
-    Config {
-        /// The config file to read
-        config: PathBuf,
-    },
-
-    /// Install a graphical desktop
-    #[command(name = "desktops")]
-    Desktops {
-        /// The desktop setup to use
-        #[arg(value_enum)]
-        desktop: DesktopSetup,
-    },
-
-    /// Install a graphical design
-    #[command(name = "themes")]
-    Themes {
-        /// The theme setup to use
-        #[arg(value_enum)]
-        design: ThemeSetup,
-    },
-
-    /// Install a display manager
-    #[command(name = "displaymanagers")]
-    DisplayManagers {
-        /// The display manager setup to use
-        #[arg(value_enum)]
-        displaymanager: DMSetup,
-    },
-
-    /// Install a shell
-    #[command(name = "shells")]
-    Shells {
-        /// The shell setup to use
-        #[arg(value_enum)]
-        shell: ShellSetup,
-    },
-
-    /// Install a browser
-    #[command(name = "browsers")]
-    Browsers {
-        /// The browser setup to use
-        #[arg(value_enum)]
-        browser: BrowserSetup,
-    },
-
-    /// Install a terminal
-    #[command(name = "terminals")]
-    Terminals {
-        /// The terminal setup to use
-        #[arg(value_enum)]
-        terminal: TerminalSetup,
-    },
-
-    /// Enable services
-    #[command(name = "enable-services")]
-    EnableServices,
+#[derive(Clone, Debug)]
+pub struct MountSpec {
+    pub device: String,
+    pub mountpoint: String,
+    pub options: String,
+    pub is_swap: bool,
 }
 
-#[derive(Debug, Args)]
-pub struct PartitionArgs {
-    /// The device to partition
-    #[arg(required_if_eq("mode", "PartitionMode::EraseDisk"), required = false)]
-    pub device: PathBuf,
+// ---- Disk / Partitions match the second JSON file ----
+#[derive(Serialize, Deserialize)]
+pub struct Disk {
+    // second JSON has: { "type": "disk", "device": "/dev/nvme0n1", "content": { ... } }
+    #[serde(rename = "type")]
+    pub disk_type: String,
+    pub device: String,
+    pub content: DiskContent,
+}
 
-    /// If aegis should automatically partition (mode = erase)
-    /// or replace (mode = replace)
-    /// or the user manually partitioned it (mode = manual)
-    #[arg(value_enum)]
-    pub mode: PartitionMode,
+#[derive(Serialize, Deserialize)]
+pub struct DiskContent {
+    #[serde(rename = "type")]
+    pub table_type: String,
 
-    /// Encryption for Erase Disk mode
-    #[arg(long)]
-    pub encrypt_check: bool,
-
-    /// If the install destination should be partitioned with EFI
-    #[arg(long)]
-    pub efi: bool,
-
-    /// If the install destination should have Swap partition
-    #[arg(long)]
-    pub swap: bool,
-
-    /// Swap partition size
-    #[arg(long)]
-    pub swap_size: String,
-
-    /// The partitions to use for manual partitioning
-    #[arg(required_if_eq("mode", "PartitionMode::Manual"), value_parser = parse_partitions)]
+    // "partitions" is an object map: { "BOOT": { ... }, "ROOT": { ... }, ... }
     pub partitions: Vec<Partition>,
 }
 
-#[derive(Debug, Args)]
-pub struct InstallPackagesArgs {
-    #[clap(long)]
-    pub kernel: String,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Partition {
-    pub partitiontype: String,
-    pub mountpoint: String,
+    pub action: String,
+    pub mountpoint: Option<String>,
     pub blockdevice: String,
-    pub filesystem: String,
-    pub encrypt: bool,
+    pub start: String,
+    pub end: String,
+    pub filesystem: Option<String>,
+    pub flags: Vec<String>,
 }
 
 impl Partition {
-    pub fn new(partitiontype: String, mountpoint: String, blockdevice: String, filesystem: String, encrypt: bool) -> Self {
+    pub fn new(action: String, mountpoint: Option<String>, blockdevice: String, start: String, end: String, filesystem: Option<String>, flags: Vec<String>) -> Self {
         Self {
-            partitiontype,
+            action,
             mountpoint,
             blockdevice,
+            start,
+            end,
             filesystem,
-            encrypt,
+            flags,
         }
     }
 }
 
-pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> { // to rewrite
-    info!("{}", s);
-    let to_encrypt: bool = s.split(':').collect::<Vec<&str>>()[4].parse().map_err(|_| "Invalid boolean value")?;
+pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> {
+    info!("{s}");
+    let parts: Vec<&str> = s.split(':').collect();
+
+    if parts.len() < 6 {
+        return Err("Partition spec requires at least 6 fields: action:mount:blockdev:start:end:fs[:flags]");
+    }
+
+    let action       = parts[0].to_string();
+    let mountpoint   = match parts[1].trim() {
+        "" | "-" => None,
+        v => Some(v.to_string()),
+    };
+    let blockdevice  = parts[2].to_string();
+    let start        = parts[3].to_string();
+    let end          = parts[4].to_string();
+    let filesystem   = match parts[5].trim() {
+        "" | "-" => None,
+        v => Some(v.to_string()),
+    };
+
+    let flags = if parts.len() >= 7 && !parts[6].trim().is_empty() {
+        parts[6]
+            .split(',')
+            .map(|f| f.trim().to_string())
+            .filter(|f| !f.is_empty())
+            .collect()
+    } else {
+        Vec::new()
+    };
+
     Ok(Partition::new(
-        s.split(':').collect::<Vec<&str>>()[0].to_string(),
-        s.split(':').collect::<Vec<&str>>()[1].to_string(),
-        s.split(':').collect::<Vec<&str>>()[2].to_string(),
-        s.split(':').collect::<Vec<&str>>()[3].to_string(),
-        to_encrypt,
+        action,
+        mountpoint,
+        blockdevice,
+        start,
+        end,
+        filesystem,
+        flags,
     ))
 }
 
-#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-pub enum PartitionMode {
-    #[value(name = "erase")]
-    EraseDisk,
-    #[value(name = "replace")]
-    Replace,
-    #[value(name = "manual")]
-    Manual,
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Base {
+    AthenaArch,
+    AthenaFedora,
+    AthenaNix,
+    Other,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum BootloaderSubcommand {
-    /// Install GRUB in EFI mode
-    #[clap(name = "grub-efi")]
-    GrubEfi {
-        /// The directory to install the EFI bootloader to
-        efidir: PathBuf,
-    },
+pub static BASE: OnceLock<Base> = OnceLock::new();
 
-    /// Install GRUB in legacy (BIOS) mode
-    #[clap(name = "grub-legacy")]
-    GrubLegacy {
-        /// The device to install the bootloader to
-        device: PathBuf,
-    },
+pub fn set_base(s: &str) {
+    let b = match s {
+        "Athena Arch"   => Base::AthenaArch,
+        "Athena Fedora" => Base::AthenaFedora,
+        "Athena Nix"    => Base::AthenaNix,
+        _               => Base::Other,
+    };
+    let _ = BASE.set(b); // ignore if already set
+}
+
+pub fn distro_base() -> Base {
+    *BASE.get().expect("BASE not initialized")
+}
+
+pub fn is_arch() -> bool   { distro_base() == Base::AthenaArch }
+pub fn is_fedora() -> bool { distro_base() == Base::AthenaFedora }
+pub fn is_nix() -> bool    { distro_base() == Base::AthenaNix }
+
+pub fn get_fedora_version() -> String {
+    let output = exec_eval_result(
+        exec_output(
+            "rpm",
+            vec![
+                String::from("-E"),
+                String::from("%fedora"),
+            ],
+        ),
+        "Get Athena version",
+    );
+
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
 }
 
 #[derive(Debug, Args)]
@@ -271,10 +273,21 @@ pub struct LocaleArgs {
 pub struct NetworkingArgs {
     /// The hostname to assign to the system
     pub hostname: String,
+}
 
-    /// Whether IPv6 loopback should be enabled
-    #[arg(long)]
-    pub ipv6: bool,
+#[derive(Serialize, Deserialize)]
+pub struct User {
+    // New schema uses "username" and "password_hash"
+    #[serde(rename = "username")]
+    pub name: String,
+
+    #[serde(rename = "password_hash")]
+    pub password: String,
+
+    pub shell: String,
+
+    #[serde(default)]
+    pub groups: Vec<String>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -295,10 +308,6 @@ pub enum UsersSubcommand {
 pub struct NewUserArgs {
     /// The name of the user to create
     pub username: String,
-
-    /// If the user should have root privileges
-    #[arg(long, aliases=&["has-root", "sudoer", "root"])]
-    pub hasroot: bool,
 
     /// The password to set. NOTE: Takes hashed password, use `mkpasswd <password>` to generate the hash.
     /// When not providing a password mkpasswd jumps into an interactive masked input mode allowing you to hide your password
@@ -416,57 +425,6 @@ pub enum ShellSetup {
 
     #[value(name = "zsh")]
     Zsh,
-
-    #[value(name = "None")]
-    None,
-}
-
-#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-pub enum BrowserSetup {
-    #[value(name = "firefox")]
-    Firefox,
-
-    #[value(name = "brave")]
-    Brave,
-
-    #[value(name = "None")]
-    None,
-}
-
-#[derive(Debug, ValueEnum, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
-pub enum TerminalSetup {
-    #[value(name = "alacritty")]
-    Alacritty,
-
-    #[value(name = "cool-retro-term")]
-    CoolRetroTerm,
-
-    #[value(name = "foot")]
-    Foot,
-
-    #[value(name = "gnome-terminal")]
-    GnomeTerminal,
-
-    #[value(name = "kitty")]
-    Kitty,
-
-    #[value(name = "konsole")]
-    Konsole,
-
-    #[value(name = "terminator")]
-    Terminator,
-
-    #[value(name = "terminology")]
-    Terminology,
-
-    #[value(name = "urxvt")]
-    Urxvt,
-
-    #[value(name = "xfce4-terminal")]
-    Xfce,
-
-    #[value(name = "xterm")]
-    Xterm,
 
     #[value(name = "None")]
     None,

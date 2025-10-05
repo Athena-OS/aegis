@@ -1,0 +1,15 @@
+[package]
+name = "core"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+log.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shared = { path = "../shared" }
+
+[lib]
+name = "core"
+path = "src/lib.rs"

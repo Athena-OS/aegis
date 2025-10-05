@@ -1,3 +1,4 @@
+use log::error;
 use std::process::{Command, ExitStatus, Output};
 use std::io;
 
@@ -25,7 +26,7 @@ pub fn mount_chroot_base() -> io::Result<()> {
 
         if !status.success() {
             return Err(io::Error::other(
-                format!("Failed to mount {} to {}", source, target),
+                format!("Failed to mount {source} to {target}"),
             ));
         }
     }
@@ -45,7 +46,7 @@ pub fn unmount_chroot_base() -> io::Result<()> {
 
         if !status.success() {
             return Err(io::Error::other(
-                format!("Failed to unmount {}", target),
+                format!("Failed to unmount {target}"),
             ));
         }
     }
@@ -75,7 +76,7 @@ fn mount_nixroot_base() -> io::Result<()> {
 
         if !status.success() {
             return Err(io::Error::other(
-                format!("Failed to mount {} to {}", source, target),
+                format!("Failed to mount {source} to {target}"),
             ));
         }
     }
@@ -93,7 +94,7 @@ fn unmount_nixroot_base() -> io::Result<()> {
 
         if !status.success() {
             return Err(io::Error::other(
-                format!("Failed to unmount {}", target),
+                format!("Failed to unmount {target}"),
             ));
         }
     }
@@ -113,7 +114,7 @@ pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
 
     // Always attempt cleanup, even if command fails
     if let Err(e) = unmount_chroot_base() {
-        eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
+        error!("Warning: Failed to clean up chroot mounts: {e}");
     }
 
     result
@@ -123,13 +124,13 @@ pub fn exec_archchroot(
     command: &str,
     args: Vec<String>,
 ) -> Result<ExitStatus, std::io::Error> {
-    let returncode = Command::new("bash")
+    
+    Command::new("bash")
         .args([
             "-c",
             format!("arch-chroot /mnt {} {}", command, args.join(" ")).as_str(),
         ])
-        .status();
-    returncode
+        .status()
 }
 
 /// Executes a command inside the nix chroot environment.
@@ -146,7 +147,7 @@ pub fn exec_nixroot(
         .status()?;
 
     if !activate_status.success() {
-        eprintln!("System activation failed with exit code: {:?}", activate_status.code());
+        error!("System activation failed with exit code: {:?}", activate_status.code());
     }
 
     // Second: enter bash inside the new system
@@ -157,15 +158,15 @@ pub fn exec_nixroot(
 
     // Always attempt cleanup
     if let Err(e) = unmount_nixroot_base() {
-        eprintln!("Warning: Failed to clean up chroot mounts: {}", e);
+        error!("Warning: Failed to clean up chroot mounts: {e}");
     }
 
     result
 }
 
 pub fn exec(command: &str, args: Vec<String>) -> Result<std::process::ExitStatus, std::io::Error> {
-    let returncode = Command::new(command).args(args).status();
-    returncode
+    
+    Command::new(command).args(args).status()
 }
 
 pub fn exec_output(command: &str, args: Vec<String>) -> Result<Output, io::Error> {
@@ -186,11 +187,11 @@ pub fn exec_workdir(
     workdir: &str,
     args: Vec<String>,
 ) -> Result<std::process::ExitStatus, std::io::Error> {
-    let returncode = Command::new(command)
+    
+    Command::new(command)
         .args(args)
         .current_dir(workdir)
-        .status();
-    returncode
+        .status()
 }
 
 pub fn check_if_root() -> bool {
