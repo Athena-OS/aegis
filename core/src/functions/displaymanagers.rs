@@ -1,7 +1,7 @@
 use crate::functions::desktops;
 use crate::internal::services::enable_service;
 use log::debug;
-use shared::args::{DMSetup, is_nix};
+use shared::args::{DMSetup, is_arch, is_nix};
 use shared::files;
 use shared::returncode_eval::files_eval;
 
@@ -81,9 +81,11 @@ fn install_sddm() -> Vec<&'static str> {
 pub fn configure_gdm(desktop: &str) {
     if ! desktop.contains("gnome") {
         files::rename_file("/mnt/usr/lib/udev/rules.d/61-gdm.rules", "/mnt/usr/lib/udev/rules.d/61-gdm.rules.bak");
-        desktops::disable_wsession("gnome-classic.desktop");
-        desktops::disable_wsession("gnome-classic-wayland.desktop");
-        desktops::disable_wsession("gnome-wayland.desktop");
+        if is_arch() {
+            desktops::disable_wsession("gnome-classic.desktop");
+            desktops::disable_wsession("gnome-classic-wayland.desktop");
+            desktops::disable_wsession("gnome-wayland.desktop");
+        }
     }
     enable_service("gdm"); 
 }
