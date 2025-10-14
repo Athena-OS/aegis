@@ -4,7 +4,7 @@ use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
 use log::{debug, info};
 use std::collections::HashSet;
-use std::fs::create_dir_all;
+use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
@@ -351,10 +351,18 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
 }
 
 pub fn umount(mountpoint: &str) {
-    exec_eval(
-        exec("umount", vec![String::from(mountpoint)]),
-        format!("Unmount command processed on {mountpoint}").as_str(),
-    );
+    let mounts = fs::read_to_string("/proc/mounts")
+        .expect("Failed to read /proc/mounts");
+
+    // Only umount if it appears as a mounted path
+    if mounts.lines().any(|line| line.split_whitespace().nth(1) == Some(mountpoint)) {
+        exec_eval(
+            exec("umount", vec![mountpoint.to_string()]),
+            &format!("Unmount command processed on {mountpoint}"),
+        );
+    } else {
+        println!("Skipping umount: {mountpoint} is not mounted");
+    }
 }
 
 pub fn is_uefi() -> bool {
