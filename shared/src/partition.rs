@@ -3,6 +3,8 @@ use crate::exec::{exec, exec_workdir};
 use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
 use log::{debug, info};
+use std::collections::HashSet;
+use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 
 /*mkfs.bfs mkfs.cramfs mkfs.ext3  mkfs.fat mkfs.msdos  mkfs.xfs
@@ -627,9 +629,11 @@ fn sort_mount_queue(plan: &mut [MountSpec]) {
 }
 
 fn mount_queue(mut plan: Vec<MountSpec>) {
-    exec_eval(exec("mkdir", vec!["-p".into(), "/mnt".into()]), "Create /mnt");
-
     sort_mount_queue(&mut plan);
+
+    // to prevent repeated mkdir on the same target
+    let mut created: HashSet<String> = HashSet::new();
+    created.insert("/mnt".to_string()); // l’abbiamo appena creato
 
     for m in plan {
         if m.is_swap {
@@ -641,11 +645,15 @@ fn mount_queue(mut plan: Vec<MountSpec>) {
         let target = if m.mountpoint == "/" {
             "/mnt".to_string()
         } else {
-            format!("/mnt{}", m.mountpoint)
+            // prevent double / at the end
+            format!("/mnt{}", m.mountpoint.trim_end_matches('/'))
         };
 
-        exec_eval(exec("mkdir", vec!["-p".into(), target.clone()]),
-                  &format!("Create {target}"));
+        // create the mountpoint dir if not already created
+        if created.insert(target.clone()) {
+            create_dir_all(&target).unwrap_or_else(|e| panic!("Failed to create {target}: {e}"));
+            info!("{target} directory created.");
+        }
 
         if m.options.is_empty() {
             mount(&m.device, &target, "");
