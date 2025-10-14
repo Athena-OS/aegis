@@ -29,7 +29,7 @@ pub fn new_user(username: &str, password: &str, groups: &[String], shell: &str) 
                     String::from("-s"),
                     String::from(shell_path),
                     String::from("-p"),
-                    format!("'{}'", _password.replace('\n', "")),
+                    format!("{}", _password.replace('\n', "")),
                     sanitized_username.clone(),
                 ],
             ),
@@ -119,7 +119,7 @@ pub fn root_pass(root_pass: &str) {
                 "usermod",
                 vec![
                     String::from("--password"),
-                    format!("'{}'", root_pass.replace('\n', "")),
+                    format!("{}", root_pass.replace('\n', "")),
                     String::from("root"),
                 ],
             ),

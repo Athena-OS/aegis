@@ -422,7 +422,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     /*      USER CONFIG      */
     for i in 0..config.users.len() {
         info!("Creating user : {}", config.users[i].name);
-        //info!("Setting user password : {}", config.users[i].password);
+        //info!("Setting user password : {}", config.users[i].password.as_str());
         info!("Setting user shell : {}", config.users[i].shell);
 
         users::new_user(
@@ -432,7 +432,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
         );
     }
-    //info!("Setting root password : {}", config.rootpass);
+    //info!("Setting root password : {}", config.rootpass.as_str());
     users::root_pass(config.rootpass.as_str());
 
     if is_nix() {
