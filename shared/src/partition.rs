@@ -422,8 +422,8 @@ fn create_partition(
     }
 
     let is_none_label = disklabel.eq_ignore_ascii_case("none");
-    let is_gpt = disklabel.eq_ignore_ascii_case("gpt") || is_none_label; //If disk label is none, I will create a new partition table as gpt (because compatible with both BIOS Legacy and UEFI boot)
-    let is_mbr = disklabel.eq_ignore_ascii_case("msdos");
+    let is_gpt = disklabel.eq_ignore_ascii_case("gpt") || (is_none_label && is_uefi());
+    let is_mbr = disklabel.eq_ignore_ascii_case("msdos") || (is_none_label && !is_uefi());
 
     let has_esp  = flags.iter().any(|f| f.eq_ignore_ascii_case("esp"));
     let has_boot = flags.iter().any(|f| f.eq_ignore_ascii_case("boot"));
