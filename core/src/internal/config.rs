@@ -429,7 +429,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             config.users[i].name.as_str(),
             config.users[i].password.as_str(),
             &config.users[i].groups,
-            false,
             "bash", //config.users[i].shell.as_str(), // Use bash because it must be the shell associated to the user in order to source the initial .sh files at login time
         );
     }

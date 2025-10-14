@@ -1,22 +1,16 @@
 use log::{error, info};
 use shared::args::is_nix;
-use shared::exec::{exec_archchroot, exec_output};
+use shared::exec::{exec_archchroot};
 use shared::files;
-use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
+use shared::returncode_eval::{exec_eval, files_eval};
 
-pub fn new_user(username: &str, password: &str, groups: &[String], do_hash_pass: bool, shell: &str) {
+pub fn new_user(username: &str, password: &str, groups: &[String], shell: &str) {
     let shell: &str = shell;
     let mut _password = String::new();
     // Username cannot contain any space
     let sanitized_username = username.replace(' ', "");
     
-    if do_hash_pass {
-        let hashed_pass = hash_pass(password).stdout;
-        _password = String::from_utf8_lossy(&hashed_pass).into_owned();
-    }
-    else {
-        _password = password.to_string();
-    }
+    _password = password.to_string(); // hashed
 
     if !is_nix() {
         let shell_path = match shell {
@@ -116,19 +110,6 @@ pub fn new_user(username: &str, password: &str, groups: &[String], do_hash_pass:
             "Set user extraGroups",
         );
     }
-}
-
-pub fn hash_pass(password: &str) -> std::process::Output {
-    exec_eval_result(
-        exec_output(
-            "mkpasswd",
-            vec![
-                String::from("--method=yescrypt"),
-                password.to_string(),
-            ]
-        ),
-        "Compute the password hash",
-    )
 }
 
 pub fn root_pass(root_pass: &str) {
