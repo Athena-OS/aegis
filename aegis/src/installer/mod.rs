@@ -146,7 +146,6 @@ impl Installer {
     let sys_config = json!({
       "base": self.basesystem,
       "hostname": self.hostname,
-      "language": self.language,
       "keyboard_layout": self.keyboard_layout,
       "locale": self.locale,
       "timezone": self.timezone,

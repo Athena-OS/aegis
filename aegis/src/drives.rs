@@ -362,8 +362,7 @@ impl DiskLabel {
   fn from_lsblk(s: &str) -> Option<Self> {
     match s {
       "gpt" => Some(DiskLabel::Gpt),
-      "dos" => Some(DiskLabel::Msdos), // lsblk uses "dos" for MBR
-      "msdos" => Some(DiskLabel::Msdos),
+      "dos" | "msdos" => Some(DiskLabel::Msdos), // lsblk uses "dos" for MBR
       _ => None,
     }
   }
@@ -384,7 +383,7 @@ fn pick_fallback_label(disk_bytes: u64) -> &'static str {
   if disk_bytes >= TWO_TIB { return "gpt"; }
   match detect_boot_mode() {
     BootMode::Uefi => "gpt",
-    BootMode::Bios => "gpt", // prefer GPT; only force msdos if you *must*
+    BootMode::Bios => "msdos", // could prefer GPT; only force msdos if you *must*
   }
 }
 
@@ -449,9 +448,10 @@ impl Disk {
     self.assign_device_numbers();
     let mut partitions = Vec::new();
 
-    let chosen_label = self.label
-        .map(|l| l.as_str().to_string())
-        .unwrap_or_else(|| pick_fallback_label(self.size_bytes()).to_string());
+    let chosen_label = match self.label {
+        Some(l) => l.as_str().to_string(),
+        None => "none".to_string(),
+    };
 
     let disk_is_gpt = chosen_label == "gpt";
 

@@ -74,9 +74,6 @@ pub struct Config {
     #[serde(default)]
     pub keyboard_layout: Option<String>,
 
-    #[serde(default)]
-    pub language: Option<String>,
-
     // New schema has locale as a single string (old code expected Vec<String>)
     pub locale: String,
 

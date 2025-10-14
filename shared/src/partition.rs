@@ -241,11 +241,28 @@ pub fn partition(
     partitions: &mut [args::Partition],
 ) {
     let mut plan: Vec<MountSpec> = Vec::new();
+    let is_none_label = table_type.eq_ignore_ascii_case("none");
 
     if !device.exists() {
         crash(format!("The device {device:?} doesn't exist"), 1);
     }
     debug!("Partitioning process");
+
+    if is_none_label { // If the disk has no partition table, I will create a GPT one
+        exec_eval(
+            exec(
+                "parted",
+                vec![
+                    "-s".into(),
+                    device.to_string_lossy().to_string(),
+                    "--".into(),
+                    "mklabel".into(),
+                    "gpt".into(),
+                ],
+            ),
+            &format!("Create a GPT partition table on {}", device.display()),
+        );        
+    }
 
     // --- Phase A: deletes first ---
     for p in partitions.iter() {
@@ -387,7 +404,8 @@ fn create_partition(
         );
     }
 
-    let is_gpt = disklabel.eq_ignore_ascii_case("gpt");
+    let is_none_label = disklabel.eq_ignore_ascii_case("none");
+    let is_gpt = disklabel.eq_ignore_ascii_case("gpt") || is_none_label; //If disk label is none, I will create a new partition table as gpt (because compatible with both BIOS Legacy and UEFI boot)
     let is_mbr = disklabel.eq_ignore_ascii_case("msdos");
 
     let has_esp  = flags.iter().any(|f| f.eq_ignore_ascii_case("esp"));
@@ -417,7 +435,7 @@ fn create_partition(
 
     // Special-cases for GUID/type selection
     if is_gpt {
-        if has_esp {
+        if has_esp { // Only in GPT I can use EFI boot partition
             // ESP is FAT; parted flag will mark it on GPT
             args.push(String::from("ESP"));
             args.push(String::from("fat32"));
