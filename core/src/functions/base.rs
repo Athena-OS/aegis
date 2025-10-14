@@ -593,7 +593,6 @@ pub fn enable_system_services() {
     if is_arch() {
         enable_service("ananicy");
         enable_service("cronie");
-        enable_service("set-cfs-tweaks");
         enable_service("systemd-timesyncd");
     } else if is_fedora() {
         enable_service("crond");
