@@ -249,19 +249,36 @@ pub fn partition(
     debug!("Partitioning process");
 
     if is_none_label { // If the disk has no partition table, I will create a GPT one
-        exec_eval(
-            exec(
-                "parted",
-                vec![
-                    "-s".into(),
-                    device.to_string_lossy().to_string(),
-                    "--".into(),
-                    "mklabel".into(),
-                    "gpt".into(),
-                ],
-            ),
-            &format!("Create a GPT partition table on {}", device.display()),
-        );        
+        if is_uefi() {
+            exec_eval(
+                exec(
+                    "parted",
+                    vec![
+                        "-s".into(),
+                        device.to_string_lossy().to_string(),
+                        "--".into(),
+                        "mklabel".into(),
+                        "gpt".into(),
+                    ],
+                ),
+                &format!("Create a GPT partition table on {}", device.display()),
+            );
+        }
+        else {
+            exec_eval(
+                exec(
+                    "parted",
+                    vec![
+                        "-s".into(),
+                        device.to_string_lossy().to_string(),
+                        "--".into(),
+                        "mklabel".into(),
+                        "msdos".into(),
+                    ],
+                ),
+                &format!("Create an MSDOS (MBR) partition table on {}", device.display()),
+            );
+        }
     }
 
     // --- Phase A: deletes first ---

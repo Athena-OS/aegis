@@ -444,7 +444,8 @@ impl Disk {
     let disk_is_gpt = chosen_label == "gpt";
 
     let tail_reserve = match self.label {
-        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::None if is_uefi() => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
 
@@ -703,7 +704,8 @@ impl Disk {
     rest.sort_by_key(|p| p.start());
 
     let tail_reserve = match self.label {
-        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::None if is_uefi() => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
     let last_usable = self.size.saturating_sub(tail_reserve);
@@ -837,7 +839,8 @@ impl Disk {
     self.set_label(disk_label);
 
     let tail_reserve = match disk_label {
-        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::None if is_uefi() => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
 
