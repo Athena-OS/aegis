@@ -3,6 +3,7 @@ use log::debug;
 use ratatui::layout::Constraint;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, json, Value};
+use shared::partition::is_uefi;
 use crate::widget::TableWidget;
 
 static NEXT_PART_ID: AtomicU64 = AtomicU64::new(1);
@@ -862,20 +863,30 @@ impl Disk {
     let boot_size_aligned = Self::align_up(boot_size, align);
 
     let (boot_fs, boot_mp, boot_flags): (String, String, Vec<String>) = match disk_label {
-        DiskLabel::Gpt => (
+        DiskLabel::Gpt if is_uefi() => (
             "fat32".into(),           // ESP filesystem
             "/boot/efi".into(),       // ESP mountpoint
             vec!["boot".into(), "esp".into()], // mark as ESP
+        ),
+        DiskLabel::Gpt => (
+            "ext4".into(),            // classic /boot on MBR
+            "/boot".into(),           // mountpoint
+            vec!["boot".into()],      // only "boot" flag
         ),
         DiskLabel::Msdos => (
             "ext4".into(),            // classic /boot on MBR
             "/boot".into(),           // mountpoint
             vec!["boot".into()],      // only "boot" flag
         ),
-        DiskLabel::None => (  // I set it as GPT because later, during the install, it will be created as GPT
-            "fat32".into(),           // ESP filesystem
-            "/boot/efi".into(),       // ESP mountpoint
-            vec!["boot".into(), "esp".into()], // mark as ESP
+        DiskLabel::None if is_uefi() => (
+            "fat32".into(),
+            "/boot/efi".into(),
+            vec!["boot".into(), "esp".into()],
+        ),
+        DiskLabel::None => (
+            "ext4".into(),
+            "/boot".into(),
+            vec!["boot".into()],
         ),
     };
 
