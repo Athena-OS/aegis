@@ -270,7 +270,11 @@ pub fn parse_disk(disk: Value) -> anyhow::Result<Disk> {
   let logical_sector = obj.get("log-sec").and_then(|v| v.as_u64()).unwrap_or(512);
 
   // Read partition table type
-  let label = obj.get("pttype").and_then(|v| v.as_str()).and_then(DiskLabel::from_lsblk);
+  let label = obj
+    .get("pttype")
+    .and_then(|v| v.as_str())
+    .map(DiskLabel::from_lsblk)
+    .unwrap_or(DiskLabel::None);
 
   // Parse existing partitions on this disk
   let mut layout = Vec::new();
@@ -356,34 +360,20 @@ pub enum DiskLabel {
   Gpt,
   #[serde(rename = "msdos")]
   Msdos,
+  #[serde(rename = "none")]
+  None,
 }
 
 impl DiskLabel {
-  fn from_lsblk(s: &str) -> Option<Self> {
+  fn from_lsblk(s: &str) -> Self {
     match s {
-      "gpt" => Some(DiskLabel::Gpt),
-      "dos" | "msdos" => Some(DiskLabel::Msdos), // lsblk uses "dos" for MBR
-      _ => None,
+      "gpt" => DiskLabel::Gpt,
+      "dos" | "msdos" => DiskLabel::Msdos, // lsblk uses "dos" for MBR
+      _ => DiskLabel::None,
     }
   }
   fn as_str(&self) -> &'static str {
-    match self { DiskLabel::Gpt => "gpt", DiskLabel::Msdos => "msdos" }
-  }
-}
-
-#[derive(Clone, Copy)]
-enum BootMode { Uefi, Bios }
-
-fn detect_boot_mode() -> BootMode {
-  if std::path::Path::new("/sys/firmware/efi").is_dir() { BootMode::Uefi } else { BootMode::Bios }
-}
-
-fn pick_fallback_label(disk_bytes: u64) -> &'static str {
-  const TWO_TIB: u64 = 2u64 << 40;
-  if disk_bytes >= TWO_TIB { return "gpt"; }
-  match detect_boot_mode() {
-    BootMode::Uefi => "gpt",
-    BootMode::Bios => "msdos", // could prefer GPT; only force msdos if you *must*
+    match self { DiskLabel::Gpt => "gpt", DiskLabel::Msdos => "msdos", DiskLabel::None => "none" }
   }
 }
 
@@ -404,11 +394,11 @@ pub struct Disk {
   /// Partitions use half-open ranges: [start, start+size)
   /// This means start sector is included, end sector is excluded
   layout: Vec<DiskItem>,
-  label: Option<DiskLabel>,
+  label: DiskLabel,
 }
 
 impl Disk {
-  pub fn new(name: String, size: u64, sector_size: u64, layout: Vec<DiskItem>, label: Option<DiskLabel>) -> Self {
+  pub fn new(name: String, size: u64, sector_size: u64, layout: Vec<DiskItem>, label: DiskLabel) -> Self {
     let mut new = Self {
       name,
       size,
@@ -421,8 +411,8 @@ impl Disk {
     new.calculate_free_space();
     new
   }
-  pub fn label(&self) -> Option<DiskLabel> { self.label }
-  pub fn set_label(&mut self, l: Option<DiskLabel>) { self.label = l; }
+  pub fn label(&self) -> DiskLabel { self.label }
+  pub fn set_label(&mut self, l: DiskLabel) { self.label = l; }
   /// Get info as a table row, based on the given field names (`headers`)
   pub fn as_table_row(&self, headers: &[DiskTableHeader]) -> Vec<String> {
     headers
@@ -448,15 +438,12 @@ impl Disk {
     self.assign_device_numbers();
     let mut partitions = Vec::new();
 
-    let chosen_label = match self.label {
-        Some(l) => l.as_str().to_string(),
-        None => "none".to_string(),
-    };
+    let chosen_label = self.label.as_str().to_string();
 
     let disk_is_gpt = chosen_label == "gpt";
 
     let tail_reserve = match self.label {
-        Some(DiskLabel::Gpt) => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
 
@@ -715,7 +702,7 @@ impl Disk {
     rest.sort_by_key(|p| p.start());
 
     let tail_reserve = match self.label {
-        Some(DiskLabel::Gpt) => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
     let last_usable = self.size.saturating_sub(tail_reserve);
@@ -844,15 +831,12 @@ impl Disk {
     // Keep existing partitions so user can see what will be deleted
     let align = 2048;
 
-    let disk_label = self.label.unwrap_or_else(|| {
-        match pick_fallback_label(self.size_bytes()) {
-            "gpt" => DiskLabel::Gpt,
-            _     => DiskLabel::Msdos,
-        }
-    });
+    let disk_label = self.label;
+    // Persist the decision so the rest of the code sees it
+    self.set_label(disk_label);
 
     let tail_reserve = match disk_label {
-        DiskLabel::Gpt => Self::default_gpt_tail_reserve(self.sector_size),
+        DiskLabel::Gpt | DiskLabel::None => Self::default_gpt_tail_reserve(self.sector_size),
         _ => 0,
     };
 
@@ -887,6 +871,11 @@ impl Disk {
             "ext4".into(),            // classic /boot on MBR
             "/boot".into(),           // mountpoint
             vec!["boot".into()],      // only "boot" flag
+        ),
+        DiskLabel::None => (  // I set it as GPT because later, during the install, it will be created as GPT
+            "fat32".into(),           // ESP filesystem
+            "/boot/efi".into(),       // ESP mountpoint
+            vec!["boot".into(), "esp".into()], // mark as ESP
         ),
     };
 
@@ -928,7 +917,8 @@ impl Disk {
     let final_swap_secs = if root_size == 0 { 0 } else { swap_secs };
     if final_swap_secs == 0 {
         // no swap: use the whole tail, still aligned
-        root_size = Self::align_down(self.size.saturating_sub(root_start), align);
+        let last_usable = self.size.saturating_sub(tail_reserve);
+        root_size = Self::align_down(last_usable.saturating_sub(root_start), align);
     }
 
     // Create root partition using all remaining space
