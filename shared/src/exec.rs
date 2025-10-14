@@ -1,6 +1,6 @@
 use log::error;
-use std::process::{Command, ExitStatus, Output};
-use std::io;
+use std::process::{Command, ExitStatus, Output, Stdio};
+use std::io::{self, BufRead, BufReader, Read};
 
 pub fn mount_chroot_base() -> io::Result<()> {
     let mounts = vec![
@@ -103,34 +103,63 @@ fn unmount_nixroot_base() -> io::Result<()> {
 }
 
 /// Executes a command inside the chroot environment.
-pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<ExitStatus> {
+pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<()> {
     mount_chroot_base().expect("Failed to mount chroot filesystems");
 
-    let result = Command::new("chroot")
+    // capture stderr so it appears in your final error line
+    let out = Command::new("chroot")
         .arg("/mnt")
         .arg(command)
-        .args(args)
-        .status();
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .output();
 
-    // Always attempt cleanup, even if command fails
+    // Always try cleanup
     if let Err(e) = unmount_chroot_base() {
         error!("Warning: Failed to clean up chroot mounts: {e}");
     }
 
-    result
+    let out = out?; // propagate spawn errors
+
+    if out.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(io::Error::other(
+            if err.is_empty() {
+                format!("chroot /mnt {command} {:?} exited with {}", args, out.status)
+            } else {
+                format!("chroot /mnt {command} {args:?} failed: {err}")
+            },
+        ))
+    }
 }
 
-pub fn exec_archchroot(
-    command: &str,
-    args: Vec<String>,
-) -> Result<ExitStatus, std::io::Error> {
-    
-    Command::new("bash")
-        .args([
-            "-c",
-            format!("arch-chroot /mnt {} {}", command, args.join(" ")).as_str(),
-        ])
-        .status()
+pub fn exec_archchroot(cmd: &str, args: Vec<String>) -> io::Result<()> {
+    // call arch-chroot directly to avoid shell quoting issues
+    let out = Command::new("arch-chroot")
+        .arg("/mnt")
+        .arg(cmd)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())  // or inherit/log if you prefer
+        .stderr(Stdio::piped()) // capture for error message
+        .output()?;
+
+    if out.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(io::Error::other(
+            if err.is_empty() {
+                format!("arch-chroot /mnt {cmd} {:?} exited with {}", args, out.status)
+            } else {
+                format!("arch-chroot /mnt {cmd} {args:?} failed: {err}")
+            },
+        ))
+    }
 }
 
 /// Executes a command inside the nix chroot environment.
@@ -164,9 +193,52 @@ pub fn exec_nixroot(
     result
 }
 
-pub fn exec(command: &str, args: Vec<String>) -> Result<std::process::ExitStatus, std::io::Error> {
-    
-    Command::new(command).args(args).status()
+pub fn exec(command: &str, args: Vec<String>) -> io::Result<()> {
+    let mut child = Command::new(command)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped()) // we'll log it via info!()
+        .stderr(Stdio::piped()) // we'll capture it for error reporting
+        .spawn()?;
+
+    // --- log stdout line-by-line via info!() ---
+    let mut stdout = child.stdout.take().expect("piped stdout");
+    let stdout_handle = std::thread::spawn(move || -> io::Result<()> {
+        let mut reader = BufReader::new(&mut stdout);
+        let mut line = Vec::<u8>::new();
+        loop {
+            line.clear();
+            let n = reader.read_until(b'\n', &mut line)?;
+            if n == 0 { break; }
+            let text = String::from_utf8_lossy(&line).trim_end_matches(&['\r','\n'][..]).to_string();
+            log::info!("{text}");
+        }
+        Ok(())
+    });
+
+    // --- capture stderr fully (no live print) ---
+    let mut stderr = child.stderr.take().expect("piped stderr");
+    let stderr_handle = std::thread::spawn(move || -> io::Result<Vec<u8>> {
+        let mut v = Vec::new();
+        stderr.read_to_end(&mut v)?;
+        Ok(v)
+    });
+
+    let status = child.wait()?;
+    stdout_handle.join().unwrap()?;              // propagate stdout I/O errors
+    let stderr_buf = stderr_handle.join().unwrap()?; // captured stderr
+
+    if status.success() {
+        Ok(())
+    } else {
+        let err_text = String::from_utf8_lossy(&stderr_buf).trim().to_string();
+        let msg = if err_text.is_empty() {
+            format!("{command} {args:?} exited with {status}")
+        } else {
+            format!("{command} {args:?} failed: {err_text}")
+        };
+        Err(io::Error::other(msg))
+    }
 }
 
 pub fn exec_output(command: &str, args: Vec<String>) -> Result<Output, io::Error> {
@@ -186,12 +258,25 @@ pub fn exec_workdir(
     command: &str,
     workdir: &str,
     args: Vec<String>,
-) -> Result<std::process::ExitStatus, std::io::Error> {
-    
-    Command::new(command)
-        .args(args)
+) -> io::Result<()> {
+    let out = Command::new(command)
+        .args(&args)
         .current_dir(workdir)
-        .status()
+        .stdin(Stdio::null())
+        .output()?; // captures stdout/stderr
+
+    if out.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(io::Error::other(
+            if err.is_empty() {
+                format!("{command} {:?} exited with {}", args, out.status)
+            } else {
+                format!("{command} {args:?} failed: {err}")
+            },
+        ))
+    }
 }
 
 pub fn check_if_root() -> bool {
