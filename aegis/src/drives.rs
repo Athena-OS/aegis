@@ -455,6 +455,13 @@ impl Disk {
 
     let disk_is_gpt = chosen_label == "gpt";
 
+    let tail_reserve = match self.label {
+        Some(DiskLabel::Gpt) => Self::default_gpt_tail_reserve(self.sector_size),
+        _ => 0,
+    };
+
+    let usable_total = self.size.saturating_sub(tail_reserve);
+
     for item in &self.layout {
       if let DiskItem::Partition(p) = item {
         // Map status -> action string
@@ -488,10 +495,10 @@ impl Disk {
 
         // Human size string (needed for create/modify; fine if present on delete)
         let size_str = bytes_disko_cfg(
-          p.size_bytes(p.sector_size),
-          self.total_used_sectors,
-          p.sector_size,
-          self.size,
+            p.size_bytes(p.sector_size),
+            self.total_used_sectors,
+            p.sector_size,
+            usable_total,
         );
 
         // "type": GPT code for ESP, otherwise "filesystem"
@@ -707,35 +714,32 @@ impl Disk {
     // Sort by start
     rest.sort_by_key(|p| p.start());
 
+    let tail_reserve = match self.label {
+        Some(DiskLabel::Gpt) => Self::default_gpt_tail_reserve(self.sector_size),
+        _ => 0,
+    };
+    let last_usable = self.size.saturating_sub(tail_reserve);
+
     let mut gaps = vec![];
     // Leave 1 MiB at the front
-    let mut cursor = one_mib_in_sectors(self.sector_size).min(self.size);
+    let mut cursor = one_mib_in_sectors(self.sector_size).min(last_usable);
 
     for item in rest.iter() {
-      let DiskItem::Partition(p) = item else { continue; };
-
-      if p.start() > cursor {
-        let size = p.start() - cursor;
-        if size > mb_to_sectors(5, self.sector_size) {
-          gaps.push(DiskItem::FreeSpace {
-            id: get_entry_id(),
-            start: cursor,
-            size,
-          });
+        let DiskItem::Partition(p) = item else { continue; };
+        if p.start() > cursor {
+            let size = p.start().saturating_sub(cursor);
+            if size > mb_to_sectors(5, self.sector_size) {
+                gaps.push(DiskItem::FreeSpace { id: get_entry_id(), start: cursor, size });
+            }
         }
-      }
-      cursor = p.start() + p.size();
+        cursor = p.start().saturating_add(p.size()).min(last_usable);
     }
 
-    if cursor < self.size {
-      let size = self.size - cursor;
-      if size > mb_to_sectors(5, self.sector_size) {
-        gaps.push(DiskItem::FreeSpace {
-          id: get_entry_id(),
-          start: cursor,
-          size,
-        });
-      }
+    if cursor < last_usable {
+        let size = last_usable - cursor;
+        if size > mb_to_sectors(5, self.sector_size) {
+            gaps.push(DiskItem::FreeSpace { id: get_entry_id(), start: cursor, size });
+        }
     }
 
     // Merge partitions (rest) with fresh gaps (no old FreeSpace carried over)
@@ -813,6 +817,17 @@ impl Disk {
       (x / align) * align
   }
 
+  fn gpt_tail_reserve(logical_sector: u64, entries: u64, entry_size: u64) -> u64 {
+      // 1 sector for the backup header + ceil(size of table / sector size)
+      let table_bytes = entries * entry_size; // typically 128 * 128 = 16384
+      1 + table_bytes.div_ceil(logical_sector)
+  }
+
+  // reasonable defaults: 128 entries, 128-byte entries
+  fn default_gpt_tail_reserve(logical_sector: u64) -> u64 {
+      Self::gpt_tail_reserve(logical_sector, 128, 128)
+  }
+
   /// Apply the default NixOS partitioning scheme to this disk
   ///
   /// Creates a standard two-partition layout:
@@ -835,6 +850,11 @@ impl Disk {
             _     => DiskLabel::Msdos,
         }
     });
+
+    let tail_reserve = match disk_label {
+        DiskLabel::Gpt => Self::default_gpt_tail_reserve(self.sector_size),
+        _ => 0,
+    };
 
     self.layout.retain(|item| match item {
       DiskItem::FreeSpace { .. } => false, // Remove all free space
@@ -894,10 +914,10 @@ impl Disk {
     // ROOT
     let root_start = Self::align_up(boot_end, align);
     // keep room for swap (already aligned down). Compute root_end limit and align it down
-    let root_end_limit = if swap_secs > 0 && root_start + swap_secs < self.size {
-        self.size - swap_secs
+    let root_end_limit = if swap_secs > 0 && root_start + swap_secs < self.size - tail_reserve {
+        (self.size - tail_reserve) - swap_secs
     } else {
-        self.size
+        self.size - tail_reserve
     };
 
     // ensure the end we use is aligned so SWAP can start aligned
