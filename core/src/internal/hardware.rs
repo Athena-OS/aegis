@@ -3,6 +3,7 @@ use shared::args::{is_arch, is_fedora, is_nix};
 use shared::files;
 use shared::exec::exec_output;
 use shared::returncode_eval::{exec_eval_result, files_eval};
+use std::process::{Command, Output};
 use std::thread::available_parallelism;
 
 type Packages = Vec<&'static str>;
@@ -10,12 +11,19 @@ type Services = Vec<&'static str>;
 type SetParams = Vec<(String, Vec<String>)>;
 
 pub fn virt_check() -> (Packages, Services, SetParams) {
-    let output_result = exec_eval_result(
-        exec_output("systemd-detect-virt", vec![]),
-        "Detect virtualization technology",
-    );
+    let output_result = Command::new("systemd-detect-virt")
+        .output(); // Directly call command
+        // in baremetal, when no virtualization is detected, systemd-detect-virt returns exit status 1.
+        // So we use directly Command::new to prevent it panics the application
 
-    let result = String::from_utf8_lossy(&output_result.stdout).trim().to_string();
+    let output: Output = match output_result {
+        Ok(out) => out,
+        Err(e) => {
+            panic!("Failed to execute systemd-detect-virt: {e}");
+        }
+    };
+
+    let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
     info!("Virtualization detected: {result}");
 
     let mut packages = Vec::new();
