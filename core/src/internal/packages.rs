@@ -21,7 +21,7 @@ pub const ARCH_ONLY: &[&str] = &[
     "ntp","profile-sync-daemon","rtl8821cu-morrownr-dkms-git","sof-firmware","wireless_tools",
     "pipewire-pulse","pipewire-jack","ananicy","bashtop","imagemagick","lib32-glibc","mtpfs",
     "networkmanager-openvpn","octopi","openbsd-netcat","paru","pfetch","reflector","toilet-fonts",
-    "wget","athena-cyber-hub","athena-firefox-config","athena-grub-theme","athena-powershell-config","athena-vim-config",
+    "wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config","athena-vim-config",
     "kando-bin",
 ];
 
