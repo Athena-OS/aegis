@@ -20,9 +20,9 @@ pub const ARCH_ONLY: &[&str] = &[
     "grub","inetutils","mesa","mesa-utils","mkinitcpio-nfs-utils","mkinitcpio-openswap","netctl",
     "ntp","profile-sync-daemon","rtl8821cu-morrownr-dkms-git","sof-firmware","wireless_tools",
     "pipewire-pulse","pipewire-jack","ananicy","bashtop","imagemagick","lib32-glibc","mtpfs",
-    "networkmanager-openvpn","octopi","openbsd-netcat","paru","pfetch","reflector","toilet-fonts",
-    "wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config","athena-vim-config",
-    "kando-bin",
+    "networkmanager-openvpn","noto-fonts-cjk", "octopi","openbsd-netcat","paru","pfetch","reflector",
+    "toilet-fonts","wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config",
+    "athena-vim-config","kando-bin",
 ];
 
 pub const FEDORA_ONLY: &[&str] = &[
