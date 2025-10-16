@@ -381,6 +381,7 @@ impl SelectFilesystem {
       Box::new(Button::new("fat32")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("ntfs")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("swap")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("don't format")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("Back")) as Box<dyn ConfigWidget>,
     ];
     let mut button_row = WidgetBox::button_menu(buttons);
@@ -698,6 +699,20 @@ impl SelectFilesystem {
           ],
           vec![
             (None, "Size should fit your needs (RAM/2..RAM, etc).")
+          ],
+        ]),
+      ),
+      10 => InfoBox::new(
+        "don't format",
+        styled_block(vec![
+          vec![
+            (HIGHLIGHT, "'don't format'"),
+            (None, " is used for those partitions you don't want to wipe out.")
+          ],
+          vec![
+            (None, "For example "),
+            (HIGHLIGHT, "boot partition"),
+            (None, "to not delete any other installed bootloader.")
           ],
         ]),
       ),
@@ -1150,7 +1165,7 @@ impl Page for ManualPartition {
             1 => {
               // Confirm and Exit
               installer.make_drive_config_display();
-              return Signal::Unwind;
+              Signal::Unwind
             }
             2 => {
               if !self.confirming_reset {
@@ -1184,7 +1199,7 @@ impl Page for ManualPartition {
             }
             3 => {
               // Abort
-              return Signal::PopCount(2);
+              Signal::PopCount(2)
             }
             _ => Signal::Wait,
           }
@@ -1537,10 +1552,12 @@ impl NewPartition {
 
       let is_swap = self.new_part_fs.as_deref() == Some("swap");
 
-      let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot") {
+      let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot/efi") {
           vec!["boot".to_string(), "esp".to_string()]
+      } else if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot") {
+          vec!["boot".to_string()]
       } else {
-          vec![]
+          Vec::new() // Default case to ensure `flags` is always a Vec<String>
       };
       if self.new_part_encrypt.unwrap_or(false) {
           flags.push("encrypt".to_string());
@@ -1556,7 +1573,7 @@ impl NewPartition {
         Some("SWAP".to_string())
       } else {
         match self.new_part_mount_point.as_deref() {
-          Some("/boot") => Some("BOOT".to_string()),
+          Some("/boot") | Some("/boot/efi") => Some("BOOT".to_string()),
           Some("/")     => Some("ROOT".to_string()),
           _             => None,
         }
@@ -1873,7 +1890,9 @@ impl NewPartition {
           (Some((Color::Green, Modifier::BOLD)), "/home"),
           (None, " for user data, "),
           (Some((Color::Green, Modifier::BOLD)), "/boot"),
-          (None, " for boot files, and "),
+          (None, " for GRUB Legacy boot files, "),
+          (Some((Color::Green, Modifier::BOLD)), "/boot/efi"),
+          (None, " for EFI boot files, and "),
           (Some((Color::Green, Modifier::BOLD)), "/var"),
           (None, " for variable data."),
         ],
@@ -1925,8 +1944,8 @@ impl NewPartition {
         self.new_part_mount_point = Some(input.to_string());
         self.mount_input.unfocus();
 
-        // If /boot, don't ask for encryption
-        if self.new_part_mount_point.as_deref() == Some("/boot") {
+        // If /boot or /boot/efi, don't ask for encryption
+        if self.new_part_mount_point.as_deref() == Some("/boot") || self.new_part_mount_point.as_deref() == Some("/boot/efi") {
           self.new_part_encrypt = Some(false);
           return self.finalize_new_partition(installer);
         }
@@ -1956,7 +1975,7 @@ impl Page for NewPartition {
       self.render_encryption_select(f, area);
     } else if self.new_part_mount_point.is_none() {
       self.render_mount_point_input(f, area);
-    } else if self.new_part_encrypt.is_none() && self.new_part_mount_point.as_deref() != Some("/boot") {
+    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
       self.render_encryption_select(f, area);
     }
   }
@@ -1969,7 +1988,7 @@ impl Page for NewPartition {
       self.handle_input_encryption_select(installer, event)
     } else if self.new_part_mount_point.is_none() {
       self.handle_input_mount_point(installer, event)
-    } else if self.new_part_encrypt.is_none() && self.new_part_mount_point.as_deref() != Some("/boot") {
+    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
       self.handle_input_encryption_select(installer, event)
     } else {
       Signal::Pop
@@ -2006,8 +2025,8 @@ impl AlterPartition {
     // works for both Enter & Space when a checkbox item is focused
     if let Some(child) = self.buttons.focused_child_mut() {
       child.interact();
-      if let Some(Value::Bool(checked)) = child.get_value() {
-        if let Some(part) = device.partition_by_id_mut(self.part_id) {
+      if let Some(Value::Bool(checked)) = child.get_value()
+        && let Some(part) = device.partition_by_id_mut(self.part_id) {
           // which checkbox are we on?
           let idx = self.buttons.selected_child().unwrap_or(usize::MAX);
           if self.is_swap {
@@ -2026,7 +2045,6 @@ impl AlterPartition {
             }
           }
         }
-      }
     }
   }
   fn buttons_by_status(
@@ -2417,6 +2435,7 @@ impl Page for SetMountPoint {
         vec![(None, "- "), (HIGHLIGHT, "/")],
         vec![(None, "- "), (HIGHLIGHT, "/home")],
         vec![(None, "- "), (HIGHLIGHT, "/boot")],
+        vec![(None, "- "), (HIGHLIGHT, "/boot/efi")],
         vec![(None, "Mount points must be absolute paths.")],
       ]),
     );
@@ -2463,7 +2482,7 @@ impl Page for SetMountPoint {
           part.set_mount_point(&mount_point);
           // ⬇️ auto-label always
           match mount_point.as_str() {
-            "/boot" => part.set_label("BOOT"),
+            "/boot" | "/boot/efi" => part.set_label("BOOT"),
             "/"     => part.set_label("ROOT"),
             _       => {}
           }

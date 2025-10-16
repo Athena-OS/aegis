@@ -146,11 +146,10 @@ pub fn install(
         }
 
         // Fedora mounts per-iteration (match original behavior)
-        if matches!(pkgmanager, PackageManager::Dnf | PackageManager::RpmOSTree) {
-            if let Err(e) = exec::unmount_chroot_base() {
+        if matches!(pkgmanager, PackageManager::Dnf | PackageManager::RpmOSTree)
+            && let Err(e) = exec::unmount_chroot_base() {
                 error!("Warning: Failed to unmount chroot base: {e}");
             }
-        }
 
         retry_counter += 1;
     }
@@ -190,8 +189,8 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                     // NOTE: do NOT break the loop when we want to retry;
                     // just set the flag and KEEP reading to drain the pipe.
                     if line.contains("failed retrieving file") && line.contains("from") {
-                        if let Some(mirror_name) = extract_mirror_name(&line) {
-                            if let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, pm_name) {
+                        if let Some(mirror_name) = extract_mirror_name(&line)
+                            && let Some(mirrorlist_file) = find_mirrorlist_file(&mirror_name, pm_name) {
                                 if let Err(err) = move_server_line(&mirrorlist_file, &mirror_name) {
                                     error!("Failed to move 'Server' line in {mirrorlist_file}: {err}");
                                 } else {
@@ -199,7 +198,6 @@ fn spawn_log_thread<R: BufRead + Send + 'static>(
                                     *retry_flag.lock().unwrap() = true;
                                 }
                             }
-                        }
                     } else if (line.contains("File") && line.contains("is corrupted")) || line.contains("invalid key") {
                         let package_name = extract_package_name(&line);
                         let repository   = get_repository_name(&package_name);
@@ -244,11 +242,10 @@ fn extract_mirror_name(error_message: &str) -> Option<String> {
     let words: Vec<&str> = error_message.split_whitespace().collect();
 
     // Iterate through the words to find the word "from" and the subsequent word
-    if let Some(from_index) = words.iter().position(|&word| word == "from") {
-        if let Some(mirror_name) = words.get(from_index + 1) {
+    if let Some(from_index) = words.iter().position(|&word| word == "from")
+        && let Some(mirror_name) = words.get(from_index + 1) {
             return Some(mirror_name.to_string());
         }
-    }
 
     None // Return None if no mirror name is found
 }

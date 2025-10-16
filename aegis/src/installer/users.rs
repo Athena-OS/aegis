@@ -734,11 +734,11 @@ fn handle_input(
             self
               .pass_confirm
               .error("Password confirmation cannot be empty");
-            return Signal::Wait;
+            Signal::Wait
           }
         } else {
           self.pass_input.error("Password cannot be empty");
-          return Signal::Wait;
+          Signal::Wait
         }
       }
       _ => self.pass_confirm.handle_input(event),
@@ -1415,11 +1415,11 @@ impl AlterUser {
               self
                 .pass_confirm
                 .error("Password confirmation cannot be empty");
-              return Signal::Wait;
+              Signal::Wait
             }
           } else {
             self.pass_input.error("Password cannot be empty");
-            return Signal::Wait;
+            Signal::Wait
           }
         }
         _ => self.pass_confirm.handle_input(event),
@@ -1506,13 +1506,12 @@ impl AlterUser {
           Signal::Wait
         }
         KeyCode::Enter => {
-          if let Some(selected) = self.group_list.selected_item() {
-            if self.selected_user < installer.users.len() {
+          if let Some(selected) = self.group_list.selected_item()
+            && self.selected_user < installer.users.len() {
               let user = &mut installer.users[self.selected_user];
               user.groups.retain(|g| g != selected);
               self.group_list.set_items(user.groups.clone());
             }
-          }
 
           if self.group_list.is_empty() {
             self.group_list.unfocus();
@@ -1618,11 +1617,10 @@ impl Page for AlterUser {
           Signal::Wait
         }
         KeyCode::Enter => {
-          if let Some(sel) = self.shell_list.selected_item() {
-            if self.selected_user < installer.users.len() {
+          if let Some(sel) = self.shell_list.selected_item()
+            && self.selected_user < installer.users.len() {
               installer.users[self.selected_user].shell = sel.to_string();
             }
-          }
           self.shell_list.unfocus();
           self.buttons.focus();
           Signal::Wait

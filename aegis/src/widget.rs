@@ -121,11 +121,10 @@ impl PackageManager {
   /// Caches results to avoid expensive recomputation on repeated searches
   pub fn get_available_filtered(&mut self, filter: &str) -> Vec<String> {
     // Check if we can reuse cached results
-    if let Some(ref last_filter) = self.last_filter {
-      if last_filter == filter {
+    if let Some(ref last_filter) = self.last_filter
+      && last_filter == filter {
         return self.get_sorted_by_score_from_cache();
       }
-    }
 
     // Need to recompute fuzzy matches
     use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
@@ -1340,8 +1339,8 @@ impl<'a> InstallSteps<'a> {
 
   pub fn start_next_command(&mut self) -> anyhow::Result<()> {
     // Get the next command from the current step
-    if let Some(commands) = self.current_step_commands.as_mut() {
-      if let Some(mut cmd) = commands.pop_front() {
+    if let Some(commands) = self.current_step_commands.as_mut()
+      && let Some(mut cmd) = commands.pop_front() {
         // Redirect all output to /dev/null
         let null = std::fs::File::create("/dev/null")?;
         cmd
@@ -1352,7 +1351,6 @@ impl<'a> InstallSteps<'a> {
         let child = cmd.spawn()?;
         self.current_command = Some(child);
       }
-    }
     Ok(())
   }
 
@@ -1377,8 +1375,8 @@ impl<'a> InstallSteps<'a> {
     }
   
     // Poll the running command, if any
-    if let Some(child) = &mut self.current_command {
-      if let Ok(Some(status)) = child.try_wait() {
+    if let Some(child) = &mut self.current_command
+      && let Ok(Some(status)) = child.try_wait() {
         // command finished
         self.current_command = None;
       
@@ -1443,8 +1441,8 @@ impl<'a> InstallSteps<'a> {
         }
       
         // success path: if no more commands in this step, close it as Completed
-        if let Some(commands) = &self.current_step_commands {
-          if commands.is_empty() {
+        if let Some(commands) = &self.current_step_commands
+          && commands.is_empty() {
             if self.current_step_index < self.steps.len() {
               self.steps[self.current_step_index].1 = StepStatus::Completed;
             }
@@ -1453,9 +1451,7 @@ impl<'a> InstallSteps<'a> {
             self.running = false;
           }
           // else: next command of this step will start on the next tick
-        }
       }
-    }
   
     Ok(())
   }
@@ -1583,11 +1579,10 @@ impl TableWidget {
   }
   pub fn set_rows(&mut self, rows: Vec<Vec<String>>) {
     self.rows = rows;
-    if let Some(idx) = self.selected_row {
-      if idx >= self.rows.len() {
+    if let Some(idx) = self.selected_row
+      && idx >= self.rows.len() {
         self.selected_row = None;
       }
-    }
   }
   pub fn selected_row(&self) -> Option<usize> {
     self.selected_row
@@ -2069,15 +2064,14 @@ impl ConfigWidget for PackagePicker {
         }
         KeyCode::Enter => {
           let selected_idx = self.selected.selected_idx;
-          if let Some(pkg) = self.selected.selected_item() {
-            if self.package_manager.move_to_available(pkg) {
+          if let Some(pkg) = self.selected.selected_item()
+            && self.package_manager.move_to_available(pkg) {
               self
                 .selected
                 .set_items(self.package_manager.get_selected_packages());
               self.update_available_list();
               self.selected.selected_idx = selected_idx.min(self.selected.len().saturating_sub(1));
             }
-          }
           Signal::Wait
         }
         _ => Signal::Wait,
@@ -2105,8 +2099,8 @@ impl ConfigWidget for PackagePicker {
         }
         KeyCode::Enter => {
           let selected_idx = self.available.selected_idx;
-          if let Some(pkg) = self.available.selected_item() {
-            if self.package_manager.move_to_selected(pkg) {
+          if let Some(pkg) = self.available.selected_item()
+            && self.package_manager.move_to_selected(pkg) {
               self
                 .selected
                 .set_items(self.package_manager.get_selected_packages());
@@ -2114,7 +2108,6 @@ impl ConfigWidget for PackagePicker {
               self.available.selected_idx =
                 selected_idx.min(self.available.len().saturating_sub(1));
             }
-          }
           Signal::Wait
         }
         _ => Signal::Wait,
@@ -2511,11 +2504,10 @@ impl FancyTicker {
             }
 
             // inject leet sometimes, only on letters we map
-            if rng.random::<f32>() < self.leet_chance {
-                if let Some(sub) = leet_map(c) {
+            if rng.random::<f32>() < self.leet_chance
+                && let Some(sub) = leet_map(c) {
                     c = sub;
                 }
-            }
 
             // occasionally replace a letter with a transient symbol while typing
             if matches!(self.phase, Phase::Typing) && rng.random::<f32>() < 0.06 {

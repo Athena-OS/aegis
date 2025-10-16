@@ -33,11 +33,11 @@ pub struct Cli {
     pub verbose: u8,
 
     /// Use an existing system config JSON file (TUI will pass this to aegis-core)
-    #[arg(long = "system-file")]
+    #[arg(long = "system-file", short = 's')]
     pub system_file: Option<std::path::PathBuf>,
 
     /// Use an existing drives/partition JSON file (TUI will pass this to aegis-core)
-    #[arg(long = "drives-file")]
+    #[arg(long = "drives-file", short = 'd')]
     pub drives_file: Option<std::path::PathBuf>,
 
     /// Additional JSON fragments to merge (forwarded to aegis-core or used to build temps)

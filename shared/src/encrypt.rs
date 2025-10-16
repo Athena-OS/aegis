@@ -23,11 +23,10 @@ pub fn find_luks_partitions() -> (Vec<(String, String)>, bool) {
                         vec![String::from("luksDump"), device_path.to_string()],
                     ) {
                         Ok(output) => {
-                            if output.status.success() {
-                                if let Some(uuid) = parse_uuid_from_output(&output.stdout) {
+                            if output.status.success()
+                                && let Some(uuid) = parse_uuid_from_output(&output.stdout) {
                                     luks_partitions.push((device_path, uuid));
                                 }
-                            }
                         }
                         Err(err) => {
                             info!("{err}");

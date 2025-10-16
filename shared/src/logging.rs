@@ -33,11 +33,10 @@ pub fn init(verbosity: u8, log_file_path: &str) {
         .suppress_timestamp();
 
     // Only add suffix if there is one; avoids trailing dot
-    if let Some(ext) = ext {
-        if !ext.is_empty() {
+    if let Some(ext) = ext
+        && !ext.is_empty() {
             spec = spec.suffix(ext);
         }
-    }
 
     // Create a file-based logger and specify the log file path
     Logger::with(log_specification)

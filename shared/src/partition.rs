@@ -176,7 +176,7 @@ fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice:
             return plan; // nothing else to do
         }
         "don't format" => {
-            debug!("Not formatting {bdevice}");
+            info!("Not formatting {bdevice}");
         }
         _ => {
             crash(

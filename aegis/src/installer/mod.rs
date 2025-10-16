@@ -4531,15 +4531,14 @@ impl InstallFailed {
     }
 
     fn poll_generation(&mut self) {
-        if let Some(rx) = &self.rx {
-            if let Ok(msg) = rx.try_recv() {
+        if let Some(rx) = &self.rx
+            && let Ok(msg) = rx.try_recv() {
                 match msg {
                     Ok(url) => self.state = LogGenState::Done(url),
                     Err(err) => self.state = LogGenState::Error(err),
                 }
                 self.rx = None;
             }
-        }
     }
 
     fn content_lines(&self) -> Vec<Line<'static>> {

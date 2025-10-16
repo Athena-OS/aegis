@@ -180,12 +180,11 @@ pub fn lsblk() -> anyhow::Result<Vec<Disk>> {
   /// are currently being used by the live system
   fn is_safe_device(dev: &Value) -> bool {
     // Check if this device is mounted at critical mount points
-    if let Some(mount) = dev.get("mountpoint").and_then(|m| m.as_str()) {
-      if mount == "/" || mount == "/iso" {
+    if let Some(mount) = dev.get("mountpoint").and_then(|m| m.as_str())
+      && (mount == "/" || mount == "/iso") {
         // "/" is the root filesystem, "/iso" is common in live environments
         return false;
       }
-    }
 
     // Recursively check all child partitions
     if let Some(children) = dev.get("children").and_then(|c| c.as_array()) {
