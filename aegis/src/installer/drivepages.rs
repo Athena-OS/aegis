@@ -710,9 +710,9 @@ impl SelectFilesystem {
             (None, " is used for those partitions you don't want to wipe out.")
           ],
           vec![
-            (None, "For example "),
+            (None, "For example a "),
             (HIGHLIGHT, "boot partition"),
-            (None, "to not delete any other installed bootloader.")
+            (None, " to not delete current bootloader on it.")
           ],
         ]),
       ),
@@ -743,10 +743,10 @@ impl Page for SelectFilesystem {
       ]
     );
 
-    let idx = self.buttons.selected_child().unwrap_or(10);
-    let info_box = Self::get_fs_info(self.buttons.selected_child().unwrap_or(10));
+    let idx = self.buttons.selected_child().unwrap_or(11);
+    let info_box = Self::get_fs_info(self.buttons.selected_child().unwrap_or(11));
     self.buttons.render(f, hor_chunks[1]);
-    if idx < 10 {
+    if idx < 11 {
       info_box.render(f, vert_chunks[1]);
     }
 
@@ -792,7 +792,8 @@ impl Page for SelectFilesystem {
           7 => "fat32",
           8 => "ntfs",
           9 => "swap",
-          10 => return Signal::Pop,
+          10 => "don't format",
+          11 => return Signal::Pop,
           _ => return Signal::Wait,
         }
         .to_string();
@@ -1463,6 +1464,7 @@ impl NewPartition {
         Box::new(Button::new("fat32")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("ntfs")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("swap")) as Box<dyn ConfigWidget>,
+        Box::new(Button::new("don't format")) as Box<dyn ConfigWidget>,
       ];
       let mut button_row = WidgetBox::button_menu(buttons);
       button_row.focus();
@@ -1798,10 +1800,10 @@ impl NewPartition {
       ]
     );
 
-    let idx = self.fs_buttons.selected_child().unwrap_or(10);
-    let info_box = SelectFilesystem::get_fs_info(self.fs_buttons.selected_child().unwrap_or(10));
+    let idx = self.fs_buttons.selected_child().unwrap_or(11);
+    let info_box = SelectFilesystem::get_fs_info(self.fs_buttons.selected_child().unwrap_or(11));
     self.fs_buttons.render(f, hor_chunks[1]);
-    if idx < 10 {
+    if idx < 11 {
       info_box.render(f, vert_chunks[1]);
     }
   }
@@ -1837,6 +1839,7 @@ impl NewPartition {
           7 => "fat32",
           8 => "ntfs",
           9 => "swap",
+          10 => "don't format",
           _ => return Signal::Wait,
         }
         .to_string();
