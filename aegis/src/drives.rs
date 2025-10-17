@@ -163,6 +163,14 @@ pub fn mb_to_sectors(mb: u64, sector_size: u64) -> u64 {
   bytes.div_ceil(sector_size) // round up to nearest sector
 }
 
+fn is_physical_disk_name(name: &str) -> bool {
+  name.starts_with("sd")      // SATA/SCSI/USB (e.g. sda)
+    || name.starts_with("hd") // legacy IDE (e.g. hda)
+    || name.starts_with("vd") // virtio (e.g. vda)
+    || name.starts_with("nvme") // NVMe namespaces (e.g. nvme0n1)
+    || name.starts_with("mmcblk") // eMMC/SD (e.g. mmcblk0)
+}
+
 /// Discover available disk drives using the `lsblk` command
 ///
 /// This function safely identifies disk drives that can be used for
@@ -236,9 +244,19 @@ pub fn lsblk() -> anyhow::Result<Vec<Disk>> {
       .get("type")
       .and_then(|v| v.as_str())
       .ok_or_else(|| anyhow::anyhow!("Device entry missing TYPE"))?;
-
+  
     // Only process devices of type "disk" (physical drives)
     if dev_type == "disk" {
+      // NEW: whitelist physical disk name patterns to exclude zram/loop/ram/sr/dm/md...
+      let dev_name = device
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Device entry missing NAME"))?;
+    
+      if !is_physical_disk_name(dev_name) {
+        continue;
+      }
+    
       let disk = parse_disk(device.clone())?;
       disks.push(disk);
     }
