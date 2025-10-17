@@ -61,9 +61,9 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                     vec![
                         "-i".into(),
                         "-e".into(),
-                        "/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/".into(),
+                        r"/^MODULES=()/ s/()/(vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/".into(),
                         "-e".into(),
-                        "/^MODULES=([^)]*)/ {/vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/".into(),
+                        r"/^MODULES=([^)]*)/ { /vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx/! s/)/ vsock vmw_vsock_vmci_transport vmw_balloon vmw_vmci vmwgfx)/ }".into(),
                         "/mnt/etc/mkinitcpio.conf".into(),
                     ],
                 ));
