@@ -43,7 +43,7 @@ pub fn install_desktop_setup(desktop_setup: DesktopSetup) -> Vec<&'static str> {
 
 fn install_hyprland() -> Vec<&'static str> {
     vec![
-        "athena-hyprland-config",
+        "hyprland",
     ]
 }
 
