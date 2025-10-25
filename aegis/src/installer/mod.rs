@@ -3998,7 +3998,7 @@ impl Page for ExtraPackages {
       .unwrap_or(false);
 
     if !is_arch {
-      let p = Paragraph::new("This page is available is the selected Base System is Arch.")
+      let p = Paragraph::new("This page is available if the selected Base System is Arch.")
         .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::ALL).title("Extra Packages"));
       f.render_widget(p, area);
