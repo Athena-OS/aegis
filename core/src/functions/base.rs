@@ -309,8 +309,9 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
 
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {efi_str}");
-    setting_grub_parameters();
+    
     if is_arch() {
+        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub-install",
@@ -346,6 +347,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
     }
 
     if is_fedora() {
+        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub2-mkconfig",
