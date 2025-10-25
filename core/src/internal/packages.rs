@@ -5,7 +5,7 @@ pub const COMMON: &[&str] = &[
     "nfs-utils", "nss-mdns", "ntfsprogs", "pavucontrol", "pv", "rsync", "squashfs-tools",
     "syslinux", "testdisk", "usbutils", "wpa_supplicant", "xfsprogs",
     "pipewire", "pipewire-alsa", "wireplumber", "ntfs-3g", "zram-generator",
-    "pocl", "asciinema", "bat", "bc", "bless", "cmatrix", "cowsay", "fastfetch", "file-roller",
+    "pocl", "asciinema", "bat", "bc", "cmatrix", "cowsay", "fastfetch", "file-roller",
     "fortune-mod", "git", "gparted", "gvfs-gphoto2", "gvfs-mtp", "hexedit", "jq", "keepassxc",
     "lolcat", "lsd", "nano-syntax-highlighting", "nautilus", "ncdu", "onionshare", "openvpn",
     "orca", "os-prober", "p7zip", "podman", "polkit", "sl", "torbrowser-launcher", "tree",
