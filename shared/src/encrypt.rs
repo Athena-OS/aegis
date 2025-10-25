@@ -25,11 +25,12 @@ pub fn find_luks_partitions() -> (Vec<(String, String)>, bool) {
                         Ok(output) => {
                             if output.status.success()
                                 && let Some(uuid) = parse_uuid_from_output(&output.stdout) {
+                                    info!("LUKS partition found: {device_path} - {uuid}");
                                     luks_partitions.push((device_path, uuid));
                                 }
                         }
                         Err(err) => {
-                            info!("{err}");
+                            info!("LUKS dump failed: {err}");
                             // keep going
                         }
                     }
