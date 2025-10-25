@@ -6,6 +6,7 @@ use ratatui::{
   style::{Color, Modifier},
 };
 use serde_json::Value;
+use std::process::Command;
 
 use crate::{
   drives::{
@@ -319,18 +320,43 @@ impl Page for SelectDrive {
       }
       ui_enter!() => {
         if let Some(row) = self.table.selected_row() {
-          let Some(disk) = installer.drives.get(row) else {
-            return Signal::Error(anyhow::anyhow!("Failed to find drive info"));
+          // Copy out the selected disk name to avoid borrowing `installer.drives`
+          let selected_name = match installer.drives.get(row) {
+            Some(d) => d.name().to_string(),
+            None => {
+              return Signal::Error(anyhow::anyhow!("Failed to find drive info"));
+            }
           };
 
+          // Run partprobe/settle on that device node
+          let devnode = format!("/dev/{}", selected_name);
+          let _ = Command::new("partprobe").arg(&devnode).status();
+          let _ = Command::new("udevadm").arg("settle").status();
+
+          // Re-scan devices so our in-memory model matches the kernel
+          let disks = match lsblk() {
+            Ok(disks) => disks,
+            Err(e) => return Signal::Error(anyhow::anyhow!("Failed to list block devices: {e}")),
+          };
+          installer.drives = disks;
+
+          // Find the same disk again by name after refresh
+          let Some(idx_refreshed) = installer
+            .drives
+            .iter()
+            .position(|d| d.name() == selected_name)
+          else {
+            return Signal::Error(anyhow::anyhow!("Selected drive disappeared after partprobe"));
+          };
+
+          // Set drive_config from the refreshed entry
+          let disk = installer.drives[idx_refreshed].clone();
           installer.drive_config = Some(disk.clone());
+
           if installer.use_auto_drive_config {
             Signal::Push(Box::new(SelectSwap::new()))
           } else {
-            let Some(ref drive) = installer.drive_config else {
-              return Signal::Error(anyhow::anyhow!("No drive config available"));
-            };
-            let table = part_table(drive.layout(), drive.sector_size());
+            let table = part_table(disk.layout(), disk.sector_size());
             Signal::Push(Box::new(ManualPartition::new(table)))
           }
         } else {

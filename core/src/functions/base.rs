@@ -309,7 +309,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
 
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {efi_str}");
-    
+    setting_grub_parameters();
     if is_arch() {
         exec_eval(
             exec_archchroot(
@@ -335,7 +335,7 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
             ),
             "Install grub as efi without --removable",
         );
-        setting_grub_parameters();
+
         exec_eval(
             exec_archchroot(
                 "grub-mkconfig",
@@ -346,7 +346,6 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
     }
 
     if is_fedora() {
-        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub2-mkconfig",
@@ -378,6 +377,7 @@ pub fn configure_bootloader_legacy(device: PathBuf) {
     }
 
     if is_arch() {
+        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub-install",
@@ -385,7 +385,6 @@ pub fn configure_bootloader_legacy(device: PathBuf) {
             ),
             "Install GRUB as legacy",
         );
-        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub-mkconfig",
@@ -394,6 +393,7 @@ pub fn configure_bootloader_legacy(device: PathBuf) {
             "Create grub.cfg",
         );
     } else if is_fedora() {
+        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub2-install",
@@ -401,7 +401,6 @@ pub fn configure_bootloader_legacy(device: PathBuf) {
             ),
             "Install GRUB as legacy",
         );
-        setting_grub_parameters();
         exec_eval(
             exec_archchroot(
                 "grub2-mkconfig",
