@@ -105,6 +105,7 @@ pub struct Installer {
   pub display_manager: Option<String>,
   pub timezone: Option<String>,
   pub extra_packages: Vec<String>,
+  pub repo_synced: bool,
   pub cached_repo_pkgs: Option<Vec<String>>,
 
   pub drives: Vec<Disk>,
@@ -3823,7 +3824,16 @@ impl Page for Timezone {
 pub struct ExtraPackages {
   picker: crate::widget::PackagePicker,
   help: HelpModal<'static>,
-  inited: bool,
+  state: LoadState,
+  rx: Option<Receiver<anyhow::Result<()>>>,
+}
+
+#[derive(Debug, Clone)]
+enum LoadState {
+  Idle,                 // first entry into the page
+  Syncing,              // pacman -Sy running
+  Ready,                // repo list loaded, picker usable
+  Failed(String),       // sync failed
 }
 
 impl ExtraPackages {
@@ -3839,13 +3849,19 @@ impl ExtraPackages {
     let help = HelpModal::new(
       "Extra Packages",
       styled_block(vec![
-        vec![(None, "Select extra Arch packages to install.")],
-        vec![(None, "Use / to search, Enter to add/remove, Tab to switch panes.")],
+        vec![(None, "Select extra packages to install.")],
+        vec![(None, "Use '/' to search, Enter to add/remove, Tab to switch panes.")],
+        vec![(None, "F5 to refresh package list (re-runs pacman -Sy).")],
         vec![(None, "Press Esc to go back and save your selection.")],
       ]),
     );
 
-    Self { picker, help, inited: false }
+    Self {
+      picker,
+      help,
+      state: LoadState::Idle,
+      rx: None,
+    }
   }
 
   pub fn page_info<'a>() -> (String, Vec<Line<'a>>) {
@@ -3873,6 +3889,100 @@ impl ExtraPackages {
     };
     Some(Box::new(InfoBox::new("", styled_block(vec![vec![(None, text)]]))))
   }
+
+  fn kick_off_sync(&mut self, installer: &mut Installer) {
+    if matches!(self.state, LoadState::Idle) {
+      // If we've already synced earlier in this boot, skip calling pacman -Sy
+      if installer.repo_synced {
+        // jump straight to “Ready” after ensuring we have a cached list
+        self.state = LoadState::Syncing; // small trick to reuse post-sync path
+        // fake a success message through the channel so the normal flow runs
+        let (tx, rx) = mpsc::channel();
+        let _ = tx.send(Ok(()));
+        self.rx = Some(rx);
+        return;
+      }
+  
+      let (tx, rx) = mpsc::channel::<anyhow::Result<()>>();
+      self.rx = Some(rx);
+      self.state = LoadState::Syncing;
+  
+      thread::spawn(move || {
+        let status = Command::new("pacman")
+          .args(["-Sy"])
+          .stdin(Stdio::null())
+          .stdout(Stdio::null())
+          .stderr(Stdio::null())
+          .status();
+  
+        match status {
+          Ok(st) if st.success() => { let _ = tx.send(Ok(())); }
+          Ok(st) => { let _ = tx.send(Err(anyhow::anyhow!("pacman -Sy failed (exit {})", st.code().unwrap_or(-1)))); }
+          Err(e) => { let _ = tx.send(Err(anyhow::anyhow!("failed to exec pacman -Sy: {e}"))); }
+        }
+      });
+    }
+  }
+  
+  fn load_packages_after_sync(&mut self, installer: &mut Installer) -> anyhow::Result<()> {
+    // Use cache if present
+    let available = if let Some(list) = installer.cached_repo_pkgs.clone() {
+      list
+    } else {
+      // Otherwise fetch once with -Slq and cache it
+      let out = Command::new("pacman").arg("-Slq").output()?;
+      if !out.status.success() {
+        anyhow::bail!(
+          "pacman -Slq failed (exit {})",
+          out.status.code().unwrap_or(-1)
+        );
+      }
+      let mut names: Vec<String> = String::from_utf8(out.stdout)?
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+      names.sort();
+      names.dedup();
+  
+      installer.cached_repo_pkgs = Some(names.clone());
+      names
+    };
+  
+    installer.repo_synced = true;
+  
+    // Rebuild picker with fresh data
+    self.picker.package_manager =
+      crate::widget::PackageManager::new(available, installer.extra_packages.clone());
+  
+    // Update BOTH panes + respect current filter
+    self.picker.selected.set_items(self.picker.get_selected_packages());
+  
+    if let Some(ref ftxt) = self.picker.current_filter {
+      // if user was filtering, keep it and show filtered availables
+      let filtered = self.picker.package_manager.get_available_filtered(ftxt);
+      self.picker.available.set_items(filtered);
+      self.picker.available.selected_idx = 0;
+    } else {
+      let avail = self.picker.package_manager.get_available_packages();
+      self.picker.available.set_items(avail);
+      self.picker.available.selected_idx = 0;
+    }
+  
+    // Start focused in the search bar
+    self.picker.focus();
+  
+    Ok(())
+  }
+
+  fn request_refresh(&mut self, installer: &mut Installer) {
+    // Clear cache and re-run the tiny state machine
+    installer.cached_repo_pkgs = None;
+    installer.repo_synced = false;
+    self.state = LoadState::Idle;
+    self.rx = None;
+  }
 }
 
 impl Default for ExtraPackages {
@@ -3888,78 +3998,84 @@ impl Page for ExtraPackages {
       .unwrap_or(false);
 
     if !is_arch {
-      let p = Paragraph::new("This page is only available when the Base System is Arch.")
+      let p = Paragraph::new("This page is available is the selected Base System is Arch.")
         .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::ALL).title("Extra Packages"));
       f.render_widget(p, area);
       return;
     }
 
-    // ===== Lazy init: load/calc once, then reuse =====
-    if !self.inited {
-      // Use cached repo list if present; otherwise run pacman -Slq once.
-      let available = if let Some(ref list) = installer.cached_repo_pkgs {
-        list.clone()
-      } else {
-        let list = std::process::Command::new("pacman")
-          .arg("-Slq")
-          .output()
-          .ok()
-          .and_then(|o| String::from_utf8(o.stdout).ok())
-          .map(|s| {
-            s.lines()
-              .map(str::trim)
-              .filter(|l| !l.is_empty())
-              .map(ToOwned::to_owned)
-              .collect::<Vec<_>>()
-          })
-          .filter(|v| !v.is_empty())
-          .unwrap_or_default();
-
-        installer.cached_repo_pkgs = Some(list.clone());
-        list
-      };
-
-      // Rebuild picker state using: available list + current selection
-      self.picker.package_manager = crate::widget::PackageManager::new(
-        available,
-        installer.extra_packages.clone(),
-      );
-      self.picker.selected.set_items(self.picker.get_selected_packages());
-
-      // Populate the right side based on current filter (if any)
-      if let Some(ref f) = self.picker.current_filter {
-        self.picker.set_filter(Some(f.clone()));
-      } else {
-        let items = self.picker.package_manager.get_current_available();
-        self.picker.available.set_items(items);
-        self.picker.available.selected_idx = 0;
-      }
-
-      // Put caret in Search on first open
-      self.picker.focus();
-
-      self.inited = true;
-    }
-    // ==================================================
-
-    // Keep picker in sync if you enter with a pre-existing selection
-    if self.picker.selected.items.is_empty() && !installer.extra_packages.is_empty() {
-      self.picker.package_manager = crate::widget::PackageManager::new(
-        self.picker.package_manager.get_available_packages(),
-        installer.extra_packages.clone(),
-      );
-      self.picker.selected.set_items(self.picker.get_selected_packages());
-      if let Some(ref f) = self.picker.current_filter {
-        self.picker.set_filter(Some(f.clone()));
-      } else {
-        let items = self.picker.package_manager.get_current_available();
-        self.picker.available.set_items(items);
-      }
+    // 1) If first time here, start syncing
+    if matches!(self.state, LoadState::Idle) {
+      self.kick_off_sync(installer);
     }
 
-    self.picker.render(f, area);
-    self.help.render(f, area);
+    // 2) If syncing, poll for completion and transition
+    if matches!(self.state, LoadState::Syncing)
+      && let Some(rx) = &self.rx
+        && let Ok(result) = rx.try_recv() {
+          match result {
+            Ok(()) => {
+              match self.load_packages_after_sync(installer) {
+                Ok(()) => {
+                  self.state = LoadState::Ready;
+                }
+                Err(e) => {
+                  self.state = LoadState::Failed(format!("Failed to load packages: {e}"));
+                }
+              }
+            }
+            Err(e) => {
+              self.state = LoadState::Failed(format!("{e}"));
+            }
+          }
+        }
+
+    // 3) Render by state
+    match &self.state {
+      LoadState::Idle | LoadState::Syncing => {
+        // Simple centered “syncing” message
+        let msg = Paragraph::new("Syncing package list with pacman -Sy...")
+          .alignment(Alignment::Center)
+          .block(Block::default().borders(Borders::ALL).title("Extra Packages"));
+        f.render_widget(msg, area);
+      }
+      LoadState::Failed(err) => {
+        let lines = styled_block(vec![
+          vec![(Some((Color::Red, Modifier::BOLD)), "Failed to prepare package list.")],
+          vec![(None, "")],
+          vec![(None, "You can run the following manually in the live system:")],
+          vec![(Some((Color::Yellow, Modifier::BOLD)), "  pacman -Sy")],
+          vec![(None, "")],
+          vec![(Some((Color::Indexed(245), Modifier::ITALIC)), err.as_str())],
+          vec![(None, "")],
+          vec![(None, "Press Esc to go back.")],
+        ]);
+        let p = Paragraph::new(lines)
+          .block(Block::default().borders(Borders::ALL).title("Extra Packages"))
+          .wrap(Wrap { trim: false });
+        f.render_widget(p, area);
+      }
+      LoadState::Ready => {
+        // Keep picker selection in sync if it was pre-populated externally
+        if self.picker.selected.items.is_empty() && !installer.extra_packages.is_empty() {
+          self.picker.package_manager = crate::widget::PackageManager::new(
+            self.picker.package_manager.get_available_packages(),
+            installer.extra_packages.clone(),
+          );
+          self.picker.selected.set_items(self.picker.get_selected_packages());
+          if let Some(ref ftxt) = self.picker.current_filter {
+            self.picker.set_filter(Some(ftxt.clone()));
+          } else {
+            let items = self.picker.package_manager.get_current_available();
+            self.picker.available.set_items(items);
+          }
+        }
+
+        self.picker.render(f, area);
+        self.help.render(f, area);
+      }
+    }
   }
 
   fn handle_input(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
@@ -3976,13 +4092,24 @@ impl Page for ExtraPackages {
       return Signal::Wait;
     }
 
-    // Back out ONLY on Esc / q / h (Left stays inside picker)
-    match event.code {
-      KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('h') => {
-        installer.extra_packages = self.picker.get_selected_packages();
+    // --- refresh : F5
+    if let KeyCode::F(5) = event.code {
+      self.request_refresh(installer);
+      return Signal::Wait;
+    }
+
+    // If not ready, only allow leaving the page
+    if !matches!(self.state, LoadState::Ready) {
+      if matches!(event.code, KeyCode::Esc) {
         return Signal::Pop;
       }
-      _ => {}
+      return Signal::Wait;
+    }
+
+    // Ready: forward most inputs to picker; on Esc store selection and go back
+    if event.code == KeyCode::Esc {
+      installer.extra_packages = self.picker.get_selected_packages();
+      return Signal::Pop;
     }
 
     self.picker.handle_input(event)
