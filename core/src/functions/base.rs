@@ -307,13 +307,8 @@ fn setting_grub_parameters() {
 
 pub fn configure_bootloader_efi(efidir: PathBuf) {
 
-    let efidir = std::path::Path::new("/mnt").join(&efidir);
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {efi_str}");
-    
-    if !std::path::Path::new(efi_str).exists() {
-        crash(format!("The efidir {efidir:?} doesn't exist"), 1);
-    }
     
     if is_arch() {
         exec_eval(
@@ -350,8 +345,6 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
         );
     }
 
-    
-    
     if is_fedora() {
         setting_grub_parameters();
         exec_eval(
