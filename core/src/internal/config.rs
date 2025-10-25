@@ -289,6 +289,10 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         _ => info!("No design setup selected!"),
     }
     /**************************/
+    /*    EXTRA PACKAGES    */
+    info!("Extra packages : {:?}", config.extra_packages);
+    package_set.extend(config.extra_packages.clone());
+    /**************************/
     /*          MISC         */
     info!("Selecting zramd.");
     package_set.push("zram-generator".into());
@@ -306,6 +310,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     
     /********** INSTALLATION **********/
     if !is_nix() {
+        package_set.sort();
+        package_set.dedup();
         exit_code = base::install_packages(package_set);
         base::genfstab();
     }
@@ -370,15 +376,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             base::setup_snapper();
         }*/
 
-        /*    EXTRA PACKAGES    */
-        /*/
-        info!("Extra packages : {:?}", config.extra_packages);
-        let mut extra_packages: Vec<&str> = Vec::new();
-        for i in 0..config.extra_packages.len() {
-            extra_packages.push(config.extra_packages[i].as_str());
-        }
-        install(PackageManager::Pacman, extra_packages);
-        */
         /**************************/
         /*     SHELL CONFIG     */
         // The shell of the first created user will be applied on shell.desktop and on SHELL variable

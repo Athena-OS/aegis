@@ -18,7 +18,7 @@ pub const COMMON: &[&str] = &[
 pub const ARCH_ONLY: &[&str] = &[
     "systemd-sysvcompat","networkmanager","arch-install-scripts","broadcom-wl-dkms","edk2-shell",
     "grub","inetutils","mesa","mesa-utils","mkinitcpio-nfs-utils","mkinitcpio-openswap","netctl",
-    "ntp","profile-sync-daemon","rtl8821cu-morrownr-dkms-git","sof-firmware","wireless_tools",
+    "ntp","profile-sync-daemon","sof-firmware","wireless_tools",
     "pipewire-pulse","pipewire-jack","ananicy","bashtop","imagemagick","lib32-glibc","mtpfs",
     "networkmanager-openvpn","noto-fonts-cjk", "octopi","openbsd-netcat","paru","pfetch","reflector",
     "toilet-fonts","wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config",

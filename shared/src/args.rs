@@ -84,6 +84,9 @@ pub struct Config {
 
     pub users: Vec<User>,
 
+    #[serde(default)]
+    pub extra_packages: Vec<String>,
+
     // ----- disk/partition config (second JSON, top-level) -----
     // The disk JSON lives at the top level, so flatten its fields into Config.
     #[serde(flatten)]

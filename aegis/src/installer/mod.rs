@@ -104,6 +104,8 @@ pub struct Installer {
   pub design: Option<String>,
   pub display_manager: Option<String>,
   pub timezone: Option<String>,
+  pub extra_packages: Vec<String>,
+  pub cached_repo_pkgs: Option<Vec<String>>,
 
   pub drives: Vec<Disk>,
   pub swap: Option<u64>,
@@ -153,7 +155,8 @@ impl Installer {
       "desktop_environment": self.desktop_environment.as_ref().map(|s| s.to_lowercase()),
       "design": self.design.as_ref().map(|s| s.to_lowercase()),
       "display_manager": self.display_manager.as_ref().map(|s| s.to_lowercase()),
-      "users": self.users
+      "users": self.users,
+      "extra_packages": Some(&self.extra_packages)
     });
 
     // drive configuration if present
@@ -230,6 +233,7 @@ pub enum MenuPages {
   DesktopEnvironment,
   DisplayManager,
   Design,
+  ExtraPackages,
 }
 
 impl MenuPages {
@@ -263,6 +267,7 @@ impl MenuPages {
       MenuPages::DesktopEnvironment,
       MenuPages::DisplayManager,
       MenuPages::Design,
+      MenuPages::ExtraPackages,
     ]
   }
 }
@@ -282,6 +287,7 @@ impl Display for MenuPages {
       MenuPages::DesktopEnvironment => "Desktop Environment",
       MenuPages::DisplayManager => "Display Manager",
       MenuPages::Design => "Design",
+      MenuPages::ExtraPackages => "Extra Packages",
     };
     write!(f, "{s}")
   }
@@ -313,6 +319,7 @@ impl MenuPages {
       MenuPages::DesktopEnvironment => DesktopEnvironment::display_widget(installer),
       MenuPages::DisplayManager => DisplayManager::display_widget(installer),
       MenuPages::Design => Design::display_widget(installer),
+      MenuPages::ExtraPackages => ExtraPackages::display_widget(installer),
     }
   }
 
@@ -347,6 +354,7 @@ impl MenuPages {
       MenuPages::DesktopEnvironment => DesktopEnvironment::page_info(),
       MenuPages::DisplayManager => DisplayManager::page_info(),
       MenuPages::Design => Design::page_info(),
+      MenuPages::ExtraPackages => ExtraPackages::page_info(),
     }
   }
 
@@ -367,6 +375,7 @@ impl MenuPages {
       )),
       MenuPages::DisplayManager => Signal::Push(Box::new(DisplayManager::new())),
       MenuPages::Design => Signal::Push(Box::new(Design::new())),
+      MenuPages::ExtraPackages => Signal::Push(Box::new(ExtraPackages::new())),
     }
   }
 }
@@ -1911,8 +1920,8 @@ impl BaseSys {
   pub fn new() -> Self {
     let systems = [
       "Athena Arch",
-      "Athena Fedora",
       "Athena Nix",
+      //"Athena Fedora",
     ]
     .iter()
     .map(|s| s.to_string())
@@ -1996,51 +2005,6 @@ impl BaseSys {
           InfoBox::new("Athena Arch", styled_block(blocks))
         },
       1 => {
-
-          let logo = decode_logo(
-              "H4sIAAAAAAAAA+NSwAMeTevARDBJLhL1YTUGpyHYNeAwhihTcInRRDOOMFMgwtG4tMIApj5U5cQEO6ZBBHQRGZ0Y5hLSRIah+IOWmHDDrmzo6MehlJSEQzA+cRuDlgBJ1Y0lAaPp4eICAA0CX3KVBAAA"
-          );
-          let mut blocks = vec![
-              vec![
-                (HIGHLIGHT, "Athena Fedora"),
-                (None, " builds on "),
-                (HIGHLIGHT, "Fedora Linux"),
-                (None, " to deliver a "),
-                (HIGHLIGHT, "stable yet modern environment"),
-                (None, " with a focus on "),
-                (HIGHLIGHT, "security and upstream collaboration"),
-                (None, "."),
-              ],
-              vec![
-                (None, "It uses "),
-                (HIGHLIGHT, "DNF and RPM packaging"),
-                (None, ", includes "),
-                (HIGHLIGHT, "SELinux enabled by default"),
-                (None, ", and benefits from "),
-                (HIGHLIGHT, "Fedora's 6-month release cadence"),
-                (None, " ensuring both stability and freshness."),
-              ],
-              vec![
-                (None, "Athena Fedora is "),
-                (HIGHLIGHT, "secure and polished out of the box"),
-                (None, " with "),
-                (HIGHLIGHT, "containerization and Secure Boot support"),
-                (None, ", though it is "),
-                (HIGHLIGHT, "less customizable than Arch"),
-                (None, "; excellent for those wanting "),
-                (HIGHLIGHT, "a dependable and security-hardened workflow"),
-                (None, "."),
-              ],
-          ];
-
-          // append the logo *line by line*
-          for line in logo.lines() {
-              blocks.push(vec![(None, line)]);
-          }
-
-          InfoBox::new("Athena Fedora", styled_block(blocks))
-        },
-      2 => {
         
           let logo = decode_logo(
               "H4sIAAAAAAAAA6WUzQ3DIAyF70zBqDnkkAncWjTqbkzSSlCw8U+tJPIFw/sQz45znl+FR4W9hZLqWbKGlJn8VeH4BVrZCm+SKAwRY7iEEEKKOTMeKMllAjHdo+t34ILE1cOd1sizxnNy2bM8Lh7EY3SKpo/ZteJiPmMym+E+nL1/fXzrCBdqtCPzCAN64bv+U7SjZ4VtxACQAmepDzj416BeftXaizeIaaJWzBgrXveH5pLb+RcIszBtvZF4jlMz9VV/AOenEZ3PBQAA"
@@ -2085,6 +2049,51 @@ impl BaseSys {
           }
 
           InfoBox::new("Athena Nix", styled_block(blocks))
+        },
+      2 => {
+
+          let logo = decode_logo(
+              "H4sIAAAAAAAAA+NSwAMeTevARDBJLhL1YTUGpyHYNeAwhihTcInRRDOOMFMgwtG4tMIApj5U5cQEO6ZBBHQRGZ0Y5hLSRIah+IOWmHDDrmzo6MehlJSEQzA+cRuDlgBJ1Y0lAaPp4eICAA0CX3KVBAAA"
+          );
+          let mut blocks = vec![
+              vec![
+                (HIGHLIGHT, "Athena Fedora"),
+                (None, " builds on "),
+                (HIGHLIGHT, "Fedora Linux"),
+                (None, " to deliver a "),
+                (HIGHLIGHT, "stable yet modern environment"),
+                (None, " with a focus on "),
+                (HIGHLIGHT, "security and upstream collaboration"),
+                (None, "."),
+              ],
+              vec![
+                (None, "It uses "),
+                (HIGHLIGHT, "DNF and RPM packaging"),
+                (None, ", includes "),
+                (HIGHLIGHT, "SELinux enabled by default"),
+                (None, ", and benefits from "),
+                (HIGHLIGHT, "Fedora's 6-month release cadence"),
+                (None, " ensuring both stability and freshness."),
+              ],
+              vec![
+                (None, "Athena Fedora is "),
+                (HIGHLIGHT, "secure and polished out of the box"),
+                (None, " with "),
+                (HIGHLIGHT, "containerization and Secure Boot support"),
+                (None, ", though it is "),
+                (HIGHLIGHT, "less customizable than Arch"),
+                (None, "; excellent for those wanting "),
+                (HIGHLIGHT, "a dependable and security-hardened workflow"),
+                (None, "."),
+              ],
+          ];
+
+          // append the logo *line by line*
+          for line in logo.lines() {
+              blocks.push(vec![(None, line)]);
+          }
+
+          InfoBox::new("Athena Fedora", styled_block(blocks))
         },
       _ => InfoBox::new(
         "Unknown Base System",
@@ -2202,6 +2211,7 @@ impl Page for BaseSys {
       KeyCode::Enter => {
         installer.basesystem =
           Some(self.systems.items[self.systems.selected_idx].clone());
+        installer.extra_packages.clear(); // Clear the extra pkg list if you select base system
         Signal::Pop
       }
       ui_up!() => {
@@ -3807,6 +3817,175 @@ impl Page for Timezone {
       }
       _ => self.timezones.handle_input(event),
     }
+  }
+}
+
+pub struct ExtraPackages {
+  picker: crate::widget::PackagePicker,
+  help: HelpModal<'static>,
+  inited: bool,
+}
+
+impl ExtraPackages {
+  pub fn new() -> Self {
+    // Build an empty picker; we’ll fill it on first render (lazy init)
+    let picker = crate::widget::PackagePicker::new(
+      "Selected Packages",
+      "Available Packages",
+      Vec::new(),
+      Vec::new(),
+    );
+
+    let help = HelpModal::new(
+      "Extra Packages",
+      styled_block(vec![
+        vec![(None, "Select extra Arch packages to install.")],
+        vec![(None, "Use / to search, Enter to add/remove, Tab to switch panes.")],
+        vec![(None, "Press Esc to go back and save your selection.")],
+      ]),
+    );
+
+    Self { picker, help, inited: false }
+  }
+
+  pub fn page_info<'a>() -> (String, Vec<Line<'a>>) {
+    (
+      "Extra Packages".to_string(),
+      styled_block(vec![vec![(
+        None,
+        "Pick additional packages to install alongside your base selection.",
+      )]]),
+    )
+  }
+
+  pub fn display_widget(installer: &mut Installer) -> Option<Box<dyn ConfigWidget>> {
+    let is_arch = installer
+      .basesystem
+      .as_deref()
+      .map(|s| s.to_lowercase().contains("arch"))
+      .unwrap_or(false);
+
+    let text = if is_arch {
+      let n = installer.extra_packages.len();
+      format!("{} selected package{}", n, if n == 1 { "" } else { "s" })
+    } else {
+      "Not applicable to this base.".to_string()
+    };
+    Some(Box::new(InfoBox::new("", styled_block(vec![vec![(None, text)]]))))
+  }
+}
+
+impl Default for ExtraPackages {
+  fn default() -> Self { Self::new() }
+}
+
+impl Page for ExtraPackages {
+  fn render(&mut self, installer: &mut Installer, f: &mut Frame, area: Rect) {
+    let is_arch = installer
+      .basesystem
+      .as_deref()
+      .map(|s| s.to_lowercase().contains("arch"))
+      .unwrap_or(false);
+
+    if !is_arch {
+      let p = Paragraph::new("This page is only available when the Base System is Arch.")
+        .alignment(Alignment::Center)
+        .block(Block::default().borders(Borders::ALL).title("Extra Packages"));
+      f.render_widget(p, area);
+      return;
+    }
+
+    // ===== Lazy init: load/calc once, then reuse =====
+    if !self.inited {
+      // Use cached repo list if present; otherwise run pacman -Slq once.
+      let available = if let Some(ref list) = installer.cached_repo_pkgs {
+        list.clone()
+      } else {
+        let list = std::process::Command::new("pacman")
+          .arg("-Slq")
+          .output()
+          .ok()
+          .and_then(|o| String::from_utf8(o.stdout).ok())
+          .map(|s| {
+            s.lines()
+              .map(str::trim)
+              .filter(|l| !l.is_empty())
+              .map(ToOwned::to_owned)
+              .collect::<Vec<_>>()
+          })
+          .filter(|v| !v.is_empty())
+          .unwrap_or_default();
+
+        installer.cached_repo_pkgs = Some(list.clone());
+        list
+      };
+
+      // Rebuild picker state using: available list + current selection
+      self.picker.package_manager = crate::widget::PackageManager::new(
+        available,
+        installer.extra_packages.clone(),
+      );
+      self.picker.selected.set_items(self.picker.get_selected_packages());
+
+      // Populate the right side based on current filter (if any)
+      if let Some(ref f) = self.picker.current_filter {
+        self.picker.set_filter(Some(f.clone()));
+      } else {
+        let items = self.picker.package_manager.get_current_available();
+        self.picker.available.set_items(items);
+        self.picker.available.selected_idx = 0;
+      }
+
+      // Put caret in Search on first open
+      self.picker.focus();
+
+      self.inited = true;
+    }
+    // ==================================================
+
+    // Keep picker in sync if you enter with a pre-existing selection
+    if self.picker.selected.items.is_empty() && !installer.extra_packages.is_empty() {
+      self.picker.package_manager = crate::widget::PackageManager::new(
+        self.picker.package_manager.get_available_packages(),
+        installer.extra_packages.clone(),
+      );
+      self.picker.selected.set_items(self.picker.get_selected_packages());
+      if let Some(ref f) = self.picker.current_filter {
+        self.picker.set_filter(Some(f.clone()));
+      } else {
+        let items = self.picker.package_manager.get_current_available();
+        self.picker.available.set_items(items);
+      }
+    }
+
+    self.picker.render(f, area);
+    self.help.render(f, area);
+  }
+
+  fn handle_input(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
+    use ratatui::crossterm::event::KeyCode;
+
+    if let KeyCode::Char('?') = event.code {
+      self.help.toggle();
+      return Signal::Wait;
+    }
+    if self.help.visible {
+      if let KeyCode::Esc | KeyCode::Char('?') = event.code {
+        self.help.toggle();
+      }
+      return Signal::Wait;
+    }
+
+    // Back out ONLY on Esc / q / h (Left stays inside picker)
+    match event.code {
+      KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('h') => {
+        installer.extra_packages = self.picker.get_selected_packages();
+        return Signal::Pop;
+      }
+      _ => {}
+    }
+
+    self.picker.handle_input(event)
   }
 }
 

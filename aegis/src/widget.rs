@@ -24,7 +24,7 @@ use ratatui::{
   },
 };
 
-use crate::{installer::Signal, ui_down, ui_left, ui_up};
+use crate::{installer::Signal, ui_down, ui_up};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
@@ -1844,11 +1844,12 @@ impl PackagePicker {
   ) -> Self {
     let package_manager = PackageManager::new(available_pkgs.clone(), selected_pkgs.clone());
 
-    let mut available =
+    let available =
       OptimizedStrList::new(title_available, package_manager.get_available_packages());
-    available.focus();
-    let selected = OptimizedStrList::new(title_selected, package_manager.get_selected_packages());
-    let search_bar = LineEditor::new("Search", Some("Enter a package name..."));
+    let selected =
+      OptimizedStrList::new(title_selected, package_manager.get_selected_packages());
+    let mut search_bar = LineEditor::new("Search", Some("Enter a package name..."));
+    search_bar.focus(); // <-- start with focus on the search bar
 
     let help_content = crate::styled_block(vec![
       vec![
@@ -1941,12 +1942,25 @@ impl PackagePicker {
     self.available.unfocus();
   }
 
+  /// Focus the search bar (used when opening the page)
+  pub fn focus_search(&mut self) {
+    self.search_bar.focus();
+    self.available.unfocus();
+    self.selected.unfocus();
+  }
+
+  /// General focus method — defaults to search bar
+  pub fn focus(&mut self) {
+    self.focused = true;
+    self.focus_search();
+  }
+
   fn update_available_list(&mut self) {
     let items = self.package_manager.get_current_available();
     self.available.set_items(items);
   }
 
-  fn set_filter(&mut self, filter: Option<String>) {
+  pub fn set_filter(&mut self, filter: Option<String>) {
     self.current_filter = filter.clone();
     let items = if let Some(filter) = filter {
       self.package_manager.get_available_filtered(&filter)
@@ -1954,6 +1968,7 @@ impl PackagePicker {
       self.package_manager.get_available_packages()
     };
     self.available.set_items(items);
+    self.available.selected_idx = 0; // reset cursor to first match
   }
 }
 
@@ -1987,6 +2002,36 @@ impl ConfigWidget for PackagePicker {
     match event.code {
       KeyCode::Char('?') => {
         self.help_modal.toggle();
+        return Signal::Wait;
+      }
+      KeyCode::Left => {
+        if self.available.is_focused() {
+          // Available -> Selected
+          self.focus_selected();
+        } else if self.search_bar.is_focused() {
+          // Search -> Selected (move left)
+          self.focus_selected();
+        } else if self.selected.is_focused() {
+          // Selected -> Search (wrap left)
+          self.search_bar.focus();
+          self.available.unfocus();
+          self.selected.unfocus();
+        }
+        return Signal::Wait;
+      }
+      KeyCode::Right => {
+        if self.selected.is_focused() {
+          // Selected -> Available
+          self.focus_available();
+        } else if self.available.is_focused() {
+          // Available -> Search (move right)
+          self.search_bar.focus();
+          self.available.unfocus();
+          self.selected.unfocus();
+        } else if self.search_bar.is_focused() {
+          // Search -> Available (wrap right)
+          self.focus_available();
+        }
         return Signal::Wait;
       }
       KeyCode::Esc if self.help_modal.visible => {
@@ -2043,10 +2088,6 @@ impl ConfigWidget for PackagePicker {
       }
     } else if self.selected.is_focused() {
       match event.code {
-        crate::ui_right!() => {
-          self.focus_available();
-          Signal::Wait
-        }
         crate::ui_down!() => {
           self.selected.next_item();
           Signal::Wait
@@ -2078,10 +2119,6 @@ impl ConfigWidget for PackagePicker {
       }
     } else if self.available.is_focused() {
       match event.code {
-        ui_left!() => {
-          self.focus_selected();
-          Signal::Wait
-        }
         ui_down!() => {
           self.available.next_item();
           Signal::Wait
@@ -2120,7 +2157,9 @@ impl ConfigWidget for PackagePicker {
 
   fn focus(&mut self) {
     self.focused = true;
-    self.focus_available();
+    self.search_bar.focus();
+    self.available.unfocus();
+    self.selected.unfocus();
   }
 
   fn unfocus(&mut self) {
