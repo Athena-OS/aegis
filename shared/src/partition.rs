@@ -187,8 +187,9 @@ fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice:
     }
 
     if flags.iter().any(|f| f.eq_ignore_ascii_case("esp") || f.eq_ignore_ascii_case("boot")) {
+        let phys_part = blockdevice; // On the encrypted scenario, flags must be set on the *physical* partition, not on the mapper path.
         if is_uefi() {
-        let esp_num = extract_partition_number(&bdevice);
+        let esp_num = extract_partition_number(phys_part);
             exec_eval(
                 exec(
                     "parted",
@@ -206,7 +207,7 @@ fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice:
             );
         }
         else {
-            let boot_num = extract_partition_number(&bdevice);
+            let boot_num = extract_partition_number(phys_part);
             exec_eval(
                 exec(
                     "parted",

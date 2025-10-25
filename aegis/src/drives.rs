@@ -1232,6 +1232,9 @@ impl Partition {
   pub fn size_bytes(&self, sector_size: u64) -> u64 {
     self.size * sector_size
   }
+  pub fn is_encrypted(&self) -> bool {
+    self.flags.iter().any(|f| f == "encrypt")
+  }
 }
 
 pub struct PartitionBuilder {

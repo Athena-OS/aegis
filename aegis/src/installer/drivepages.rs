@@ -20,6 +20,21 @@ use crate::{
 
 const HIGHLIGHT: Option<(Color, Modifier)> = Some((Color::Yellow, Modifier::BOLD));
 
+fn write_luks_key_to_tmp(pass: &str) -> anyhow::Result<()> {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    let mut f = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("/tmp/luks")?;
+
+    f.write_all(pass.as_bytes())?;
+    f.flush()?;
+    Ok(())
+}
+
 pub struct Drives<'a> {
   pub buttons: WidgetBox,
   pub info_box: InfoBox<'a>,
@@ -799,13 +814,27 @@ impl Page for SelectFilesystem {
         .to_string();
 
         if installer.use_auto_drive_config {
-          if let Some(config) = installer.drive_config.as_mut() {
-            let swap_gb = installer.swap.take(); // consume & clear
-            config.use_default_layout_with_swap(Some(fs), swap_gb);
+          if let Some(cfg) = installer.drive_config.as_mut() {
+            let swap_gb = installer.swap.take();
+            // build layout now (no encryption yet)
+            cfg.use_default_layout_with_swap(Some(fs.clone()), swap_gb);
+            cfg.assign_device_numbers();
           }
           installer.make_drive_config_display();
         
-          return Signal::PopCount(4);
+          // find ROOT id
+          let root_id = installer
+            .drive_config
+            .as_ref()
+            .and_then(|cfg| cfg.partitions().find(|p| p.mount_point() == Some("/")).map(|p| p.id()));
+        
+          if let Some(root_id) = root_id {
+            // ask if user wants encryption on ROOT; that page will push PromptLuksPassword if needed
+            return Signal::Push(Box::new(AskEncryptRoot::new(root_id)));
+          } else {
+            // fallback: no root? just return to summary
+            return Signal::PopCount(4);
+          }
         }
 
         let Some(config) = installer.drive_config.as_mut() else {
@@ -1447,6 +1476,10 @@ pub struct NewPartition {
   pub enc_widgets: WidgetBox,
   pub new_part_encrypt: Option<bool>,
   pub enc_selected: bool,
+  collecting_pass: bool,
+  pass1: LineEditor,
+  pass2: LineEditor,
+  new_part_luks_password: Option<String>,
 }
 
 impl NewPartition {
@@ -1507,6 +1540,10 @@ impl NewPartition {
       enc_widgets,
       new_part_encrypt: None,
       enc_selected: false,
+      collecting_pass: false,
+      pass1: LineEditor::new("LUKS Password", Some("Enter passphrase...")).secret(true),
+      pass2: LineEditor::new("Confirm LUKS Password", Some("Re-enter passphrase...")).secret(true),
+      new_part_luks_password: None,
     }
   }
   fn dry_run_accepts(&self, installer: &Installer, size_sectors: u64) -> bool {
@@ -1596,6 +1633,12 @@ impl NewPartition {
           false,
           flags,
       );
+
+      if self.new_part_encrypt == Some(true)
+        && let Some(pw) = &self.new_part_luks_password
+          && let Err(e) = write_luks_key_to_tmp(pw) {
+            return Signal::Error(anyhow::anyhow!("Failed to write /tmp/luks: {e}"));
+          }
 
       match device.new_partition(new_part) {
         Ok(_) => { device.assign_device_numbers(); Signal::Pop }
@@ -1700,9 +1743,15 @@ impl NewPartition {
             }
             Signal::Wait
           }
-          1 => {
-            // Continue
+          1 => { // Continue
             self.new_part_encrypt = Some(self.enc_selected);
+            if self.enc_selected {
+              // ask for password inline
+              self.collecting_pass = true;
+              self.pass1.focus();
+              return Signal::Wait;
+            }
+            // no encryption -> finalize right away
             self.finalize_new_partition(installer)
           }
           2 => {
@@ -1783,6 +1832,65 @@ impl NewPartition {
     );
     info_box.render(f, chunks[0]);
     self.enc_widgets.render(f, chunks[1]);
+  }
+  fn render_password_input(&mut self, f: &mut Frame, area: Rect) {
+    let chunks = split_vert!(area, 1, [
+      Constraint::Percentage(45),
+      Constraint::Length(7),
+      Constraint::Length(7),
+      Constraint::Percentage(41),
+    ]);
+    let info = InfoBox::new(
+      "LUKS Passphrase",
+      styled_block(vec![
+        vec![(None, "Enter and confirm the LUKS passphrase for this partition.")],
+        vec![(None, "It will be stored in-memory and added to the installer JSON.")],
+      ])
+    );
+    info.render(f, chunks[0]);
+    self.pass1.render(f, chunks[1]);
+    self.pass2.render(f, chunks[2]);
+  }
+
+  fn handle_input_password(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
+    match event.code {
+      KeyCode::Esc => {
+        // back to the encryption checkbox instead of discarding encrypt choice
+        self.collecting_pass = false;
+        self.enc_widgets.focus();
+        Signal::Wait
+      }
+      KeyCode::Enter => {
+        let p1 = self.pass1.get_value().unwrap().to_string();
+        let p2 = self.pass2.get_value().unwrap().to_string();
+        let p1 = p1.trim();
+        let p2 = p2.trim();
+        if p1.len() < 8 {
+          self.pass1.error("Passphrase must be at least 8 characters.");
+          return Signal::Wait;
+        }
+        if p1 != p2 {
+          self.pass2.error("Passphrases do not match.");
+          return Signal::Wait;
+        }
+        self.new_part_luks_password = Some(p1.to_string());
+        self.collecting_pass = false;
+
+        // proceed to finalization
+        self.finalize_new_partition(installer)
+      }
+      _ => {
+        // Prefer focusing first editor until it has content, then second
+        if self.pass1.is_focused() {
+          self.pass1.handle_input(event)
+        } else if self.pass2.is_focused() {
+          self.pass2.handle_input(event)
+        } else {
+          self.pass1.focus();
+          Signal::Wait
+        }
+      }
+    }
   }
   pub fn render_fs_select(&mut self, f: &mut Frame, area: Rect) {
     let vert_chunks = split_vert!(
@@ -1976,6 +2084,8 @@ impl Page for NewPartition {
       self.render_fs_select(f, area);
     } else if self.new_part_fs.as_deref() == Some("swap") && self.new_part_encrypt.is_none() {
       self.render_encryption_select(f, area);
+    } else if self.collecting_pass {
+      self.render_password_input(f, area);
     } else if self.new_part_mount_point.is_none() {
       self.render_mount_point_input(f, area);
     } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
@@ -1989,6 +2099,8 @@ impl Page for NewPartition {
       self.handle_input_fs_select(installer, event)
     } else if self.new_part_fs.as_deref() == Some("swap") && self.new_part_encrypt.is_none() {
       self.handle_input_encryption_select(installer, event)
+    } else if self.collecting_pass {
+      self.handle_input_password(installer, event)
     } else if self.new_part_mount_point.is_none() {
       self.handle_input_mount_point(installer, event)
     } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
@@ -2157,7 +2269,7 @@ impl AlterPartition {
       InfoBox::new(
         "Alter Swap (Marked for Modification)",
         styled_block(vec![
-          vec![(None, "This swap partition is marked for modification. You can enable encryption, relabel, or delete it.")],
+          vec![(None, "This swap partition is marked for modification. You can enable relabel, or delete it.")],
         ]),
       )
     } else {
@@ -2225,6 +2337,12 @@ impl Page for AlterPartition {
       _ if is_checkbox_toggle_key => {
         if let Some(ref mut device) = installer.drive_config {
           self.toggle_current_checkbox(device);
+          if let Some(p) = device.partition_by_id_mut(self.part_id) {
+            let now_enc = p.flags().iter().any(|f| f == "encrypt");
+            if now_enc {
+              return Signal::Push(Box::new(PromptLuksPassword::new(self.part_id).with_pop_count(1)));
+            }
+          }
         }
         Signal::Wait
       }
@@ -2282,6 +2400,12 @@ impl Page for AlterPartition {
               match idx {
                 0 => { // Encrypt toggle
                   self.toggle_current_checkbox(device);
+                  if let Some(p) = device.partition_by_id_mut(self.part_id) {
+                    let now_enc = p.flags().iter().any(|f| f == "encrypt");
+                    if now_enc {
+                      return Signal::Push(Box::new(PromptLuksPassword::new(self.part_id).with_pop_count(1)));
+                    }
+                  }
                   Signal::Wait
                 }
                 1 => Signal::Push(Box::new(SelectFilesystem::new(Some(self.part_id)))), // Change FS
@@ -2307,6 +2431,12 @@ impl Page for AlterPartition {
                 0 => Signal::Push(Box::new(SetMountPoint::new(self.part_id))),
                 1..=4 => { // checkboxes
                   self.toggle_current_checkbox(device);
+                  if let Some(p) = device.partition_by_id_mut(self.part_id) {
+                    let now_enc = p.flags().iter().any(|f| f == "encrypt");
+                    if now_enc {
+                      return Signal::Push(Box::new(PromptLuksPassword::new(self.part_id).with_pop_count(1)));
+                    }
+                  }
                   Signal::Wait
                 }
                 5 => Signal::Push(Box::new(SelectFilesystem::new(Some(self.part_id)))), // Change FS
@@ -2333,7 +2463,16 @@ impl Page for AlterPartition {
           PartStatus::Create => {
             if self.is_swap {
               match idx {
-                0 => { self.toggle_current_checkbox(device); Signal::Wait } // Encrypt
+                0 => { // Encrypt
+                  self.toggle_current_checkbox(device);
+                  if let Some(p) = device.partition_by_id_mut(self.part_id) {
+                    let now_enc = p.flags().iter().any(|f| f == "encrypt");
+                    if now_enc {
+                      return Signal::Push(Box::new(PromptLuksPassword::new(self.part_id).with_pop_count(1)));
+                    }
+                  }
+                  Signal::Wait
+                }
                 1 => Signal::Push(Box::new(SelectFilesystem::new(Some(self.part_id)))), // Change FS
                 2 => Signal::Push(Box::new(SetLabel::new(self.part_id))),
                 3 => { // Delete (remove from layout)
@@ -2351,7 +2490,16 @@ impl Page for AlterPartition {
             } else {
               match idx {
                 0 => Signal::Push(Box::new(SetMountPoint::new(self.part_id))),
-                1..=4 => { self.toggle_current_checkbox(device); Signal::Wait } // checkboxes
+                1..=4 => { // checkboxes
+                  self.toggle_current_checkbox(device);
+                  if let Some(p) = device.partition_by_id_mut(self.part_id) {
+                    let now_enc = p.flags().iter().any(|f| f == "encrypt");
+                    if now_enc {
+                      return Signal::Push(Box::new(PromptLuksPassword::new(self.part_id).with_pop_count(1)));
+                    }
+                  }
+                  Signal::Wait
+                }
                 5 => Signal::Push(Box::new(SelectFilesystem::new(Some(self.part_id)))), // Change FS
                 6 => Signal::Push(Box::new(SetLabel::new(self.part_id))),
                 7 => { // Delete (remove from layout)
@@ -2369,6 +2517,259 @@ impl Page for AlterPartition {
             }
           }
 
+          _ => Signal::Wait,
+        }
+      }
+      _ => Signal::Wait,
+    }
+  }
+}
+
+pub struct PromptLuksPassword {
+  dev_id: u64,
+  pass_input: LineEditor,
+  pass_confirm: LineEditor,
+  help_modal: HelpModal<'static>,
+  pop_count_on_success: usize,
+}
+
+impl PromptLuksPassword {
+  pub fn new(dev_id: u64) -> Self {
+    let mut pass_input = LineEditor::new("LUKS Passphrase", None::<&str>).secret(true);
+    pass_input.focus();
+    let pass_confirm = LineEditor::new("Confirm LUKS Passphrase", None::<&str>).secret(true);
+
+    let help_content = styled_block(vec![
+      vec![(Some((Color::Yellow, Modifier::BOLD)), "Tab"), (None, " - Next field")],
+      vec![(Some((Color::Yellow, Modifier::BOLD)), "Shift+Tab"), (None, " - Previous field")],
+      vec![(Some((Color::Yellow, Modifier::BOLD)), "Enter"), (None, " - Continue / Confirm")],
+      vec![(Some((Color::Yellow, Modifier::BOLD)), "Esc"), (None, " - Cancel")],
+      vec![(None, "")],
+      vec![(None, "Enter and confirm the LUKS passphrase.")],
+      vec![(None, "It will be serialized into the installer JSON (not hashed).")],
+    ]);
+    let help_modal = HelpModal::new("LUKS Passphrase", help_content);
+
+    Self { dev_id, pass_input, pass_confirm, help_modal, pop_count_on_success: 1 }
+  }
+
+  pub fn with_pop_count(mut self, n: usize) -> Self {
+    self.pop_count_on_success = n;
+    self
+  }
+
+  fn cycle_forward(&mut self) {
+    if self.pass_input.is_focused() {
+      // basic empty check before moving
+      let v = self.pass_input.get_value()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_default();
+      if v.is_empty() {
+        self.pass_input.error("Passphrase cannot be empty");
+        return;
+      }
+      self.pass_input.clear_error();
+      self.pass_input.unfocus();
+      self.pass_confirm.focus();
+    } else if self.pass_confirm.is_focused() {
+      // just wrap
+      self.pass_confirm.unfocus();
+      self.pass_input.focus();
+    } else {
+      self.pass_input.focus();
+    }
+  }
+
+  fn cycle_backward(&mut self) {
+    if self.pass_input.is_focused() {
+      self.pass_input.unfocus();
+      self.pass_confirm.focus();
+    } else if self.pass_confirm.is_focused() {
+      self.pass_confirm.unfocus();
+      self.pass_input.focus();
+    } else {
+      self.pass_input.focus();
+    }
+  }
+}
+
+impl Page for PromptLuksPassword {
+  fn render(&mut self, _installer: &mut Installer, f: &mut Frame, area: Rect) {
+    let hor = split_hor!(area, 1, [
+      Constraint::Percentage(20),
+      Constraint::Percentage(60),
+      Constraint::Percentage(20),
+    ]);
+    let col = split_vert!(hor[1], 1, [
+      Constraint::Length(5), // pass
+      Constraint::Length(5), // confirm
+      Constraint::Min(0),
+    ]);
+
+    self.pass_input.render(f, col[0]);
+    self.pass_confirm.render(f, col[1]);
+
+    self.help_modal.render(f, area);
+  }
+
+  fn handle_input(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
+    match event.code {
+      KeyCode::Char('?') => { self.help_modal.toggle(); return Signal::Wait; }
+      ui_close!() if self.help_modal.visible => { self.help_modal.hide(); return Signal::Wait; }
+      _ if self.help_modal.visible => return Signal::Wait,
+      KeyCode::Esc => return Signal::Pop,
+      KeyCode::Tab => { self.cycle_forward(); return Signal::Wait; }
+      KeyCode::BackTab => { self.cycle_backward(); return Signal::Wait; }
+      _ => {}
+    }
+
+    if self.pass_input.is_focused() {
+      match event.code {
+        KeyCode::Enter => {
+          let v = self.pass_input.get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          if v.is_empty() {
+            self.pass_input.error("Passphrase cannot be empty");
+            return Signal::Wait;
+          }
+          self.pass_input.clear_error();
+          self.pass_input.unfocus();
+          self.pass_confirm.focus();
+          Signal::Wait
+        }
+        _ => self.pass_input.handle_input(event),
+      }
+    } else if self.pass_confirm.is_focused() {
+      match event.code {
+        KeyCode::Enter => {
+          let pass = self.pass_input.get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          let confirm = self.pass_confirm.get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+
+          if pass.is_empty() {
+            self.pass_input.error("Passphrase cannot be empty");
+            self.pass_confirm.unfocus();
+            self.pass_input.focus();
+            return Signal::Wait;
+          }
+          if confirm.is_empty() {
+            self.pass_confirm.error("Confirmation cannot be empty");
+            return Signal::Wait;
+          }
+          if pass != confirm {
+            self.pass_confirm.clear();
+            self.pass_confirm.error("Passphrases do not match");
+            // keep focus on confirm so user can retry
+            return Signal::Wait;
+          }
+
+          // success: store into the partition's JSON-bound field
+          if let Some(dev) = installer.drive_config.as_mut()
+            && let Some(p) = dev.partition_by_id_mut(self.dev_id)
+          {
+            p.add_flag("encrypt");
+          }
+          if let Err(e) = write_luks_key_to_tmp(&pass) {
+            return Signal::Error(anyhow::anyhow!("Failed to write /tmp/luks: {e}"));
+          }
+          installer.make_drive_config_display();
+          Signal::PopCount(self.pop_count_on_success)
+        }
+        _ => self.pass_confirm.handle_input(event),
+      }
+    } else {
+      self.pass_input.focus();
+      Signal::Wait
+    }
+  }
+
+  fn get_help_content(&self) -> (String, Vec<ratatui::text::Line<'_>>) {
+    ("LUKS Passphrase".to_string(),
+     styled_block(vec![
+       vec![(None, "Enter passphrase, press Enter, confirm, press Enter.")],
+       vec![(None, "Esc to cancel.")],
+     ]))
+  }
+}
+
+struct AskEncryptRoot {
+  root_id: u64,
+  buttons: WidgetBox, // [☐ Encrypt root, Continue, Back]
+  help: HelpModal<'static>,
+}
+
+impl AskEncryptRoot {
+  fn new(root_id: u64) -> Self {
+    let mut buttons = WidgetBox::button_menu(vec![
+      Box::new(CheckBox::new("Encrypt ROOT (LUKS)", false)) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("Continue")) as Box<dyn ConfigWidget>,
+      Box::new(Button::new("Back")) as Box<dyn ConfigWidget>,
+    ]);
+    buttons.focus();
+    let help = HelpModal::new("Encrypt ROOT", crate::styled_block(vec![
+      vec![(Some((ratatui::style::Color::Yellow, ratatui::style::Modifier::BOLD)), "↑/↓"), (None, " navigate")],
+      vec![(Some((ratatui::style::Color::Yellow, ratatui::style::Modifier::BOLD)), "Space"), (None, " toggle")],
+      vec![(Some((ratatui::style::Color::Yellow, ratatui::style::Modifier::BOLD)), "Enter"), (None, " continue")],
+    ]));
+    Self { root_id, buttons, help }
+  }
+}
+
+impl Page for AskEncryptRoot {
+  fn render(&mut self, _installer: &mut Installer, f: &mut Frame, area: Rect) {
+    let chunks = split_vert!(area, 1, [Constraint::Percentage(65), Constraint::Percentage(35)]);
+    let info = InfoBox::new(
+      "Encrypt ROOT?",
+      styled_block(vec![
+        vec![(None, "Optionally enable LUKS on the "), (Some((Color::Green, Modifier::BOLD)), "root"), (None, " partition only.")],
+        vec![(None, "Boot/ESP remain unencrypted.")],
+      ]),
+    );
+    info.render(f, chunks[0]);
+    self.buttons.render(f, chunks[1]);
+    self.help.render(f, area);
+  }
+
+  fn handle_input(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
+    use KeyCode::*;
+    match event.code {
+      KeyCode::Char('?') => { self.help.toggle(); Signal::Wait}
+      ui_up!() => { self.buttons.prev_child(); Signal::Wait}
+      ui_down!() => { self.buttons.next_child(); Signal::Wait}
+      Char(' ') => { if let Some(w) = self.buttons.focused_child_mut() { w.interact(); } Signal::Wait}
+      Esc => Signal::Pop,
+      Enter => {
+        match self.buttons.selected_child() {
+          Some(0) => { // toggle via Enter
+            if let Some(w) = self.buttons.focused_child_mut() { w.interact(); }
+            Signal::Wait
+          }
+          Some(1) => {
+            let encrypt = self.buttons
+              .get_value()
+              .and_then(|v| v.get("widget_0").and_then(|b| b.as_bool()))
+              .unwrap_or(false);
+
+            if !encrypt { 
+              // finalize summary now (no encryption) and go back to Installer
+              installer.make_drive_config_display();
+              return Signal::PopCount(5);
+            }
+
+            // mark only ROOT as encrypted, then push the existing password prompt
+            if let Some(cfg) = installer.drive_config.as_mut()
+              && let Some(p) = cfg.partition_by_id_mut(self.root_id) {
+                p.add_flag("encrypt");
+              }
+            Signal::Push(Box::new(
+                PromptLuksPassword::new(self.root_id).with_pop_count(6)
+            ))
+          }
+          Some(2) => Signal::Pop,
           _ => Signal::Wait,
         }
       }
