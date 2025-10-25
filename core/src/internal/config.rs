@@ -190,7 +190,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     // Build args::Partition list from the structured JSON.
     // Encrypt per-partition if flags contain "encrypt".
     let mut partitions: Vec<args::Partition> = Vec::new();
-    for p in config.partition.content.partitions {
+    for p in &config.partition.content.partitions {
         let action = p.action.clone(); // e.g. create, modify, delete
         let mountpoint    = p.mountpoint.clone(); // empty for swap
         let blockdevice   = p.blockdevice.clone();                         // "/dev/nvme0n1p2"
@@ -464,6 +464,13 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     partition::umount("/mnt");
     if is_fedora() && secure::selinux_enabled() {
         secure::set_selinux_mode("1");
+    }
+
+    for p in &config.partition.content.partitions {
+        if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
+            // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
+            shared::partition::close_luks_best_effort(&p.blockdevice);
+        }
     }
 
     if exit_code == 0 {

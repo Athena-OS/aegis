@@ -1,5 +1,5 @@
 use crate::args::{self, MountSpec};
-use crate::exec::{exec, exec_workdir};
+use crate::exec::{exec, exec_output, exec_workdir};
 use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
 use log::{debug, info};
@@ -668,6 +668,40 @@ fn mount_queue(mut plan: Vec<MountSpec>) {
             mount(&m.device, &target, "");
         } else {
             mount(&m.device, &target, &m.options);
+        }
+    }
+}
+
+pub fn close_luks_best_effort(blockdevice: &str) {
+    // 1) Try the conventional name first: /dev/mapper/<basename>crypted
+    let conventional = format!(
+        "/dev/mapper/{}crypted",
+        blockdevice.trim_start_matches("/dev/")
+    );
+    if let Some(name) = conventional.strip_prefix("/dev/mapper/") {
+        exec_eval(
+            exec("sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", name)]),
+            &format!("Close LUKS mapper (conventional) {}", name),
+        );
+    }
+
+    // 2) Also scan lsblk for any crypt children that reference this blockdevice
+    let out = exec_output("lsblk", vec!["-rno".into(), "NAME,TYPE,PKNAME".into(), "-p".into()]);
+    if let Ok(out) = out {
+        let s = String::from_utf8_lossy(&out.stdout);
+        for line in s.lines() {
+            // Example line: "/dev/mapper/vda2crypt crypt /dev/vda2"
+            let mut it = line.split_whitespace();
+            let name = it.next().unwrap_or("");
+            let typ  = it.next().unwrap_or("");
+            let pk   = it.next().unwrap_or("");
+            if typ == "crypt" && pk == blockdevice
+                && let Some(mapper) = name.strip_prefix("/dev/mapper/") {
+                    exec_eval(
+                        exec("sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", mapper)]),
+                        &format!("Close LUKS mapper {}", mapper),
+                    );
+                }
         }
     }
 }
