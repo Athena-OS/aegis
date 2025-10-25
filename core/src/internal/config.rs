@@ -454,14 +454,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
     files::copy_file(&log_path, "/mnt/var/log/aegis.log");
-    if partition::is_uefi() {
-        partition::umount("/mnt/boot/efi");
-    }
-    else {
-        partition::umount("/mnt/boot");
-    }
-    partition::umount("/mnt/home");
-    partition::umount("/mnt");
+
     if is_fedora() && secure::selinux_enabled() {
         secure::set_selinux_mode("1");
     }
@@ -472,6 +465,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             shared::partition::close_luks_best_effort(&p.blockdevice);
         }
     }
+
+    partition::umount("/mnt"); // Recursive umount
 
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");

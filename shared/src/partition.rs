@@ -358,7 +358,7 @@ pub fn umount(mountpoint: &str) {
     // Only umount if it appears as a mounted path
     if mounts.lines().any(|line| line.split_whitespace().nth(1) == Some(mountpoint)) {
         exec_eval(
-            exec("umount", vec![mountpoint.to_string()]),
+            exec("umount", vec!["-R".to_string(), mountpoint.to_string()]),
             &format!("Unmount command processed on {mountpoint}"),
         );
     } else {

@@ -6,6 +6,7 @@ use ratatui::{
   style::{Color, Modifier},
 };
 use serde_json::Value;
+use shared::partition::is_uefi;
 use std::process::Command;
 
 use crate::{
@@ -2786,14 +2787,71 @@ impl Page for AskEncryptRoot {
               return Signal::PopCount(5);
             }
 
-            // mark only ROOT as encrypted, then push the existing password prompt
-            if let Some(cfg) = installer.drive_config.as_mut()
-              && let Some(p) = cfg.partition_by_id_mut(self.root_id) {
-                p.add_flag("encrypt");
+            // Only handle the requested scenario: UEFI + encrypted root
+            if !is_uefi() {
+              // Fallback: keep existing flow if not UEFI
+              if let Some(cfg) = installer.drive_config.as_mut()
+                && let Some(p) = cfg.partition_by_id_mut(self.root_id) {
+                  p.add_flag("encrypt");
+                    }
+                    return Signal::Push(Box::new(
+                      PromptLuksPassword::new(self.root_id).with_pop_count(6)
+                    ));
+                  }
+              
+                  // We’re UEFI: rebuild layout to include ESP + /boot + encrypted ROOT (+ optional swap)
+                  let (root_fs, swap_gb_opt) = {
+                    let cfg = match installer.drive_config.as_ref() {
+                      Some(c) => c,
+                      None => return Signal::Error(anyhow::anyhow!("No drive config available")),
+                    };
+                
+                    // Get FS from current ROOT (chosen earlier in SelectFilesystem)
+                    let root_fs = cfg
+                      .partitions()
+                      .find(|p| p.mount_point() == Some("/"))
+                      .and_then(|p| p.fs_type().map(|s| s.to_string()));
+                
+                    // Derive swap size (GiB) from any swap partition that exists in the temp layout
+                    let swap_gb_opt = cfg
+                      .partitions()
+                      .find(|p| p.fs_type() == Some("swap"))
+                      .map(|p| {
+                        let bytes = p.size_bytes(cfg.sector_size());
+                        // floor to GiB so it matches the “1/2/4/8 GB” choices
+                        (bytes / (1024 * 1024 * 1024)) as u64
+                      })
+                      .filter(|&g| g > 0);
+                  
+              (root_fs, swap_gb_opt)
+            };
+
+            // Rebuild the auto layout for UEFI + encrypted root
+            if let Some(cfg) = installer.drive_config.as_mut() {
+              cfg.use_uefi_encrypted_root_layout_with_swap(
+                root_fs.or(Some("ext4".into())), // fallback if somehow missing
+                swap_gb_opt,
+                None,  // /boot default 1 GiB
+                None,  // ESP  default 512 MiB
+              );
+              cfg.assign_device_numbers();
+            }
+          
+            // Find the new ROOT id (layout changed)
+            let new_root_id = installer
+              .drive_config
+              .as_ref()
+              .and_then(|cfg| cfg.partitions().find(|p| p.mount_point() == Some("/")).map(|p| p.id()));
+          
+            match new_root_id {
+              Some(id) => {
+                // continue to passphrase prompt
+                Signal::Push(Box::new(
+                  PromptLuksPassword::new(id).with_pop_count(6)
+                ))
               }
-            Signal::Push(Box::new(
-                PromptLuksPassword::new(self.root_id).with_pop_count(6)
-            ))
+              None => Signal::Error(anyhow::anyhow!("Rebuilt layout has no ROOT (/) partition")),
+            }
           }
           Some(2) => Signal::Pop,
           _ => Signal::Wait,
