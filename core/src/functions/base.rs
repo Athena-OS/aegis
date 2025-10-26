@@ -369,6 +369,17 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                 vec![
                     String::from("--format=x86_64-efi"),
                     String::from("--output=/tmp/GRUB.EFI"),
+                ],
+            ),
+            "Create grub standalone file for Secure Boot.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "grub-mkstandalone",
+                vec![
+                    String::from("--format=x86_64-efi"),
+                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
                     format!("--modules={grub_modules}"),
                     String::from("--sbat=/usr/share/grub/sbat.csv"),
                     String::from("boot/grub/grub.cfg=/boot/grub/grub.cfg"),
@@ -460,7 +471,8 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                     format!("{secureboot_key_dir}/MOK.crt"),
                     String::from("--output"),
                     format!("{efi_str}/EFI/GRUB/grubx64.efi"),
-                    String::from("/tmp/GRUB.EFI"),
+                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
+                    //String::from("/tmp/GRUB.EFI"),
                 ],
             ),
             "Sign GRUB for Secure Boot.",
