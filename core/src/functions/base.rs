@@ -327,13 +327,7 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
     
     if is_arch() {
         setting_grub_parameters();
-        exec_eval(
-            exec_archchroot(
-                "grub-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
+
         exec_eval(
             exec_archchroot(
                 "grub-install",
@@ -359,6 +353,14 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                 ],
             ),
             "Install grub as efi without --removable.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "grub-mkconfig",
+                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
+            ),
+            "Create grub.cfg",
         );
 
         exec_eval(
