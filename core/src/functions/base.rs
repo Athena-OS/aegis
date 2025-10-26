@@ -10,12 +10,12 @@ use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
 use shared::strings::crash;
 use std::path::PathBuf;
 
-pub fn install_packages(mut packages: Vec<String>) -> i32 {
-    let (kernel_to_install, kernel_headers_to_install) = ("linux-lts", "linux-lts-headers");
+pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
+    let (kernel_to_install, kernel_headers_to_install) = (kernel, format!("{kernel}-headers"));
     let arch_base_pkg: Vec<&str> = vec![
         // Kernel
         kernel_to_install,
-        kernel_headers_to_install,
+        &kernel_headers_to_install,
         // Base Arch
         "base",
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
@@ -305,7 +305,22 @@ fn setting_grub_parameters() {
     );
 }
 
-pub fn configure_bootloader_efi(efidir: PathBuf) {
+pub fn configure_bootloader_efi(efidir: PathBuf, kernel: &str) {
+
+    const MINIMUM_GRUB_MODULES: &str =
+    "all_video btrfs chain configfile cryptodisk echo efi_gop efi_uga ext2 exfat fat font \
+gettext gfxmenu gfxterm gzio linux loadenv luks lvm mdraid09 mdraid1x normal ntfs ntfscomp \
+part_gpt part_msdos probe regexp search search_fs_file search_fs_uuid search_label test tpm udf";
+
+    const EXTRA_GRUB_MODULES: &str =
+    "bli boot cat efifwsetup efinet gcry_arcfour gcry_blowfish gcry_camellia gcry_cast5 gcry_crc \
+gcry_des gcry_dsa gcry_idea gcry_md4 gcry_md5 gcry_rfc2268 gcry_rijndael gcry_rmd160 gcry_rsa \
+gcry_seed gcry_serpent gcry_sha1 gcry_sha256 gcry_sha512 gcry_tiger gcry_twofish gcry_whirlpool \
+gfxterm_background halt help hfsplus iso9660 jpeg keystatus loopback ls lsefi lsefimmap \
+lsefisystab lssal memdisk minicmd part_apple password_pbkdf2 png raid5rec raid6rec reboot serial \
+sleep smbios squash4 true video zfs zfscrypt zfsinfo";
+
+let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
 
     let efi_str = efidir.to_str().unwrap();
     info!("EFI bootloader installing at {efi_str}");
@@ -317,12 +332,14 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
                 "grub-install",
                 vec![
                     String::from("--target=x86_64-efi"),
-                    format!("--efi-directory={}", efi_str),
+                    format!("--efi-directory={efi_str}"),
                     String::from("--bootloader-id=GRUB"),
-                    String::from("--removable"),
+                    format!("--modules={grub_modules}"),
+                    String::from("--sbat=/usr/share/grub/sbat.csv"),
+                    String::from("--removable"), // Used to install fallback in EFI/BOOT/BOOTX64.EFI
                 ],
             ),
-            "Install grub as efi with --removable",
+            "Install grub as efi with --removable.",
         );
 
         exec_eval(
@@ -330,12 +347,119 @@ pub fn configure_bootloader_efi(efidir: PathBuf) {
                 "grub-install",
                 vec![
                     String::from("--target=x86_64-efi"),
-                    format!("--efi-directory={}", efi_str),
+                    format!("--efi-directory={efi_str}"),
                     String::from("--bootloader-id=GRUB"),
                 ],
             ),
-            "Install grub as efi without --removable",
+            "Install grub as efi without --removable.",
         );
+
+        exec_eval(
+            exec_archchroot(
+                "grub-mkstandalone",
+                vec![
+                    String::from("--format=x86_64-efi"),
+                    String::from("--output=/tmp/GRUB.EFI"),
+                    format!("--modules={grub_modules}"),
+                    String::from("--sbat"),
+                    String::from("/usr/share/grub/sbat.csv"),
+                    String::from("boot/grub/grub.cfg=/boot/grub/grub.cfg"),
+                    String::from("boot/grub/fonts/unicode.pf2=/usr/share/grub/unicode.pf2"),
+                ],
+            ),
+            "Create grub standalone file for Secure Boot.",
+        );
+
+        files::copy_file("/mnt/usr/share/shim-signed/mmx64.efi", &format!("/mnt{efi_str}/EFI/BOOT/mmx64.efi"));
+        files::copy_file("/mnt/usr/share/shim-signed/shimx64.efi", &format!("/mnt{efi_str}/EFI/BOOT/BOOTx64.EFI"));
+        let secureboot_key_dir = "/etc/.secureboot/keys";
+        std::fs::create_dir_all(format!("/mnt{secureboot_key_dir}")).unwrap();
+
+        exec_eval(
+            exec_archchroot(
+                "openssl",
+                vec![
+                    String::from("req"),
+                    String::from("-newkey"),
+                    String::from("rsa:2048"),
+                    String::from("-nodes"),
+                    String::from("-keyout"),
+                    format!("{secureboot_key_dir}/MOK.key"),
+                    String::from("-new"),
+                    String::from("-x509"),
+                    String::from("-sha256"),
+                    String::from("-days"),
+                    String::from("3650"),
+                    String::from("-subj"),
+                    String::from("/CN=Athena OS Key/"),
+                    String::from("-out"),
+                    format!("{secureboot_key_dir}/MOK.crt"),
+                ],
+            ),
+            "Create Secure Boot certificates.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "chmod",
+                vec![
+                    String::from("400"),
+                    format!("{secureboot_key_dir}/MOK.key"),
+                ],
+            ),
+            "Restrict permission on Secure Boot key.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "openssl",
+                vec![
+                    String::from("x509"),
+                    String::from("-outform"),
+                    String::from("DER"),
+                    String::from("-in"),
+                    format!("{secureboot_key_dir}/MOK.crt"),
+                    String::from("-out"),
+                    format!("{secureboot_key_dir}/MOK.cer"),
+                ],
+            ),
+            "Convert MOK certificate to DER format.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "sbsign",
+                vec![
+                    String::from("--key"),
+                    format!("{secureboot_key_dir}/MOK.key"),
+                    String::from("--cert"),
+                    format!("{secureboot_key_dir}/MOK.crt"),
+                    String::from("--output"),
+                    format!("/boot/vmlinuz-{kernel}"),
+                    format!("/boot/vmlinuz-{kernel}"),
+                ],
+            ),
+            "Sign kernel for Secure Boot.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "sbsign",
+                vec![
+                    String::from("--key"),
+                    format!("{secureboot_key_dir}/MOK.key"),
+                    String::from("--cert"),
+                    format!("{secureboot_key_dir}/MOK.crt"),
+                    String::from("--output"),
+                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
+                    String::from("/tmp/GRUB.EFI"),
+                ],
+            ),
+            "Sign GRUB for Secure Boot.",
+        );
+
+        files::copy_file(&format!("/mnt{efi_str}/EFI/GRUB/grubx64.efi"), &format!("/mnt{efi_str}/EFI/BOOT/grubx64.efi"));
+        files::copy_file(&format!("/mnt{secureboot_key_dir}/MOK.cer"), &format!("/mnt{efi_str}/EFI/MOK.cer"));
 
         exec_eval(
             exec_archchroot(

@@ -333,9 +333,9 @@ impl Page for SelectDrive {
           // Run partprobe/settle on that device node
           let devnode = format!("/dev/{}", selected_name);
           exec_eval(exec("partprobe", vec![devnode]),
-                      &format!("Running partprobe to inform kernel of changes on disk."));
+                      "Running partprobe to inform kernel of changes on disk.");
           exec_eval(exec("udevadm", vec!["settle".into()]),
-                      &format!("Running udevadm to inform kernel of changes on disk."));
+                      "Running udevadm to inform kernel of changes on disk.");
 
           // Re-scan devices so our in-memory model matches the kernel
           let disks = match lsblk() {

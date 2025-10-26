@@ -161,8 +161,9 @@ pub fn read_config(inputs: &[ConfigInput]) -> Config {
 
 pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     let config = read_config(inputs);
-    set_base(&config.base);    
+    set_base(&config.base);
     let mut exit_code = 0;
+    let kernel = "linux-lts";
     let mut package_set = packages::to_strings(packages::COMMON);
     
     if is_arch() {
@@ -224,6 +225,10 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
 
     if partition::is_uefi() {
         package_set.push("efibootmgr".into());
+        package_set.push("athena-secureboot".into());
+        package_set.push("mokutil".into());
+        package_set.push("sbsigntools".into());
+        package_set.push("shim-signed".into());
 
         if is_fedora() {
             package_set.push("grub2-efi".into());
@@ -312,14 +317,14 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     if !is_nix() {
         package_set.sort();
         package_set.dedup();
-        exit_code = base::install_packages(package_set);
+        exit_code = base::install_packages(package_set, kernel);
         base::genfstab();
     }
 
     /********** CONFIGURATION **********/
     /*    BOOTLOADER CONFIG     */
     if partition::is_uefi() {
-        base::configure_bootloader_efi(PathBuf::from("/boot/efi"));
+        base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
     } else {
         base::configure_bootloader_legacy(PathBuf::from(config.partition.device));
     }
