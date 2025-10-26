@@ -329,6 +329,13 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
         setting_grub_parameters();
         exec_eval(
             exec_archchroot(
+                "grub-mkconfig",
+                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
+            ),
+            "Create grub.cfg",
+        );
+        exec_eval(
+            exec_archchroot(
                 "grub-install",
                 vec![
                     String::from("--target=x86_64-efi"),
@@ -361,8 +368,7 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                     String::from("--format=x86_64-efi"),
                     String::from("--output=/tmp/GRUB.EFI"),
                     format!("--modules={grub_modules}"),
-                    String::from("--sbat"),
-                    String::from("/usr/share/grub/sbat.csv"),
+                    String::from("--sbat=/usr/share/grub/sbat.csv"),
                     String::from("boot/grub/grub.cfg=/boot/grub/grub.cfg"),
                     String::from("boot/grub/fonts/unicode.pf2=/usr/share/grub/unicode.pf2"),
                 ],
@@ -460,14 +466,6 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
 
         files::copy_file(&format!("/mnt{efi_str}/EFI/GRUB/grubx64.efi"), &format!("/mnt{efi_str}/EFI/BOOT/grubx64.efi"));
         files::copy_file(&format!("/mnt{secureboot_key_dir}/MOK.cer"), &format!("/mnt{efi_str}/EFI/MOK.cer"));
-
-        exec_eval(
-            exec_archchroot(
-                "grub-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
     }
 
     if is_fedora() {
