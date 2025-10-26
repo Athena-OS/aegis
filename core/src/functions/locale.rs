@@ -101,7 +101,7 @@ pub fn set_keyboard(user_choice_or_id: &str) -> Result<(), Box<dyn std::error::E
             "set keyboard layout for virtual console",
         );
         files_eval(
-            files::append_file("/mnt/etc/vconsole.conf", "FONT=ter-v24n\n"),
+            files::append_file("/mnt/etc/vconsole.conf", "FONT=ter-u24n\n"),
             "set console font",
         );
 

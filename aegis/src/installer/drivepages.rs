@@ -6,8 +6,9 @@ use ratatui::{
   style::{Color, Modifier},
 };
 use serde_json::Value;
+use shared::exec::exec;
 use shared::partition::is_uefi;
-use std::process::Command;
+use shared::returncode_eval::exec_eval;
 
 use crate::{
   drives::{
@@ -331,8 +332,10 @@ impl Page for SelectDrive {
 
           // Run partprobe/settle on that device node
           let devnode = format!("/dev/{}", selected_name);
-          let _ = Command::new("partprobe").arg(&devnode).status();
-          let _ = Command::new("udevadm").arg("settle").status();
+          exec_eval(exec("partprobe", vec![devnode]),
+                      &format!("Running partprobe to inform kernel of changes on disk."));
+          exec_eval(exec("udevadm", vec!["settle".into()]),
+                      &format!("Running udevadm to inform kernel of changes on disk."));
 
           // Re-scan devices so our in-memory model matches the kernel
           let disks = match lsblk() {
