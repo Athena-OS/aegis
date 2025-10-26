@@ -379,7 +379,18 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                 "grub-mkstandalone",
                 vec![
                     String::from("--format=x86_64-efi"),
-                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
+                    String::from("--output=/GRUB.EFI"),
+                ],
+            ),
+            "Create grub standalone file for Secure Boot.",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "grub-mkstandalone",
+                vec![
+                    String::from("--format=x86_64-efi"),
+                    format!("--output={efi_str}/EFI/GRUB/grubx64.efi"),
                     format!("--modules={grub_modules}"),
                     String::from("--sbat=/usr/share/grub/sbat.csv"),
                     String::from("boot/grub/grub.cfg=/boot/grub/grub.cfg"),
