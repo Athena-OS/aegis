@@ -431,6 +431,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     users::root_pass(config.rootpass.as_str());
 
     /*    BOOTLOADER CONFIG     */
+    // mokutil needs to be run after root password creation
     if partition::is_uefi() {
         base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
     } else {
