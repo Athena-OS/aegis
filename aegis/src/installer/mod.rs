@@ -1709,7 +1709,7 @@ impl RootPassword {
   }
   pub fn mkpasswd(passwd: String) -> anyhow::Result<String> {
     let mut child = Command::new("mkpasswd")
-      .arg("--method=yescrypt")
+      .arg("--method=sha512crypt")
       .arg("--stdin")
       .stdin(Stdio::piped())
       .stdout(Stdio::piped())

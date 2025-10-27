@@ -430,18 +430,18 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     //info!("Setting root password : {}", config.rootpass.as_str());
     users::root_pass(config.rootpass.as_str());
 
-    if is_nix() {
-        info!("Install Athena OS");
-        exit_code = install(PackageManager::Nix, vec![], None);
-    }
-    
     /*    BOOTLOADER CONFIG     */
-    // After root creation because mokutil needs root psw to import certificate
     if partition::is_uefi() {
         base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
     } else {
         base::configure_bootloader_legacy(PathBuf::from(config.partition.device));
     }
+
+    if is_nix() {
+        info!("Install Athena OS");
+        exit_code = install(PackageManager::Nix, vec![], None);
+    }
+    
     /**************************/
 
     /**************************/
