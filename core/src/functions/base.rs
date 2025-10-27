@@ -472,10 +472,10 @@ let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
                 vec![
                     String::from("--import"),
                     format!("{secureboot_key_dir}/MOK.cer"),
-                    String::from("--no-password"),
+                    String::from("-P"),
                 ],
             ),
-            "Sign GRUB for Secure Boot.",
+            "Import certificate in MOK Manager.",
         );
 
         files::copy_file(&format!("/mnt{efi_str}/EFI/GRUB/grubx64.efi"), &format!("/mnt{efi_str}/EFI/BOOT/grubx64.efi"));
