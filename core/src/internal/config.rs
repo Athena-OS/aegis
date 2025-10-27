@@ -322,13 +322,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     }
 
     /********** CONFIGURATION **********/
-    /*    BOOTLOADER CONFIG     */
-    if partition::is_uefi() {
-        base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
-    } else {
-        base::configure_bootloader_legacy(PathBuf::from(config.partition.device));
-    }
-    /**************************/
     /*         LOCALES        */
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locale : {}", config.locale);
@@ -441,6 +434,15 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         info!("Install Athena OS");
         exit_code = install(PackageManager::Nix, vec![], None);
     }
+    
+    /*    BOOTLOADER CONFIG     */
+    // After root creation because mokutil needs root psw to import certificate
+    if partition::is_uefi() {
+        base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
+    } else {
+        base::configure_bootloader_legacy(PathBuf::from(config.partition.device));
+    }
+    /**************************/
 
     /**************************/
     if !is_nix() {
