@@ -54,7 +54,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 "systemd-cryptenroll",
                 vec![
                     String::from("--tpm2-device=auto"),
-                    String::from("--unlock-key-file={luks_k}"),
+                    format!("--unlock-key-file={luks_k}"),
                     String::from("--tpm2-pcrs=0+7+11"),
                     String::from(blockdevice),
                 ],
