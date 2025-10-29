@@ -469,13 +469,14 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
 
     partition::umount("/mnt"); // Recursive umount
 
+    // The closing of LUKS must be after unmount
     for p in &config.partition.content.partitions {
         if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
             // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
             shared::partition::close_luks_best_effort(&p.blockdevice);
         }
     }
-    
+
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
     }
