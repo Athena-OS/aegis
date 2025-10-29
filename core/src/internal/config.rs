@@ -467,15 +467,15 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         secure::set_selinux_mode("1");
     }
 
+    partition::umount("/mnt"); // Recursive umount
+
     for p in &config.partition.content.partitions {
         if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
             // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
             shared::partition::close_luks_best_effort(&p.blockdevice);
         }
     }
-
-    partition::umount("/mnt"); // Recursive umount
-
+    
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
     }
