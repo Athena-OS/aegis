@@ -1,10 +1,11 @@
 use ratatui::{crossterm::event::KeyCode, layout::Constraint, text::Line};
 use serde::{Deserialize, Serialize};
+use std::{fs, process::Command};
 use crate::{
-  installer::{HIGHLIGHT, Installer, Page, Signal},
+  installer::{Installer, Page, Signal},
   split_hor, split_vert, styled_block, ui_back, ui_close, ui_down, ui_enter, ui_up,
   widget::{
-    Button, ConfigWidget, HelpModal, InfoBox, LineEditor, StrList, TableWidget,
+    Button, ConfigWidget, HelpModal, LineEditor, StrList, TableWidget,
     WidgetBox,
   },
 };
@@ -19,6 +20,43 @@ fn normalize_and_validate_username(raw: &str) -> Result<String, &'static str> {
     return Err("Special characters are not allowed (letters and digits only)");
   }
   Ok(s)
+}
+
+fn get_system_groups() -> Vec<String> {
+    // Prefer `getent group`
+    let from_getent = Command::new("getent")
+        .arg("group")
+        .output()
+        .ok()
+        .and_then(|o| if o.status.success() { Some(o.stdout) } else { None });
+
+    let raw = if let Some(bytes) = from_getent {
+        String::from_utf8_lossy(&bytes).into_owned()
+    } else {
+        // Fallback to /etc/group if nsswitch or getent isn't available in the env
+        fs::read_to_string("/etc/group").unwrap_or_default()
+    };
+
+    let mut names: Vec<String> = raw
+        .lines()
+        .filter_map(|line| line.split(':').next())
+        .filter(|name| !name.is_empty())
+        .map(|s| s.to_string())
+        .collect();
+
+    names.sort_unstable();
+    names.dedup();
+    names
+}
+
+// Optional: hide obvious system/daemon groups from the picker.
+// Tune this for your distro’s conventions.
+fn is_user_facing_group(name: &str) -> bool {
+    if name.starts_with('_') { return false; }
+    !matches!(name,
+        "root" | "daemon" | "bin" | "sys" | "adm" | "tty" | "disk" | "mem" |
+        "kmem" | "mail" | "uucp" | "shutdown" | "halt" | "lp" | "lock"
+    )
 }
 
 fn default_shell() -> String { "bash".to_string() }
@@ -959,8 +997,7 @@ pub struct AlterUser {
   pub shell_list: StrList,
 
   /// Group Editor
-  pub group_name_input: LineEditor,
-  pub group_list: StrList,
+  pub group_picker: crate::widget::PackagePicker,
   help_modal: HelpModal<'static>,
   confirming_delete: bool,
   groups_only: bool,
@@ -1041,6 +1078,21 @@ impl AlterUser {
       vec![(None, "username, password, groups, or deleting the user.")],
     ]);
     let help_modal = HelpModal::new("Alter User", help_content);
+
+    let mut all = get_system_groups();
+    // Optional filter
+    all.retain(|g| is_user_facing_group(g));
+    // Don’t show what’s already selected
+    all.retain(|g| !groups.contains(g));
+      
+    // Reuse generic dual-pane picker (selected, available)
+    let group_picker = crate::widget::PackagePicker::new(
+        "User's Groups",
+        "Available Groups",
+        groups.clone(),   // selected
+        all,              // available
+    );
+
     Self {
       selected_user: selected_user_idx,
       buttons,
@@ -1048,8 +1100,7 @@ impl AlterUser {
       pass_input: LineEditor::new("New password", None::<&str>).secret(true),
       pass_confirm: LineEditor::new("Confirm password", None::<&str>).secret(true),
       shell_list,
-      group_name_input: LineEditor::new("Add group", None::<&str>),
-      group_list: StrList::new("Groups", groups),
+      group_picker,
       help_modal,
       confirming_delete: false,
       groups_only: false,
@@ -1059,7 +1110,7 @@ impl AlterUser {
     let mut s = Self::new(selected_user_idx, groups);
     s.groups_only = true;
     s.buttons.unfocus();
-    s.group_name_input.focus(); // this makes the editor render() the Edit Groups view
+    s.group_picker.focus();
     s
   }
   pub fn render_main_menu(&mut self, f: &mut ratatui::Frame, area: ratatui::prelude::Rect) {
@@ -1139,46 +1190,10 @@ impl AlterUser {
     f: &mut ratatui::Frame,
     area: ratatui::prelude::Rect,
   ) {
-    let hor_chunks = split_hor!(
-      area,
-      1,
-      [Constraint::Percentage(50), Constraint::Percentage(50)]
-    );
-    let line_editor_chunks = split_vert!(
-      hor_chunks[0],
-      1,
-      [
-        Constraint::Length(5),
-        Constraint::Percentage(80),
-        Constraint::Min(7),
-      ]
-    );
-    let help_box = InfoBox::new(
-      "Help",
-      styled_block(vec![
-        vec![
-          (None, "Use "),
-          (HIGHLIGHT, "tab "),
-          (None, "to switch between new group input and group list"),
-        ],
-        vec![
-          (None, "Pressing "),
-          (HIGHLIGHT, "enter "),
-          (None, "on an existing group will delete it."),
-        ],
-        vec![
-          (None, "Adding the '"),
-          (HIGHLIGHT, "wheel"),
-          (None, "' group enables the use of "),
-          (HIGHLIGHT, "sudo"),
-          (None, "."),
-        ],
-      ]),
-    );
-    self.group_name_input.render(f, line_editor_chunks[0]);
-    help_box.render(f, line_editor_chunks[2]);
-    self.group_list.render(f, hor_chunks[1]);
+    // left: selected, right: available, top-right: search bar, plus its help modal
+    self.group_picker.render(f, area);
   }
+
   pub fn handle_input_main_menu(
     &mut self,
     installer: &mut super::Installer,
@@ -1244,7 +1259,7 @@ impl AlterUser {
           Some(3) => {
             // Edit groups
             self.buttons.unfocus();
-            self.group_name_input.focus();
+            self.group_picker.focus();
             Signal::Wait
           }
           Some(4) => {
@@ -1434,110 +1449,28 @@ impl AlterUser {
     installer: &mut super::Installer,
     event: ratatui::crossterm::event::KeyEvent,
   ) -> Signal {
-    if self.group_name_input.is_focused() {
-      match event.code {
-        KeyCode::Enter => {
-          let entered_owned = self
-            .group_name_input
-            .get_value()
-            .and_then(|s| s.as_str().map(|s| s.to_owned()))
-            .unwrap_or_default();
-          let entered = entered_owned.trim().to_string();
+    use ratatui::crossterm::event::KeyCode;
 
-          if entered.is_empty() {
-            // User chose not to add any group.
-            if self.groups_only {
-              // Inline flow after AddUser: finish immediately → back to summary
-              return Signal::PopCount(2);
-            } else {
-              // Editing via full AlterUser: go back to the menu quietly
-              self.group_name_input.unfocus();
-              self.buttons.focus();
-              return Signal::Wait;
-            }
-          }
+    // Let the picker handle navigation and add/remove
+    let sig = self.group_picker.handle_input(event);
 
-          // Non-empty: try to add the group
-          if self.selected_user < installer.users.len() {
-            let user = &mut installer.users[self.selected_user];
-
-            if user.groups.iter().any(|g| g == &entered) {
-              self.group_name_input.error("User already in group");
-              return Signal::Wait;
-            }
-
-            user.groups.push(entered);
-            // reflect in UI and clear input
-            self.group_list.set_items(user.groups.clone());
-            self.group_name_input.clear();
-          }
-          Signal::Wait
-        }
-        KeyCode::Tab => {
-          if !self.group_list.is_empty() {
-            self.group_name_input.unfocus();
-            self.group_list.focus();
-          }
-          Signal::Wait
-        }
-        KeyCode::Esc => {
-          if self.groups_only {
-            return Signal::PopCount(2);
-          }
-          self.group_name_input.unfocus();
-          self.buttons.focus();
-          Signal::Wait
-        }
-        _ => self.group_name_input.handle_input(event),
+    // Leaving the picker (Esc) should persist changes to the user
+    if let KeyCode::Esc = event.code {
+      if self.selected_user < installer.users.len() {
+        installer.users[self.selected_user].groups = self.group_picker.get_selected_packages();
+        installer.users[self.selected_user].groups.sort();
+        installer.users[self.selected_user].groups.dedup();
       }
-    } else if self.group_list.is_focused() {
-      // Enter deletes items from the list
-      match event.code {
-        ui_down!() => {
-          if !self.group_list.next_item() {
-            self.group_list.first_item();
-          }
-          Signal::Wait
-        }
-        ui_up!() => {
-          if !self.group_list.previous_item() {
-            self.group_list.last_item();
-          }
-          Signal::Wait
-        }
-        KeyCode::Enter => {
-          if let Some(selected) = self.group_list.selected_item()
-            && self.selected_user < installer.users.len() {
-              let user = &mut installer.users[self.selected_user];
-              user.groups.retain(|g| g != selected);
-              self.group_list.set_items(user.groups.clone());
-            }
-
-          if self.group_list.is_empty() {
-            self.group_list.unfocus();
-            self.group_name_input.focus();
-          }
-          Signal::Wait
-        }
-        KeyCode::Tab => {
-          self.group_list.unfocus();
-          self.group_name_input.focus();
-          Signal::Wait
-        }
-        ui_close!() => {
-          if self.groups_only {
-            return Signal::PopCount(2);
-          }
-          self.group_list.unfocus();
-          self.buttons.focus();
-          Signal::Wait
-        }
-        _ => Signal::Wait,
+      if self.groups_only {
+        return Signal::PopCount(2); // same flow you already used after AddUser
+      } else {
+        self.group_picker.unfocus();
+        self.buttons.focus();
+        return Signal::Wait;
       }
-    } else {
-      self.group_name_input.focus();
-      Signal::Wait
     }
+
+    sig
   }
 }
 
@@ -1554,7 +1487,7 @@ impl Page for AlterUser {
       self.render_name_change(f, area);
     } else if self.pass_input.is_focused() || self.pass_confirm.is_focused() {
       self.render_pass_change(f, area);
-    } else if self.group_name_input.is_focused() || self.group_list.is_focused() {
+    } else if self.group_picker.is_focused() {
       self.render_edit_groups(installer, f, area);
     } else if self.shell_list.is_focused() {
       self.render_select_shell(f, area);  
@@ -1593,7 +1526,7 @@ impl Page for AlterUser {
       self.handle_input_name_change(installer, event)
     } else if self.pass_input.is_focused() || self.pass_confirm.is_focused() {
       self.handle_input_pass_change(installer, event)
-    } else if self.group_name_input.is_focused() || self.group_list.is_focused() {
+    } else if self.group_picker.is_focused() {
       self.handle_input_edit_groups(installer, event)
     } else if self.shell_list.is_focused() {
       match event.code {

@@ -9,6 +9,7 @@ use serde_json::Value;
 use shared::exec::exec;
 use shared::partition::is_uefi;
 use shared::returncode_eval::exec_eval;
+use std::{fs::{OpenOptions, set_permissions, Permissions}, io::Write, os::unix::fs::PermissionsExt};
 
 use crate::{
   drives::{
@@ -23,15 +24,14 @@ use crate::{
 
 const HIGHLIGHT: Option<(Color, Modifier)> = Some((Color::Yellow, Modifier::BOLD));
 
-fn write_luks_key_to_tmp(pass: &str) -> anyhow::Result<()> {
-    use std::fs::OpenOptions;
-    use std::io::Write;
-
+fn write_luks_key_to_tmpfs(pass: &str, path: &str) -> anyhow::Result<()> {
     let mut f = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open("/tmp/luks")?;
+        .open(path)?;
+
+    set_permissions(path, Permissions::from_mode(0o400))?;
 
     f.write_all(pass.as_bytes())?;
     f.flush()?;
@@ -1620,6 +1620,7 @@ impl NewPartition {
       };
 
       let is_swap = self.new_part_fs.as_deref() == Some("swap");
+      let luks_path = "/run/luks";
 
       let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot/efi") {
           vec!["boot".to_string(), "esp".to_string()]
@@ -1666,8 +1667,8 @@ impl NewPartition {
 
       if self.new_part_encrypt == Some(true)
         && let Some(pw) = &self.new_part_luks_password
-          && let Err(e) = write_luks_key_to_tmp(pw) {
-            return Signal::Error(anyhow::anyhow!("Failed to write /tmp/luks: {e}"));
+          && let Err(e) = write_luks_key_to_tmpfs(pw, luks_path) {
+            return Signal::Error(anyhow::anyhow!("Failed to write {luks_path}: {e}"));
           }
 
       match device.new_partition(new_part) {
@@ -2703,8 +2704,9 @@ impl Page for PromptLuksPassword {
           {
             p.add_flag("encrypt");
           }
-          if let Err(e) = write_luks_key_to_tmp(&pass) {
-            return Signal::Error(anyhow::anyhow!("Failed to write /tmp/luks: {e}"));
+          let luks_path = "/run/luks";
+          if let Err(e) = write_luks_key_to_tmpfs(&pass, luks_path) {
+            return Signal::Error(anyhow::anyhow!("Failed to write {luks_path}: {e}"));
           }
           installer.make_drive_config_display();
           Signal::PopCount(self.pop_count_on_success)

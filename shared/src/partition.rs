@@ -1,4 +1,5 @@
 use crate::args::{self, MountSpec};
+use crate::encrypt::tpm2_available_esapi;
 use crate::exec::{exec, exec_output, exec_workdir};
 use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
@@ -19,6 +20,7 @@ fn extract_partition_number(bdevice: &str) -> String {
 }
 
 fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
+    let luks_k = String::from("/run/luks");
     exec_eval(
         exec(
             "cryptsetup",
@@ -27,7 +29,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 String::from("-q"),
                 String::from(blockdevice),
                 String::from("-d"),
-                String::from("/tmp/luks"),
+                luks_k.clone(),
             ],
         ),
         "Format LUKS partition",
@@ -40,17 +42,35 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 String::from(blockdevice),
                 String::from(cryptlabel),
                 String::from("-d"),
-                String::from("/tmp/luks"),
+                luks_k.clone(),
             ],
         ),
         "Open LUKS format",
     );
+    if tpm2_available_esapi() {
+        info!("TPM 2.0 device detected and accessible.");
+        exec_eval(
+            exec(
+                "systemd-cryptenroll",
+                vec![
+                    String::from("--tpm2-device=auto"),
+                    String::from("--unlock-key-file={luks_k}"),
+                    String::from("--tpm2-pcrs=0+7+11"),
+                    String::from(blockdevice),
+                ],
+            ),
+            "Store LUKS key in TPM.",
+        );
+
+    } else {
+        info!("No accessible TPM 2.0 device found.");
+    }
     exec_eval(
         exec(
             "rm",
             vec![
                 String::from("-rf"),
-                String::from("/tmp/luks"),
+                luks_k,
             ],
         ),
         "Remove luks key",

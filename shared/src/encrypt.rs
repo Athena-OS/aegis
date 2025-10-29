@@ -1,6 +1,17 @@
 use crate::exec::exec_output;
 use log::info;
 use std::fs;
+use tss_esapi::{Context, TctiNameConf};
+
+pub fn tpm2_available_esapi() -> bool {
+    // Prefer the kernel RM (/dev/tpmrm0); fall back to /dev/tpm0 if needed.
+    // If omit the device path, the loader will try sensible defaults.
+    let tcti = TctiNameConf::Device(Default::default());
+    match Context::new(tcti) {
+        Ok(mut _ctx) => true,   // we could also query properties here
+        Err(_e) => false,
+    }
+}
 
 pub fn find_luks_partitions() -> (Vec<(String, String)>, bool) {
     let mut luks_partitions = Vec::new();

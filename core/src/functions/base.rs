@@ -4,7 +4,7 @@ use crate::internal::services::enable_service;
 use log::info;
 use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch, is_fedora, is_nix};
 use shared::exec::{exec, exec_archchroot, exec_output};
-use shared::encrypt::find_luks_partitions;
+use shared::encrypt::{find_luks_partitions, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
 use shared::strings::crash;
@@ -40,6 +40,10 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         packages.extend_into(arch_base_pkg);
     } else if is_fedora() {
         packages.extend_into(fedora_base_pkg);
+    }
+
+    if tpm2_available_esapi() {
+        packages.extend_into(["tpm2-tools"]);
     }
 
     /***** CHECK IF BTRFS *****/
