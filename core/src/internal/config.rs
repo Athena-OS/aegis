@@ -479,7 +479,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
 
-    // Check TPM
+    // Check TPM. The enforcement of PCRs must be done at the end of installation
     let (luks_partitions, encrypt_check) = find_luks_partitions();
     if encrypt_check {
         let luks_k = String::from("/run/luks");
@@ -494,7 +494,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
                         vec![
                             String::from("--tpm2-device=auto"),
                             format!("--unlock-key-file={luks_k}"),
-                            String::from("--tpm2-pcrs=7+9+11+14"),
+                            String::from("--tpm2-pcrs=7+9+11"),
                             String::from(device_path),
                         ],
                     ),
