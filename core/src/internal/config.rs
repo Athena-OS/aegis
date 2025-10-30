@@ -6,9 +6,11 @@ use log::{debug, error, info};
 use serde_json::{self, Value, Map};
 use shared::{
     args::{self, Config, ConfigInput, DesktopSetup, ExtendIntoString, PackageManager, ThemeSetup, DMSetup, ShellSetup, get_fedora_version, set_base, is_arch, is_fedora, is_nix},
+    encrypt::{find_luks_partitions, tpm2_available_esapi},
+    exec::exec,
     files,
     partition,
-    returncode_eval::files_eval,
+    returncode_eval::{exec_eval, files_eval},
     strings::crash,
 };
 use std::{
@@ -474,6 +476,44 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
             // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
             shared::partition::close_luks_best_effort(&p.blockdevice);
+        }
+    }
+
+    // Check TPM
+    let (luks_partitions, encrypt_check) = find_luks_partitions();
+    if encrypt_check {
+        let luks_k = String::from("/run/luks");
+        info!("Enrolling key on TPM...");
+        for (device_path, uuid) in &luks_partitions {
+            info!("Device: {device_path}, UUID: {uuid}");
+            if tpm2_available_esapi() {
+                info!("TPM 2.0 device detected and accessible.");
+                exec_eval(
+                    exec(
+                        "systemd-cryptenroll",
+                        vec![
+                            String::from("--tpm2-device=auto"),
+                            format!("--unlock-key-file={luks_k}"),
+                            String::from("--tpm2-pcrs=7+9+11+14"),
+                            String::from(device_path),
+                        ],
+                    ),
+                    &format!("Store {device_path} LUKS key in TPM."),
+                );
+            
+            } else {
+                info!("No accessible TPM 2.0 device found.");
+            }
+            exec_eval(
+                exec(
+                    "rm",
+                    vec![
+                        String::from("-rf"),
+                        luks_k.clone(),
+                    ],
+                ),
+                "Remove luks key",
+            );
         }
     }
 

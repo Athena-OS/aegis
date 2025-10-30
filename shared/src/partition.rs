@@ -1,5 +1,4 @@
 use crate::args::{self, MountSpec};
-use crate::encrypt::tpm2_available_esapi;
 use crate::exec::{exec, exec_output, exec_workdir};
 use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
@@ -46,34 +45,6 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
             ],
         ),
         "Open LUKS format",
-    );
-    if tpm2_available_esapi() {
-        info!("TPM 2.0 device detected and accessible.");
-        exec_eval(
-            exec(
-                "systemd-cryptenroll",
-                vec![
-                    String::from("--tpm2-device=auto"),
-                    format!("--unlock-key-file={luks_k}"),
-                    String::from("--tpm2-pcrs=7+9+11+14"),
-                    String::from(blockdevice),
-                ],
-            ),
-            "Store LUKS key in TPM.",
-        );
-
-    } else {
-        info!("No accessible TPM 2.0 device found.");
-    }
-    exec_eval(
-        exec(
-            "rm",
-            vec![
-                String::from("-rf"),
-                luks_k,
-            ],
-        ),
-        "Remove luks key",
     );
 }
 
