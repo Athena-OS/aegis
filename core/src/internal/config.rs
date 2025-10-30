@@ -491,7 +491,9 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
                 exec_eval(
                     exec_archchroot(
                         "tpm2_pcrread",
-                        vec![],
+                        vec![
+                        "sha256".into(),
+                        ],
                     ),
                     "Current PCR measurements.",
                 );
