@@ -500,6 +500,14 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
                     ),
                     &format!("Store {device_path} LUKS key in TPM."),
                 );
+
+                exec_eval(
+                    exec(
+                        "tpm2_pcrread",
+                        vec![],
+                    ),
+                    "Current PCR measurements.",
+                );
             
             } else {
                 info!("No accessible TPM 2.0 device found.");
@@ -516,16 +524,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             );
         }
     }
-
-    exec_eval(
-        exec(
-            "tpm2_pcrread",
-            vec![
-                String::from("sha256:7,11"),
-            ],
-        ),
-        "Current PCR measurements.",
-    );
 
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
