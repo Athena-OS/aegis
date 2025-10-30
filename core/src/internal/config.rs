@@ -7,7 +7,7 @@ use serde_json::{self, Value, Map};
 use shared::{
     args::{self, Config, ConfigInput, DesktopSetup, ExtendIntoString, PackageManager, ThemeSetup, DMSetup, ShellSetup, get_fedora_version, set_base, is_arch, is_fedora, is_nix},
     encrypt::{find_luks_partitions, tpm2_available_esapi},
-    exec::exec,
+    exec::{exec, exec_archchroot},
     files,
     partition,
     returncode_eval::{exec_eval, files_eval},
@@ -489,7 +489,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
                 );
 
                 exec_eval(
-                    exec(
+                    exec_archchroot(
                         "tpm2_pcrread",
                         vec![],
                     ),
@@ -525,7 +525,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             shared::partition::close_luks_best_effort(&p.blockdevice);
         }
     }
-    
+
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
     }
