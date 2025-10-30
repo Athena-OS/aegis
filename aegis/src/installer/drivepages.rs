@@ -6,10 +6,8 @@ use ratatui::{
   style::{Color, Modifier},
 };
 use serde_json::Value;
-use shared::exec::exec;
 use shared::partition::is_uefi;
-use shared::returncode_eval::exec_eval;
-use std::{fs::{OpenOptions, set_permissions, Permissions}, io::Write, os::unix::fs::PermissionsExt};
+use std::{fs::{OpenOptions, set_permissions, Permissions}, io::Write, os::unix::fs::PermissionsExt, process::Command};
 
 use crate::{
   drives::{
@@ -332,10 +330,8 @@ impl Page for SelectDrive {
 
           // Run partprobe/settle on that device node
           let devnode = format!("/dev/{}", selected_name);
-          exec_eval(exec("partprobe", vec![devnode]),
-                      "Running partprobe to inform kernel of changes on disk.");
-          exec_eval(exec("udevadm", vec!["settle".into()]),
-                      "Running udevadm to inform kernel of changes on disk.");
+          let _ = Command::new("partprobe").arg(&devnode).status(); // Not using exec() because these commands are run on TUI layout, otherwise they print an info!() and the TUI layout will be screwed up
+          let _ = Command::new("udevadm").arg("settle").status();
 
           // Re-scan devices so our in-memory model matches the kernel
           let disks = match lsblk() {
