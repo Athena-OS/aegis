@@ -55,7 +55,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 vec![
                     String::from("--tpm2-device=auto"),
                     format!("--unlock-key-file={luks_k}"),
-                    String::from("--tpm2-pcrs=0+7+11"),
+                    String::from("--tpm2-pcrs=7+9+11+14"),
                     String::from(blockdevice),
                 ],
             ),
