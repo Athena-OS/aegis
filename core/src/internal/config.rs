@@ -494,7 +494,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
                         vec![
                             String::from("--tpm2-device=auto"),
                             format!("--unlock-key-file={luks_k}"),
-                            String::from("--tpm2-pcrs=7+11+14"),
+                            String::from("--tpm2-pcrs=7+11"),
                             String::from(device_path),
                         ],
                     ),
@@ -516,6 +516,16 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             );
         }
     }
+
+    exec_eval(
+        exec(
+            "tpm2_pcrread",
+            vec![
+                String::from("sha256:7,11"),
+            ],
+        ),
+        "Current PCR measurements.",
+    );
 
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
