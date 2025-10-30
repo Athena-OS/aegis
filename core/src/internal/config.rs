@@ -461,9 +461,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     }
     /**************************/
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
-    info!("Installation log file copied to /var/log/aegis.log");
-    files_eval(files::create_directory("/mnt/var/log"), "create /mnt/var/log");
-    files::copy_file(&log_path, "/mnt/var/log/aegis.log");
 
     if is_fedora() && secure::selinux_enabled() {
         secure::set_selinux_mode("1");
@@ -531,6 +528,10 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     else {
         error!("Installation failed. Exit code: {exit_code}");
     }
+
+    info!("Installation log file copied to /var/log/aegis.log");
+    files_eval(files::create_directory("/mnt/var/log"), "Create /mnt/var/log");
+    files::copy_file(&log_path, "/mnt/var/log/aegis.log");
     
     exit_code
 }
