@@ -466,16 +466,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         secure::set_selinux_mode("1");
     }
 
-    partition::umount("/mnt"); // Recursive umount
-
-    // The closing of LUKS must be after unmount
-    for p in &config.partition.content.partitions {
-        if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
-            // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
-            shared::partition::close_luks_best_effort(&p.blockdevice);
-        }
-    }
-
     // Check TPM. The enforcement of PCRs must be done at the end of installation
     let (luks_partitions, encrypt_check) = find_luks_partitions();
     if encrypt_check {
@@ -522,16 +512,26 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
 
+    info!("Installation log file copied to /var/log/aegis.log");
+    files_eval(files::create_directory("/mnt/var/log"), "Create /mnt/var/log");
+    files::copy_file(&log_path, "/mnt/var/log/aegis.log");
+
+    partition::umount("/mnt"); // Recursive umount
+
+    // The closing of LUKS must be after unmount
+    for p in &config.partition.content.partitions {
+        if p.flags.iter().any(|f| f.eq_ignore_ascii_case("encrypt")) {
+            // p.blockdevice is the *underlying* partition (e.g., /dev/vda2)
+            shared::partition::close_luks_best_effort(&p.blockdevice);
+        }
+    }
+    
     if exit_code == 0 {
         info!("Installation finished! You may reboot now!");
     }
     else {
         error!("Installation failed. Exit code: {exit_code}");
     }
-
-    info!("Installation log file copied to /var/log/aegis.log");
-    files_eval(files::create_directory("/mnt/var/log"), "Create /mnt/var/log");
-    files::copy_file(&log_path, "/mnt/var/log/aegis.log");
     
     exit_code
 }
