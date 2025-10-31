@@ -475,20 +475,18 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             info!("Device: {device_path}, UUID: {uuid}");
             if tpm2_available_esapi() {
                 info!("TPM 2.0 device detected and accessible.");
-                /*
                 exec_eval(
                     exec(
                         "systemd-cryptenroll",
                         vec![
                             String::from("--tpm2-device=auto"),
                             format!("--unlock-key-file={luks_k}"),
-                            String::from("--tpm2-pcrs=0"),
+                            String::from("--tpm2-pcrs=0+11+15"),
                             String::from(device_path),
                         ],
                     ),
                     &format!("Store {device_path} LUKS key in TPM."),
                 );
-                */
 
                 exec_eval(
                     exec_archchroot(
