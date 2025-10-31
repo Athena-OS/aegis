@@ -540,6 +540,7 @@ impl ConfigWidget for CheckBox {
   }
 }
 
+#[derive(Clone)]
 pub struct Button {
   pub label: String,
   pub focused: bool,
