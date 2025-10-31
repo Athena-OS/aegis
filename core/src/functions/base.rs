@@ -1,14 +1,13 @@
 use crate::internal::hardware;
 use crate::internal::install::install;
 use crate::internal::services::enable_service;
-use log::info;
-use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch, is_fedora, is_nix};
+use log::{info, error};
+use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch};
 use shared::exec::{exec, exec_archchroot, exec_output};
 use shared::encrypt::{find_luks_partitions, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
-use shared::strings::crash;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     let (kernel_to_install, kernel_headers_to_install) = (kernel, format!("{kernel}-headers"));
@@ -16,6 +15,8 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         // Kernel
         kernel_to_install,
         &kernel_headers_to_install,
+        "linux-hardened",
+        "linux-hardened-headers",
         // Base Arch
         "base",
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
@@ -28,40 +29,14 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         "chaotic-keyring",
     ];
 
-    let fedora_base_pkg: Vec<&str> = vec![
-        "kernel",
-        "kernel-modules",
-        "kernel-modules-extra",
-        "kernel-headers",
-        "glibc-all-langpacks",
-    ];
-
-    if is_arch() {
-        packages.extend_into(arch_base_pkg);
-    } else if is_fedora() {
-        packages.extend_into(fedora_base_pkg);
-    }
+    packages.extend_into(arch_base_pkg);
 
     if tpm2_available_esapi() {
         packages.extend_into(["tpm2-tools"]);
     }
 
     /***** CHECK IF BTRFS *****/
-    let output = exec_eval_result(
-        exec_output(
-            "findmnt",
-            vec![
-                String::from("-n"),
-                String::from("-o"),
-                String::from("FSTYPE"),
-                String::from("/mnt"),
-            ],
-        ),
-        "Detect file system type",
-    );
-
-    let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
+    let (fstype, _fs_uuid) = detect_root_fs_info();
     if fstype == "btrfs" {
         packages.extend_into(["btrfs-progs"]);
     }
@@ -78,11 +53,6 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     if is_arch() {
         init_keyrings_mirrors(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors for Arch and Chaotic AUR on the host
         files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
-    } else if is_fedora() {
-        std::fs::create_dir_all("/mnt/etc/yum.repos.d").unwrap();
-        files::copy_multiple_files("/etc/yum.repos.d/*", "/mnt/etc/yum.repos.d");
-        std::fs::create_dir_all("/mnt/etc/default").unwrap();
-        files::copy_file("/etc/default/grub", "/mnt/etc/default/grub");        
     }
 
     let exit_code = match distro_base() {
@@ -109,7 +79,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
                 files::sed_file(
                     "/mnt/etc/mkinitcpio.conf",
                     "#COMPRESSION=\"lz4\"",
-                    "COMPRESSION=\"lz4\"",
+                    "COMPRESSION=\"gzip\"", // systemd-stub (and therefore UKI) expects an initrd compressed with gzip
                 ),
                 "Set compression algorithm",
             );
@@ -139,7 +109,6 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     }
     
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
-    files::copy_file("/etc/grub.d/40_custom", "/mnt/etc/grub.d/40_custom");
 
     files_eval(
         files::sed_file(
@@ -163,6 +132,316 @@ pub fn preset_process() {
         ),
         "Run mkinitcpio presets processing",
     );
+}
+
+fn generate_kernel_cmdline() -> String {
+    let (fstype, fs_uuid) = detect_root_fs_info();
+    let is_btrfs_root = fstype == "btrfs";
+
+    let (luks_partitions, encrypt_check) = find_luks_partitions();
+
+    let mut early_root_param = String::new();
+
+    if encrypt_check {
+        // Encrypted root case
+        if let Some((device_path, uuid)) = luks_partitions.first() {
+            let cryptlabel = format!("{}crypted", device_path.trim_start_matches("/dev/"));
+            early_root_param.push_str(&format!("rd.luks.name={uuid}={cryptlabel} "));
+            early_root_param.push_str(&format!("root=/dev/mapper/{cryptlabel} "));
+        } else {
+            error!("encrypt_check=true but luks_partitions is empty");
+        }
+    } else {
+        // Unencrypted root case
+        if !fs_uuid.is_empty() {
+            early_root_param.push_str(&format!("root=UUID={fs_uuid} "));
+        } else {
+            error!("Could not determine root UUID for unencrypted root");
+        }
+    }
+
+    if is_btrfs_root {
+        early_root_param.push_str("rootflags=subvol=@ ");
+    }
+
+    let mut params: Vec<&str> = vec![
+        "quiet",
+        "loglevel=3",
+        "nvme_load=yes",
+        "zswap.enabled=0",
+        "fbcon=nodefer",
+        "nowatchdog",
+    ];
+
+    if hardware::is_hyperv_guest() {
+        params.push("video=hyperv_fb:3840x2160");
+    }
+
+    format!("{early_root_param}{}", params.join(" "))
+}
+
+/// Optional: write cmdline to /etc/kernel/cmdline inside target system,
+/// so future kernel/UKI regen tools know what to embed.
+fn write_kernel_cmdline_file(cmdline: &str) {
+    files_eval(files::create_directory("/mnt/etc/kernel"), "Create /mnt/etc/kernel");
+    files::create_file("/mnt/etc/kernel/cmdline");
+    files_eval(
+        files::append_file("/mnt/etc/kernel/cmdline", cmdline),
+        "Write /etc/kernel/cmdline",
+    );
+}
+
+/// Build and sign a Unified Kernel Image (UKI) for one kernel flavor
+/// using Arch's ukify syntax.
+///
+/// kname: "linux-lts" or "linux-hardened"
+/// pretty: "LTS" or "Hardened" (for boot menu entry title)
+/// esp_str: ESP mount path *inside chroot* (usually "/boot/efi")
+/// secureboot_key_dir: path *inside chroot* to the key dir ("/etc/secureboot/keys")
+fn build_and_sign_uki(
+    kname: &str,
+    pretty: &str,
+    esp_str: &str,
+    secureboot_key_dir: &str,
+    cmdline: &str,
+) {
+    let uki_out = format!("{esp_str}/EFI/Athena/{kname}.efi");
+
+    // ensure ESP/EFI/Athena exists on target fs
+    let athena_efi_dir = format!("/mnt{esp_str}/EFI/Athena");
+    fs::create_dir_all(&athena_efi_dir)
+        .expect("Failed to create /mnt<esp>/EFI/Athena");
+
+    let cpu = hardware::cpu_detect();
+
+    let mut args: Vec<String> = Vec::new();
+    args.push("build".into());
+
+    args.push("--linux".into());
+    args.push(format!("/boot/vmlinuz-{kname}"));
+
+    // microcode first, conditionally
+    if cpu.contains("Intel") {
+        args.push("--initrd".into());
+        args.push("/boot/intel-ucode.img".into());
+    } else if cpu.contains("AMD") {
+        args.push("--initrd".into());
+        args.push("/boot/amd-ucode.img".into());
+    }
+
+    // normal initramfs
+    args.push("--initrd".into());
+    args.push(format!("/boot/initramfs-{kname}.img"));
+
+    args.push("--cmdline".into());
+    args.push(cmdline.to_string());
+
+    args.push("--os-release".into());
+    args.push("/usr/lib/os-release".into());
+
+    args.push("--uname".into());
+    args.push(kname.to_string());
+
+    args.push("--signtool=sbsign".into());
+
+    args.push("--secureboot-private-key".into());
+    args.push(format!("{secureboot_key_dir}/MOK.key"));
+
+    args.push("--secureboot-certificate".into());
+    args.push(format!("{secureboot_key_dir}/MOK.crt"));
+
+    args.push("--output".into());
+    args.push(uki_out.clone());
+
+    exec_eval(
+        exec_archchroot("ukify", args),
+        &format!("Create+sign UKI for {kname}"),
+    );
+
+    let entries_dir = format!("/mnt{esp_str}/loader/entries");
+    fs::create_dir_all(&entries_dir)
+        .expect("Failed to create loader/entries dir");
+    let entry_path = format!("{entries_dir}/athena-{kname}.conf");
+
+    files::create_file(&entry_path);
+    exec_eval(
+        files::append_file(
+            &entry_path,
+            &format!(
+                "title   Athena OS ({pretty})\nefi     /EFI/Athena/{kname}.efi\n",
+            ),
+        ),
+        &format!("Write systemd-boot entry for {kname}"),
+    );
+
+    info!("UKI for {kname} created at {uki_out} and loader entry {entry_path}");
+}
+
+pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
+    let esp_str = espdir.to_str().unwrap();
+    info!("Configuring systemd-boot + UKI + shim Secure Boot in {esp_str}");
+
+    // 0. Generate the cmdline ONCE
+    let cmdline = generate_kernel_cmdline();
+
+    //    Persist it for future kernel regen
+    write_kernel_cmdline_file(&cmdline);
+
+    // 1. Install systemd-boot into ESP
+    exec_eval(
+        exec_archchroot(
+            "bootctl",
+            vec![
+                "--esp-path".into(),
+                esp_str.to_string(),
+                "--boot-path".into(), // to create it Linux folder in /boot/efi/EFI instead of /boot/EFI when /boot and /boot/efi mountpoints exist simultaneously
+                esp_str.to_string(),
+                "install".into(),
+            ],
+        ),
+        "Install systemd-boot",
+    );
+
+    // 2. Generate Secure Boot keypair (MOK.key / MOK.crt / MOK.cer)
+    let secureboot_key_dir = "/etc/secureboot/keys";
+    std::fs::create_dir_all(format!("/mnt{secureboot_key_dir}"))
+        .expect("Failed to create secureboot key dir");
+
+    exec_eval(
+        exec_archchroot(
+            "openssl",
+            vec![
+                "req".into(),
+                "-newkey".into(), "rsa:2048".into(),
+                "-nodes".into(),
+                "-keyout".into(), format!("{secureboot_key_dir}/MOK.key"),
+                "-new".into(),
+                "-x509".into(),
+                "-sha256".into(),
+                "-days".into(), "3650".into(),
+                "-subj".into(), "/CN=Athena OS Secure Boot Key/".into(),
+                "-out".into(), format!("{secureboot_key_dir}/MOK.crt"),
+            ],
+        ),
+        "Generate Athena Secure Boot keypair",
+    );
+
+    exec_eval(
+        exec_archchroot(
+            "chmod",
+            vec![
+                "400".into(),
+                format!("{secureboot_key_dir}/MOK.key"),
+            ],
+        ),
+        "Restrict Secure Boot private key permissions",
+    );
+
+    exec_eval(
+        exec_archchroot(
+            "openssl",
+            vec![
+                "x509".into(),
+                "-outform".into(), "DER".into(),
+                "-in".into(),  format!("{secureboot_key_dir}/MOK.crt"),
+                "-out".into(), format!("{secureboot_key_dir}/MOK.cer"),
+            ],
+        ),
+        "Generate DER (.cer) version of Athena Secure Boot cert",
+    );
+
+    // 3. Sign systemd-boot itself
+    exec_eval(
+        exec_archchroot(
+            "sbsign",
+            vec![
+                "--key".into(),  format!("{secureboot_key_dir}/MOK.key"),
+                "--cert".into(), format!("{secureboot_key_dir}/MOK.crt"),
+                "--output".into(), format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+                format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+            ],
+        ),
+        "Sign systemd-boot with Athena key",
+    );
+
+    // 4. Build + sign UKIs for BOTH kernels using the SAME cmdline string
+    build_and_sign_uki("linux-lts", "LTS", esp_str, secureboot_key_dir, &cmdline);
+    build_and_sign_uki("linux-hardened", "Hardened", esp_str, secureboot_key_dir, &cmdline);
+
+    // 5. Write loader.conf, pick linux-lts as default
+    let loader_dir = format!("/mnt{esp_str}/loader");
+    let entries_dir = format!("{loader_dir}/entries");
+    std::fs::create_dir_all(&entries_dir).expect("Failed to create loader/entries dir");
+
+    files::create_file(&format!("{loader_dir}/loader.conf"));
+    files_eval(
+        files::append_file(
+            &format!("{loader_dir}/loader.conf"),
+            "default athena-linux-lts.conf\ntimeout 3\nconsole-mode keep\neditor no\n",
+        ),
+        "Write loader.conf",
+    );
+
+    // 6. Set up shim as stage0 so Secure Boot works out-of-the-box,
+    //    and so first boot triggers MOK Manager instead of forcing firmware DB enrollment.
+    //
+    // Firmware will execute BOOTX64.EFI. We want that to be shim (Microsoft-signed),
+    // so Secure Boot allows it immediately.
+    //
+    // Then shim will try to load "grubx64.efi". We give it *our signed systemd-boot*
+    // under that name, and after the user enrolls AthenaSecureBoot.cer in MOK Manager,
+    // shim will allow it.
+    //
+    // So:
+    //   ESP/EFI/BOOT/BOOTX64.EFI      <- shimx64.efi (MS-signed, from shim-signed pkg)
+    //   ESP/EFI/BOOT/grubx64.efi      <- signed systemd-bootx64.efi
+    //
+    std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/BOOT"))
+        .expect("Failed to create ESP/EFI/BOOT directory");
+
+    // Copy shim
+    files::copy_file(
+        "/mnt/usr/share/shim-signed/shimx64.efi",
+        &format!("/mnt{esp_str}/EFI/BOOT/BOOTX64.EFI"),
+    );
+
+    // Copy MokManager so shim can start MOK enrollment UI at first boot
+    files::copy_file(
+        "/mnt/usr/share/shim-signed/mmx64.efi",
+        &format!("/mnt{esp_str}/EFI/BOOT/mmx64.efi"),
+    );
+
+    // Copy our signed systemd-boot binary where shim expects "grubx64.efi"
+    files::copy_file(
+        &format!("/mnt{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+        &format!("/mnt{esp_str}/EFI/BOOT/grubx64.efi"),
+    );
+
+    // 7. Copy Athena public cert somewhere obvious on ESP.
+    //    Shim/MOK Manager will ask to enroll it on first boot (after mokutil below).
+    std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/Athena"))
+        .expect("Failed to create ESP/EFI/Athena directory");
+    files::copy_file(
+        &format!("/mnt{secureboot_key_dir}/MOK.cer"),
+        &format!("/mnt{esp_str}/EFI/Athena/AthenaSecureBoot.cer"),
+    );
+
+    // 8. Pre-register the Athena key with mokutil so first boot asks user
+    //    "Enroll this key?" in MOK Manager. This avoids making them open BIOS UI.
+    exec_eval(
+        exec_archchroot(
+            "mokutil",
+            vec![
+                "--import".into(),
+                format!("{secureboot_key_dir}/MOK.cer"),
+                "-P".into(), // no password prompt path. If you prefer pwd-confirm flow,
+                             // remove -P and handle mokutil --password instead.
+            ],
+        ),
+        "Schedule AthenaSecureBoot.cer enrollment in MOK Manager at first boot",
+    );
+
+    info!("systemd-boot + UKI + shim configured. On first boot, MOK Manager will ask to enroll AthenaSecureBoot.cer; accept it to boot securely without touching firmware setup.");
 }
 
 fn init_keyrings_mirrors() {
@@ -257,300 +536,6 @@ pub fn genfstab() {
         ),
         "Generate fstab",
     );
-}
-
-fn setting_grub_parameters() {
-    let mut luks_param = String::new();
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub",
-            "GRUB_DISTRIBUTOR=.*",
-            "GRUB_DISTRIBUTOR=\"Athena OS\"",
-        ),
-        "Set distributor name",
-    );
-    let (luks_partitions, encrypt_check) = find_luks_partitions();
-    if encrypt_check {
-        /*Set UUID of encrypted partition as kernel parameter*/
-        let mut cryptlabel = String::new();
-        info!("LUKS partitions found:");
-        for (device_path, uuid) in &luks_partitions {
-            info!("Device: {device_path}, UUID: {uuid}");
-            cryptlabel = format!("{}crypted", device_path.trim_start_matches("/dev/")); // i.e., sda3crypted
-            luks_param.push_str(&format!("rd.luks.name={uuid}={cryptlabel} "));
-        }
-        luks_param.push_str(&format!("root=/dev/mapper/{cryptlabel} "));
-        // NOTE: in case of multiple LUKS encryted partitions, the encrypted system will work ONLY if the root partition is the last one in the disk
-
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/default/grub",
-                "#GRUB_ENABLE_CRYPTODISK=.*",
-                "GRUB_ENABLE_CRYPTODISK=y",
-            ),
-            "Set grub encrypt parameter",
-        );
-    }
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub",
-            "GRUB_CMDLINE_LINUX_DEFAULT=.*",
-            &format!("GRUB_CMDLINE_LINUX_DEFAULT=\"{luks_param}quiet loglevel=3 nvme_load=yes zswap.enabled=0 fbcon=nodefer nowatchdog\""),
-        ),
-        "Set kernel parameters",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub",
-            "#GRUB_DISABLE_OS_PROBER=.*",
-            "GRUB_DISABLE_OS_PROBER=false",
-        ),
-        "Enable OS prober",
-    );
-}
-
-pub fn configure_bootloader_efi(efidir: PathBuf, kernel: &str) {
-
-    const MINIMUM_GRUB_MODULES: &str =
-    "all_video btrfs chain configfile cryptodisk echo efi_gop efi_uga ext2 exfat fat font \
-gettext gfxmenu gfxterm gzio linux loadenv luks lvm mdraid09 mdraid1x normal ntfs ntfscomp \
-part_gpt part_msdos probe regexp search search_fs_file search_fs_uuid search_label test tpm udf";
-
-    const EXTRA_GRUB_MODULES: &str =
-    "bli boot cat efifwsetup efinet gcry_arcfour gcry_blowfish gcry_camellia gcry_cast5 gcry_crc \
-gcry_des gcry_dsa gcry_idea gcry_md4 gcry_md5 gcry_rfc2268 gcry_rijndael gcry_rmd160 gcry_rsa \
-gcry_seed gcry_serpent gcry_sha1 gcry_sha256 gcry_sha512 gcry_tiger gcry_twofish gcry_whirlpool \
-gfxterm_background halt help hfsplus iso9660 jpeg keystatus loopback ls lsefi lsefimmap \
-lsefisystab lssal memdisk minicmd part_apple password_pbkdf2 png raid5rec raid6rec reboot serial \
-sleep smbios squash4 true video zfs zfscrypt zfsinfo";
-
-let grub_modules = format!("{MINIMUM_GRUB_MODULES} {EXTRA_GRUB_MODULES}");
-
-    let efi_str = efidir.to_str().unwrap();
-    info!("EFI bootloader installing at {efi_str}");
-    
-    if is_arch() {
-        setting_grub_parameters();
-
-        exec_eval(
-            exec_archchroot(
-                "grub-install",
-                vec![
-                    String::from("--target=x86_64-efi"),
-                    format!("--efi-directory={efi_str}"),
-                    String::from("--bootloader-id=GRUB"),
-                    format!("--modules={grub_modules}"),
-                    String::from("--sbat=/usr/share/grub/sbat.csv"),
-                    String::from("--removable"), // Used to install fallback in EFI/BOOT/BOOTX64.EFI
-                ],
-            ),
-            "Install grub as efi with --removable.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "grub-install",
-                vec![
-                    String::from("--target=x86_64-efi"),
-                    format!("--efi-directory={efi_str}"),
-                    String::from("--bootloader-id=GRUB"),
-                ],
-            ),
-            "Install grub as efi without --removable.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "grub-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "grub-mkstandalone",
-                vec![
-                    String::from("--format=x86_64-efi"),
-                    format!("--output={efi_str}/EFI/GRUB/grubx64.efi"),
-                    format!("--modules={grub_modules}"),
-                    String::from("--sbat=/usr/share/grub/sbat.csv"),
-                    String::from("boot/grub/grub.cfg=/boot/grub/grub.cfg"),
-                    String::from("boot/grub/fonts/unicode.pf2=/usr/share/grub/unicode.pf2"),
-                ],
-            ),
-            "Create grub standalone file for Secure Boot.",
-        );
-
-        files::copy_file("/mnt/usr/share/shim-signed/mmx64.efi", &format!("/mnt{efi_str}/EFI/BOOT/mmx64.efi"));
-        files::copy_file("/mnt/usr/share/shim-signed/shimx64.efi", &format!("/mnt{efi_str}/EFI/BOOT/BOOTx64.EFI"));
-        let secureboot_key_dir = "/etc/.secureboot/keys";
-        std::fs::create_dir_all(format!("/mnt{secureboot_key_dir}")).unwrap();
-
-        exec_eval(
-            exec_archchroot(
-                "openssl",
-                vec![
-                    String::from("req"),
-                    String::from("-newkey"),
-                    String::from("rsa:2048"),
-                    String::from("-nodes"),
-                    String::from("-keyout"),
-                    format!("{secureboot_key_dir}/MOK.key"),
-                    String::from("-new"),
-                    String::from("-x509"),
-                    String::from("-sha256"),
-                    String::from("-days"),
-                    String::from("3650"),
-                    String::from("-subj"),
-                    String::from("/CN=Athena OS Key/"),
-                    String::from("-out"),
-                    format!("{secureboot_key_dir}/MOK.crt"),
-                ],
-            ),
-            "Create Secure Boot certificates.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "chmod",
-                vec![
-                    String::from("400"),
-                    format!("{secureboot_key_dir}/MOK.key"),
-                ],
-            ),
-            "Restrict permission on Secure Boot key.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "openssl",
-                vec![
-                    String::from("x509"),
-                    String::from("-outform"),
-                    String::from("DER"),
-                    String::from("-in"),
-                    format!("{secureboot_key_dir}/MOK.crt"),
-                    String::from("-out"),
-                    format!("{secureboot_key_dir}/MOK.cer"),
-                ],
-            ),
-            "Convert MOK certificate to DER format.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "sbsign",
-                vec![
-                    String::from("--key"),
-                    format!("{secureboot_key_dir}/MOK.key"),
-                    String::from("--cert"),
-                    format!("{secureboot_key_dir}/MOK.crt"),
-                    String::from("--output"),
-                    format!("/boot/vmlinuz-{kernel}"),
-                    format!("/boot/vmlinuz-{kernel}"),
-                ],
-            ),
-            "Sign kernel for Secure Boot.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "sbsign",
-                vec![
-                    String::from("--key"),
-                    format!("{secureboot_key_dir}/MOK.key"),
-                    String::from("--cert"),
-                    format!("{secureboot_key_dir}/MOK.crt"),
-                    String::from("--output"),
-                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
-                    format!("{efi_str}/EFI/GRUB/grubx64.efi"),
-                ],
-            ),
-            "Sign GRUB for Secure Boot.",
-        );
-
-        exec_eval(
-            exec_archchroot(
-                "mokutil",
-                vec![
-                    String::from("--import"),
-                    format!("{secureboot_key_dir}/MOK.cer"),
-                    String::from("-P"),
-                ],
-            ),
-            "Import certificate in MOK Manager.",
-        );
-
-        files::copy_file(&format!("/mnt{efi_str}/EFI/GRUB/grubx64.efi"), &format!("/mnt{efi_str}/EFI/BOOT/grubx64.efi"));
-        files::copy_file(&format!("/mnt{secureboot_key_dir}/MOK.cer"), &format!("/mnt{efi_str}/EFI/MOK.cer"));
-    }
-
-    if is_fedora() {
-        setting_grub_parameters();
-        exec_eval(
-            exec_archchroot(
-                "grub2-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
-    }
-}
-
-pub fn configure_bootloader_legacy(device: PathBuf) {
-
-    if !device.exists() {
-        crash(format!("The device {device:?} does not exist"), 1);
-    }
-
-    let device_str = device.to_string_lossy().to_string();
-    info!("Legacy bootloader installing at {device_str}");
-
-    if is_nix () {
-        files_eval(
-            files::sed_file(
-                "/mnt/etc/nixos/modules/boot/grub/default.nix",
-                "/dev/sda",
-                &device_str,
-            ),
-            "Set Legacy bootloader device",
-        );
-    }
-
-    if is_arch() {
-        setting_grub_parameters();
-        exec_eval(
-            exec_archchroot(
-                "grub-install",
-                vec![String::from("--target=i386-pc"), device_str],
-            ),
-            "Install GRUB as legacy",
-        );
-        exec_eval(
-            exec_archchroot(
-                "grub-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
-    } else if is_fedora() {
-        setting_grub_parameters();
-        exec_eval(
-            exec_archchroot(
-                "grub2-install",
-                vec![String::from("--target=i386-pc"), device_str],
-            ),
-            "Install GRUB as legacy",
-        );
-        exec_eval(
-            exec_archchroot(
-                "grub2-mkconfig",
-                vec![String::from("-o"), String::from("/boot/grub2/grub.cfg")],
-            ),
-            "Create grub.cfg",
-        );
-    }
 }
 
 pub fn install_nix_config() {
@@ -656,58 +641,37 @@ pub fn install_nix_config() {
     hardware::virt_check();
 }
 
-/*
-pub fn setup_snapper() {
-    install(PackageManager::Pacman, vec![
-        "btrfs-assistant", "btrfs-progs", "btrfsmaintenance", "grub-btrfs", "inotify-tools", "snap-pac", "snap-pac-grub", "snapper-support",
-    ]);
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub-btrfs/config",
-            "#GRUB_BTRFS_LIMIT=.*",
-            "GRUB_BTRFS_LIMIT=\"5\"",
-        ),
-        "Set Grub Btrfs limit",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub-btrfs/config",
-            "#GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=.*",
-            "GRUB_BTRFS_SHOW_SNAPSHOTS_FOUND=\"false\"",
-        ),
-        "Not show Grub Btrfs snapshots found",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/default/grub-btrfs/config",
-            "#GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=.*",
-            "GRUB_BTRFS_SHOW_TOTAL_SNAPSHOTS_FOUND=\"false\"",
-        ),
-        "Not show the total number of Grub Btrfs snapshots found",
-    );
-    files_eval(
-        files::sed_file(
-            "/mnt/etc/conf.d/snapper",
-            "SNAPPER_CONFIGS=.*",
-            "SNAPPER_CONFIGS=\"root\"",
-        ),
-        "Not show the total number of Grub Btrfs snapshots found",
-    );
-    exec_eval(
-        exec_archchroot(
-            "btrfs",
+fn detect_root_fs_info() -> (String, String) {
+    // Ask findmnt for both filesystem type and UUID of /mnt in one go.
+    let output = exec_eval_result(
+        exec_output(
+            "findmnt",
             vec![
-                String::from("subvolume"),
-                String::from("create"),
-                String::from("/.snapshots"),
+                "-n".into(),
+                "-o".into(),
+                "FSTYPE,UUID".into(),
+                "/mnt".into(),
             ],
         ),
-        "create /.snapshots as btrfs subvolume",
+        "Detect filesystem type and UUID for /mnt",
     );
-    files::copy_file("/mnt/etc/snapper/config-templates/garuda", "/mnt/etc/snapper/configs/root");
-    enable_service("grub-btrfsd");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let parts: Vec<&str> = stdout.split_whitespace().collect();
+
+    let fstype = parts.first().unwrap_or(&"").to_string();
+    let uuid = parts.get(1).unwrap_or(&"").to_string();
+
+    if fstype.is_empty() {
+        error!("Failed to detect filesystem type for /mnt");
+    }
+
+    if uuid.is_empty() {
+        error!("Failed to detect filesystem UUID for /mnt");
+    }
+
+    (fstype, uuid)
 }
-*/
 
 pub fn configure_zram() {
     files::create_file("/mnt/etc/systemd/zram-generator.conf");
@@ -728,7 +692,5 @@ pub fn enable_system_services() {
         enable_service("ananicy");
         enable_service("cronie");
         enable_service("systemd-timesyncd");
-    } else if is_fedora() {
-        enable_service("crond");
     }
 }

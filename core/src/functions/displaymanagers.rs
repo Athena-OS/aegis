@@ -98,7 +98,7 @@ pub fn configure_lightdm_neon(desktop: &str) {
 pub fn configure_sddm() {
     if !is_nix() {
         // File creation and configuration can still happen here if needed
-        files_eval(files::create_directory("/mnt/etc/sddm.conf.d"), "create /mnt/etc/sddm.conf.d");
+        files_eval(files::create_directory("/mnt/etc/sddm.conf.d"), "Create /mnt/etc/sddm.conf.d");
         files::create_file("/mnt/etc/sddm.conf");
         files::create_file("/mnt/etc/sddm.conf.d/virtualkbd.conf");
         files_eval(

@@ -1,6 +1,5 @@
-use crate::internal::services;
 use log::debug;
-use shared::args::{DesktopSetup, is_fedora, is_arch, is_nix};
+use shared::args::{DesktopSetup, is_arch, is_nix};
 use shared::files;
 use shared::returncode_eval::files_eval;
 
@@ -293,9 +292,6 @@ pub fn configure_gnome() {
         disable_wsession("gnome-classic.desktop");
         disable_wsession("gnome-classic-wayland.desktop");
         disable_wsession("gnome-wayland.desktop");
-    }
-    if is_fedora() {
-        services::disable_service("gdm");
     }
 }
 

@@ -1,8 +1,9 @@
 use log::info;
-use shared::args::{is_arch, is_fedora, is_nix};
+use shared::args::{is_arch, is_nix};
 use shared::files;
 use shared::exec::exec_output;
 use shared::returncode_eval::{exec_eval_result, files_eval};
+use std::fs;
 use std::process::{Command, Output};
 use std::thread::available_parallelism;
 
@@ -35,9 +36,6 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
             if is_arch() {
                 packages.push("virtualbox-guest-utils");
                 services.push("vboxservice");
-            } else if is_fedora() {
-                packages.push("virtualbox-guest-additions");
-                services.push("vboxservice");
             } else if is_nix() {
                 files_eval(
                     files::sed_file(
@@ -67,9 +65,6 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                         "/mnt/etc/mkinitcpio.conf".into(),
                     ],
                 ));
-            } else if is_fedora() {
-                packages.extend(["open-vm-tools", "xorg-x11-drv-vmware"]);
-                services.push("vmtoolsd");
             } else if is_nix() {
                 files_eval(
                     files::sed_file(
@@ -108,21 +103,8 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
 
         "microsoft" => {
             if !is_nix() {
-                if is_arch() {
-                    packages.extend(["hyperv", "xf86-video-fbdev"]);
-                    services.extend(["hv_fcopy_daemon", "hv_kvp_daemon", "hv_vss_daemon"]);
-                } else if is_fedora() {
-                    packages.push("hyperv-tools");
-                }
-                set_params.push((
-                    "Set hyperv kernel parameter".to_string(),
-                    vec![
-                        "-i".into(),
-                        "-e".into(),
-                        "/^GRUB_CMDLINE_LINUX_DEFAULT*/ s/\"$/ video=hyperv_fb:3840x2160\"/g".into(),
-                        "/mnt/etc/default/grub".into(),
-                    ],
-                ));
+                packages.extend(["hyperv", "xf86-video-fbdev"]);
+                services.extend(["hv_fcopy_daemon", "hv_kvp_daemon", "hv_vss_daemon"]);
             }
             else {
                 files_eval(
@@ -140,7 +122,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
         _ => info!("Unknown virtualization type: {result}"),
     }
 
-    (packages, services, set_params) // Return packages, services, and file changes
+    (packages, services, set_params) // Return packages, services and params
 }
 
 pub fn set_cores() {
@@ -199,9 +181,6 @@ pub fn cpu_check() -> Vec<&'static str> {
         if is_arch() {
             packages.push("intel-ucode");
             packages.push("intel-compute-runtime");
-        } else if is_fedora() {
-            packages.push("microcode_ctl");
-            packages.push("intel-compute-runtime");
         } else if is_nix() {
             files_eval(
                 files::sed_file(
@@ -216,8 +195,6 @@ pub fn cpu_check() -> Vec<&'static str> {
         info!("AMD CPU detected.");
         if is_arch() {
             packages.push("amd-ucode");
-        } else if is_fedora() {
-            packages.push("amd-ucode-firmware");
         } else if is_nix() {
         info!("AMD CPU detected.");
             files_eval(
@@ -246,107 +223,93 @@ pub fn gpu_check(kernel: &str) -> Vec<&'static str> {
     // AMD
     if gpudetect.contains("AMD") {
         info!("AMD GPU detected.");
-        if is_arch() {
-            packages.extend(["xf86-video-amdgpu", "opencl-amd"]);
-        } else if is_fedora() {
-            packages.extend(["xorg-x11-drv-amdgpu", "amd-gpu-firmware"]);
-        }
+        packages.extend(["xf86-video-amdgpu", "opencl-amd"]);
     }
     
     // ATI (legacy, not reporting AMD)
     if gpudetect.contains("ATI") && !gpudetect.contains("AMD") {
         info!("ATI GPU detected.");
-        if is_arch() {
-            packages.push("opencl-mesa");
-        } else if is_fedora() {
-            packages.push("mesa-libOpenCL");
-        }
+        packages.push("opencl-mesa");
     }
     
     // NVIDIA
     if gpudetect.contains("NVIDIA") {
         info!("NVIDIA GPU detected.");
     
-        if is_arch() {
-            // Family-specific handling (your Arch logic)
-            let mut matched_family = false;
+        // Family-specific handling
+        let mut matched_family = false;
         
-            if gpudetect.contains("GM107") || gpudetect.contains("GM108") || gpudetect.contains("GM200")
-                || gpudetect.contains("GM204") || gpudetect.contains("GM206") || gpudetect.contains("GM20B")
-            {
-                info!("NV110 family (Maxwell)");
-                matched_family = true;
-                match kernel {
-                    "linux" => packages.push("nvidia"),
-                    "linux-lts" => packages.push("nvidia-lts"),
-                    _ => packages.push("nvidia-dkms"),
-                }
-                packages.push("nvidia-settings");
+        if gpudetect.contains("GM107") || gpudetect.contains("GM108") || gpudetect.contains("GM200")
+            || gpudetect.contains("GM204") || gpudetect.contains("GM206") || gpudetect.contains("GM20B")
+        {
+            info!("NV110 family (Maxwell)");
+            matched_family = true;
+            match kernel {
+                "linux" => packages.push("nvidia"),
+                "linux-lts" => packages.push("nvidia-lts"),
+                _ => packages.push("nvidia-dkms"),
             }
+            packages.push("nvidia-settings");
+        }
         
-            if gpudetect.contains("TU102") || gpudetect.contains("TU104") || gpudetect.contains("TU106")
-                || gpudetect.contains("TU116") || gpudetect.contains("TU117")
-            {
-                info!("NV160 family (Turing)");
-                matched_family = true;
-                match kernel {
-                    "linux" => packages.push("nvidia-open"),
-                    _ => packages.push("nvidia-open-dkms"),
-                }
-                packages.push("nvidia-settings");
+        if gpudetect.contains("TU102") || gpudetect.contains("TU104") || gpudetect.contains("TU106")
+            || gpudetect.contains("TU116") || gpudetect.contains("TU117")
+        {
+            info!("NV160 family (Turing)");
+            matched_family = true;
+            match kernel {
+                "linux" => packages.push("nvidia-open"),
+                _ => packages.push("nvidia-open-dkms"),
             }
+            packages.push("nvidia-settings");
+        }
         
-            if gpudetect.contains("GK104") || gpudetect.contains("GK107") || gpudetect.contains("GK106")
-                || gpudetect.contains("GK110") || gpudetect.contains("GK110B") || gpudetect.contains("GK208B")
-                || gpudetect.contains("GK208") || gpudetect.contains("GK20A") || gpudetect.contains("GK210")
-            {
-                info!("NVE0 family (Kepler)");
-                matched_family = true;
-                packages.extend(["nvidia-470xx-dkms", "nvidia-470xx-settings"]);
-            }
+        if gpudetect.contains("GK104") || gpudetect.contains("GK107") || gpudetect.contains("GK106")
+            || gpudetect.contains("GK110") || gpudetect.contains("GK110B") || gpudetect.contains("GK208B")
+            || gpudetect.contains("GK208") || gpudetect.contains("GK20A") || gpudetect.contains("GK210")
+        {
+            info!("NVE0 family (Kepler)");
+            matched_family = true;
+            packages.extend(["nvidia-470xx-dkms", "nvidia-470xx-settings"]);
+        }
         
-            if gpudetect.contains("GF100") || gpudetect.contains("GF108") || gpudetect.contains("GF106")
-                || gpudetect.contains("GF104") || gpudetect.contains("GF110") || gpudetect.contains("GF114")
-                || gpudetect.contains("GF116") || gpudetect.contains("GF117") || gpudetect.contains("GF119")
-            {
-                info!("NVC0 family (Fermi)");
-                matched_family = true;
-                packages.extend(["nvidia-390xx-dkms", "nvidia-390xx-settings"]);
-            }
+        if gpudetect.contains("GF100") || gpudetect.contains("GF108") || gpudetect.contains("GF106")
+            || gpudetect.contains("GF104") || gpudetect.contains("GF110") || gpudetect.contains("GF114")
+            || gpudetect.contains("GF116") || gpudetect.contains("GF117") || gpudetect.contains("GF119")
+        {
+            info!("NVC0 family (Fermi)");
+            matched_family = true;
+            packages.extend(["nvidia-390xx-dkms", "nvidia-390xx-settings"]);
+        }
         
-            if gpudetect.contains("G80") || gpudetect.contains("G84") || gpudetect.contains("G86")
-                || gpudetect.contains("G92") || gpudetect.contains("G94") || gpudetect.contains("G96")
-                || gpudetect.contains("G98") || gpudetect.contains("GT200") || gpudetect.contains("GT215")
-                || gpudetect.contains("GT216") || gpudetect.contains("GT218") || gpudetect.contains("MCP77")
-                || gpudetect.contains("MCP78") || gpudetect.contains("MCP79") || gpudetect.contains("MCP7A")
-                || gpudetect.contains("MCP89")
-            {
-                info!("NV50 family (Tesla)");
-                matched_family = true;
-                packages.extend(["nvidia-340xx-dkms", "nvidia-340xx-settings"]);
-            }
+        if gpudetect.contains("G80") || gpudetect.contains("G84") || gpudetect.contains("G86")
+            || gpudetect.contains("G92") || gpudetect.contains("G94") || gpudetect.contains("G96")
+            || gpudetect.contains("G98") || gpudetect.contains("GT200") || gpudetect.contains("GT215")
+            || gpudetect.contains("GT216") || gpudetect.contains("GT218") || gpudetect.contains("MCP77")
+            || gpudetect.contains("MCP78") || gpudetect.contains("MCP79") || gpudetect.contains("MCP7A")
+            || gpudetect.contains("MCP89")
+        {
+            info!("NV50 family (Tesla)");
+            matched_family = true;
+            packages.extend(["nvidia-340xx-dkms", "nvidia-340xx-settings"]);
+        }
+    
+        if !matched_family {
+            packages.extend(["nvidia-open-dkms", "nvidia-settings"]);
+        }
         
-            if !matched_family {
-                packages.extend(["nvidia-open-dkms", "nvidia-settings"]);
-            }
+        // Common extras on Arch
+        packages.extend(["opencl-nvidia", "gwe", "nvtop"]);
         
-            // Common extras on Arch
-            packages.extend(["opencl-nvidia", "gwe", "nvtop"]);
-        
-            // Hybrid GPU setup? add envycontrol on Arch like your original
-            if gpudetect.contains("Intel") || gpudetect.contains("AMD") || gpudetect.contains("ATI") {
-                packages.push("envycontrol");
-            }
-        } else if is_fedora() {
-            // Fedora path (your simpler logic)
-            packages.push("nvidia-gpu-firmware");
-            packages.extend(["gwe", "nvtop"]);
+        // Hybrid GPU setup? add envycontrol on Arch like your original
+        if gpudetect.contains("Intel") || gpudetect.contains("AMD") || gpudetect.contains("ATI") {
+            packages.push("envycontrol");
         }
     }
     packages
 }
 
-fn cpu_detect() -> String {
+pub fn cpu_detect() -> String {
     let lscpu_output = exec_eval_result(
         exec_output(
             "lscpu",
@@ -370,4 +333,25 @@ fn cpu_detect() -> String {
         .trim();
 
     vendor_id.to_string()
+}
+
+pub fn is_hyperv_guest() -> bool {
+    let candidates = [
+        "/sys/devices/virtual/dmi/id/sys_vendor",
+        "/sys/devices/virtual/dmi/id/product_name",
+        "/sys/class/dmi/id/sys_vendor",
+        "/sys/class/dmi/id/product_name",
+    ];
+
+    for path in candidates {
+        if let Ok(data) = fs::read_to_string(path) {
+            let d = data.to_lowercase();
+            // loose match: "microsoft" is enough
+            if d.contains("microsoft") || d.contains("hyper-v") || d.contains("hyperv") {
+                return true;
+            }
+        }
+    }
+
+    false
 }

@@ -1,20 +1,20 @@
 use crate::{
     functions::*,
-    internal::{install::install, packages, secure},
+    internal::{install::install, packages},
 };
 use log::{debug, error, info};
 use serde_json::{self, Value, Map};
 use shared::{
-    args::{self, Config, ConfigInput, DesktopSetup, ExtendIntoString, PackageManager, ThemeSetup, DMSetup, ShellSetup, get_fedora_version, set_base, is_arch, is_fedora, is_nix},
-    encrypt::{find_luks_partitions, tpm2_available_esapi},
-    exec::{exec, exec_archchroot},
+    args::{self, Config, ConfigInput, DesktopSetup, ExtendIntoString, PackageManager, ThemeSetup, DMSetup, ShellSetup, set_base, is_arch, is_nix},
+    encrypt::{find_luks_partitions},
+    exec::exec,
     files,
     partition,
     returncode_eval::{exec_eval, files_eval},
     strings::crash,
 };
 use std::{
-    fs, path::{Path, PathBuf},
+    fs, path::PathBuf,
 };
 
 fn merge_values(dst: &mut Value, src: Value) {
@@ -168,22 +168,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     let kernel = "linux-lts";
     let mut package_set = packages::to_strings(packages::COMMON);
     
-    if is_arch() {
-        packages::extend(&mut package_set, packages::ARCH_ONLY);
-    } else if is_fedora() {
-        let fedora_version = get_fedora_version();
-
-        package_set.push(format!("https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-{fedora_version}.noarch.rpm"));
-        package_set.push(format!("https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{fedora_version}.noarch.rpm"));
-
-        /*****TEMPORARY DISABLE SELINUX*****/
-        if secure::selinux_enabled() {
-            secure::set_selinux_mode("0");
-        }
-
-        // Then append Fedora-only package names
-        packages::extend(&mut package_set, packages::FEDORA_ONLY);
-    };
+    packages::extend(&mut package_set, packages::ARCH_ONLY);
 
     /*    PARTITIONING    */
     let disk_type = config.partition.content.table_type;
@@ -227,22 +212,11 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
 
     if partition::is_uefi() {
         package_set.push("efibootmgr".into());
-        package_set.push("athena-secureboot".into());
         package_set.push("mokutil".into());
         package_set.push("sbsigntools".into());
         package_set.push("shim-signed".into());
-
-        if is_fedora() {
-            package_set.push("grub2-efi".into());
-            package_set.push("grub2-efi-x64-modules".into()); // Not sure if it works also for ARM CPU
-            package_set.push("grubby".into());
-            package_set.push("shim-*".into());
-            let grub_cfg_path = "/mnt/boot/efi/EFI/fedora/grub.cfg";
-            let path = Path::new(grub_cfg_path);
-            if path.exists() && path.is_file() {
-                files::remove_file(grub_cfg_path);
-            }
-        }
+        package_set.push("mokutil".into());
+        package_set.push("systemd-ukify".into());
     }
     partition::partition_info();
     /**************************/
@@ -369,12 +343,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             "temple" => themes::configure_temple(),
             _ => info!("No design configuration needed."),
         }
-        /**************************/
-
-        /*info!("Installing snapper : {}", config.snapper);
-        if config.snapper {
-            base::setup_snapper();
-        }*/
 
         /**************************/
         /*     SHELL CONFIG     */
@@ -388,13 +356,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         /*          MISC         */
         info!("Enabling zramd.");
         base::configure_zram();
-
-        /*info!("Hardening system : {}", config.hardened);
-        if config.hardened {
-            secure::secure_password_config();
-            secure::secure_ssh_config();
-        }*/
-        /**************************/
     }
 
     /* DISPLAY MANAGER CONFIG */
@@ -403,7 +364,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => displaymanagers::configure_gdm(&config.desktop),
         "lightdm neon" => displaymanagers::configure_lightdm_neon(&config.desktop),
-        "sddm" => displaymanagers::configure_sddm(), // In Fedora must be AFTER GNOME configuration to enable SDDM correctly, because GDM must be first disabled
+        "sddm" => displaymanagers::configure_sddm(),
         "astronaut" => displaymanagers::configure_sddm_astronaut(),
         "black hole" => displaymanagers::configure_sddm_blackhole(),
         "cyberpunk" => displaymanagers::configure_sddm_cyberpunk(),
@@ -434,10 +395,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
 
     /*    BOOTLOADER CONFIG     */
     // mokutil needs to be run after root password creation
-    if partition::is_uefi() {
-        base::configure_bootloader_efi(PathBuf::from("/boot/efi"), kernel);
-    } else {
-        base::configure_bootloader_legacy(PathBuf::from(config.partition.device));
+    if is_arch() && partition::is_uefi() {
+        base::configure_bootloader_systemd_boot_shim(PathBuf::from("/boot/efi"));
     }
 
     if is_nix() {
@@ -454,34 +413,26 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         base::enable_system_services();
     }
     /**************************/
-    /*   SET SELINUX CONTEXT   */
-    if is_fedora() {
-        info!("Applying security labels on files...");
-        secure::set_security_context();
-    }
-    /**************************/
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
 
-    if is_fedora() && secure::selinux_enabled() {
-        secure::set_selinux_mode("1");
-    }
-
     // Check TPM. The enforcement of PCRs must be done at the end of installation
-    let (luks_partitions, encrypt_check) = find_luks_partitions();
+    let (_luks_partitions, encrypt_check) = find_luks_partitions();
+    //let (luks_partitions, encrypt_check) = find_luks_partitions();
     if encrypt_check {
         let luks_k = String::from("/run/luks");
-        info!("Enrolling key on TPM...");
+        /*
         for (device_path, uuid) in &luks_partitions {
-            info!("Device: {device_path}, UUID: {uuid}");
             if tpm2_available_esapi() {
+                info!("Device: {device_path}, UUID: {uuid}");
                 info!("TPM 2.0 device detected and accessible.");
+                info!("Enrolling key on TPM...");
                 exec_eval(
                     exec(
                         "systemd-cryptenroll",
                         vec![
                             String::from("--tpm2-device=auto"),
                             format!("--unlock-key-file={luks_k}"),
-                            String::from("--tpm2-pcrs=0+11+15"),
+                            String::from("--tpm2-pcrs=7+11+15"),
                             String::from(device_path),
                         ],
                     ),
@@ -501,17 +452,18 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             } else {
                 info!("No accessible TPM 2.0 device found.");
             }
-            exec_eval(
-                exec(
-                    "rm",
-                    vec![
-                        String::from("-rf"),
-                        luks_k.clone(),
-                    ],
-                ),
-                "Remove luks key",
-            );
         }
+        */
+        exec_eval(
+            exec(
+                "rm",
+                vec![
+                    String::from("-rf"),
+                    luks_k.clone(),
+                ],
+            ),
+            "Remove luks key",
+        );
     }
 
     info!("Installation log file copied to /var/log/aegis.log");

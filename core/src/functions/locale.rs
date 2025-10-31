@@ -39,7 +39,7 @@ pub fn set_locale(locale: String) {
         files::create_file("/mnt/etc/locale.conf");
         files_eval(
             files::append_file("/mnt/etc/locale.conf", "LANG=en_US.UTF-8"),
-            "edit locale.conf",
+            "Edit locale.conf",
         );
         for i in (0..locale.split(' ').count()).step_by(2) {
             if is_arch() {
@@ -52,7 +52,7 @@ pub fn set_locale(locale: String) {
                             locale.split(' ').collect::<Vec<&str>>()[i + 1]
                         ),
                     ),
-                    "add locales to locale.gen",
+                    "Add locales to locale.gen",
                 );
             }
             if locale.split(' ').collect::<Vec<&str>>()[i] != "en_US.UTF-8" {
@@ -98,15 +98,15 @@ pub fn set_keyboard(user_choice_or_id: &str) -> Result<(), Box<dyn std::error::E
         files::create_file("/mnt/etc/vconsole.conf");
         files_eval(
             files::append_file("/mnt/etc/vconsole.conf", &format!("KEYMAP={}\n", km.console)),
-            "set keyboard layout for virtual console",
+            "Set keyboard layout for virtual console",
         );
         files_eval(
             files::append_file("/mnt/etc/vconsole.conf", "FONT=ter-u24n\n"),
-            "set console font",
+            "Set console font",
         );
 
         // X11
-        files_eval(files::create_directory("/mnt/etc/X11/xorg.conf.d"), "create /mnt/etc/X11/xorg.conf.d directory");
+        files_eval(files::create_directory("/mnt/etc/X11/xorg.conf.d"), "Create /mnt/etc/X11/xorg.conf.d directory");
         let mut conf = String::new();
         conf.push_str(r#"
 Section "InputClass"

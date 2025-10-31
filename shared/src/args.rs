@@ -1,5 +1,3 @@
-use crate::exec::exec_output;
-use crate::returncode_eval::exec_eval_result;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -240,21 +238,6 @@ pub fn distro_base() -> Base {
 pub fn is_arch() -> bool   { distro_base() == Base::AthenaArch }
 pub fn is_fedora() -> bool { distro_base() == Base::AthenaFedora }
 pub fn is_nix() -> bool    { distro_base() == Base::AthenaNix }
-
-pub fn get_fedora_version() -> String {
-    let output = exec_eval_result(
-        exec_output(
-            "rpm",
-            vec![
-                String::from("-E"),
-                String::from("%fedora"),
-            ],
-        ),
-        "Get Athena version",
-    );
-
-    String::from_utf8_lossy(&output.stdout).trim().to_string()
-}
 
 #[derive(Debug, Args)]
 pub struct LocaleArgs {
