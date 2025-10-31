@@ -368,7 +368,7 @@ impl AddUser {
         );
 
         let sudo_list = StrList::new(
-            "Administrative rights (sudo via wheel)",
+            "Awaken sudo power",
             vec!["Yes".to_string(), "No".to_string()],
         );
 
