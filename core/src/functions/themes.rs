@@ -8,6 +8,7 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
 
     match theme_setup {
         ThemeSetup::Cyborg => install_cyborg(),
+        ThemeSetup::Frost => install_frost(),
         ThemeSetup::Graphite => install_graphite(),
         ThemeSetup::HackTheBox => install_hackthebox(),
         ThemeSetup::RedMoon => install_redmoon(),
@@ -19,6 +20,22 @@ pub fn install_theme_setup(theme_setup: ThemeSetup) -> Vec<&'static str> {
             Vec::new() // Return empty vector if no design setup is selected
         }
     }
+}
+
+fn install_frost() -> Vec<&'static str> {
+    if is_nix() {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/nixos/configuration.nix",
+                "  theme =.*",
+                "  theme = \"frost\";",
+            ),
+            "Set Frost design",
+        );        
+    }
+    vec![
+        "athena-frost-design",
+    ]
 }
 
 fn install_cyborg() -> Vec<&'static str> {
@@ -151,6 +168,25 @@ pub fn configure_cyborg() {
             "set -g @tmux_power_theme 'gold'",
         ),
         "Apply Gold Tmux theme",
+    );
+}
+
+pub fn configure_frost() {
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.config/VSCodium/User/settings.json",
+            "\"workbench.colorTheme\":.*",
+            "\"workbench.colorTheme\": \"Tokyo Night Storm\",",
+        ),
+        "Apply Tokyo Night Storm VSCodium theme",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/skel/.tmux.conf",
+            "set -g @tmux_power_theme.*",
+            "set -g @tmux_power_theme 'sky'",
+        ),
+        "Apply Sky Tmux theme",
     );
 }
 

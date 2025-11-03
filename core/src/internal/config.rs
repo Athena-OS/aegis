@@ -261,6 +261,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     info!("Selected design : {:?}", config.design);
     match config.design.to_lowercase().as_str() {
         "cyborg" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Cyborg)),
+        "frost" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Frost)),
         "graphite" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Graphite)),
         "hackthebox" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::HackTheBox)), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
         "redmoon" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::RedMoon)),
@@ -335,6 +336,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         info!("Configuring design : {:?}", config.design);
         match config.design.to_lowercase().as_str() {
             "cyborg" => themes::configure_cyborg(),
+            "frost" => themes::configure_frost(),
             "graphite" => themes::configure_graphite(),
             "hackthebox" => themes::configure_hackthebox(),
             "redmoon" => themes::configure_redmoon(),

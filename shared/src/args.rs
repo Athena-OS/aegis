@@ -361,6 +361,9 @@ pub enum ThemeSetup {
     #[value(name = "cyborg")]
     Cyborg,
 
+    #[value(name = "frost")]
+    Frost,
+
     #[value(name = "graphite")]
     Graphite,
 

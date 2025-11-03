@@ -2694,6 +2694,7 @@ impl Design {
   pub fn new() -> Self {
     let designs = [
       "Cyborg",
+      "Frost",
       "Graphite",
       "HackTheBox",
       "RedMoon",
@@ -2773,6 +2774,44 @@ impl Design {
         ]),
       ),
       1 => InfoBox::new(
+        "Frost",
+        styled_block(vec![
+          vec![
+            (HIGHLIGHT, "Frost design"),
+            (None, " evokes a sense of "),
+            (HIGHLIGHT, "quiet elegance"),
+            (None, " through its "),
+            (HIGHLIGHT, "monochrome palette"),
+            (None, " of "),
+            (HIGHLIGHT, "icy grays and silver tones"),
+            (None, "."),
+          ],
+          vec![
+            (None, "The centerpiece features a "),
+            (HIGHLIGHT, "melancholic anime-style portrait"),
+            (None, " rendered with delicate highlights that resemble "),
+            (HIGHLIGHT, "frozen light reflections"),
+            (None, " against a vast, starry backdrop."),
+          ],
+          vec![
+            (None, "Its atmosphere combines "),
+            (HIGHLIGHT, "cosmic stillness"),
+            (None, " and "),
+            (HIGHLIGHT, "fragile beauty"),
+            (None, ", giving the impression of "),
+            (HIGHLIGHT, "ice meeting starlight"),
+            (None, " in a timeless void."),
+          ],
+          vec![
+            (None, "The theme captures both "),
+            (HIGHLIGHT, "emotional depth and minimalist design"),
+            (None, ", creating an environment that feels "),
+            (HIGHLIGHT, "cold yet introspective"),
+            (None, ", perfect for those drawn to serene darkness."),
+          ],
+        ]),
+      ),
+      2 => InfoBox::new(
         "Graphite",
         styled_block(vec![
           vec![
@@ -2801,7 +2840,7 @@ impl Design {
           ],
         ]),
       ),
-      2 => InfoBox::new(
+      3 => InfoBox::new(
         "HackTheBox",
         styled_block(vec![
           vec![
@@ -2830,7 +2869,7 @@ impl Design {
           ],
         ]),
       ),
-      3 => InfoBox::new(
+      4 => InfoBox::new(
         "RedMoon",
         styled_block(vec![
           vec![
@@ -2857,7 +2896,7 @@ impl Design {
           ],
         ]),
       ),
-      4 => InfoBox::new(
+      5 => InfoBox::new(
         "Samurai",
         styled_block(vec![
           vec![
@@ -2893,7 +2932,7 @@ impl Design {
           ],
         ]),
       ),
-      5 => InfoBox::new(
+      6 => InfoBox::new(
         "Sweet",
         styled_block(vec![
           vec![
@@ -2925,7 +2964,7 @@ impl Design {
           ],
         ]),
       ),
-      6 => InfoBox::new(
+      7 => InfoBox::new(
         "Temple",
         styled_block(vec![
           vec![
