@@ -165,6 +165,7 @@ fn generate_kernel_cmdline() -> String {
     }
 
     let mut params: Vec<&str> = vec![
+        "lsm=landlock,lockdown,yama,integrity,apparmor,bpf",
         "quiet",
         "loglevel=3",
         "nvme_load=yes",
@@ -682,6 +683,7 @@ pub fn configure_zram() {
 }
 
 pub fn enable_system_services() {
+    enable_service("apparmor");
     enable_service("auditd");
     enable_service("bluetooth");
     enable_service("irqbalance");

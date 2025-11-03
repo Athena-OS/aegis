@@ -1,8 +1,8 @@
 pub const COMMON: &[&str] = &[
     "linux-firmware", "network-manager-applet", "man-db", "man-pages", "nano", "sudo", "curl",
     "accountsservice", "alacritty", "alsa-utils", "apparmor", "audit", "bind", "bluez", "dhcpcd",
-    "dialog", "dosfstools", "irqbalance", "lvm2", "memtest86+", "most", "mtools", "nbd", "net-tools",
-    "nfs-utils", "nss-mdns", "ntfsprogs", "pavucontrol", "pv", "rsync", "squashfs-tools",
+    "dialog", "dosfstools", "firejail", "irqbalance", "lvm2", "memtest86+", "most", "mtools", "nbd",
+    "net-tools", "nfs-utils", "nss-mdns", "ntfsprogs", "pavucontrol", "pv", "rsync", "squashfs-tools",
     "testdisk", "usbutils", "wpa_supplicant", "xfsprogs",
     "pipewire", "pipewire-alsa", "wireplumber", "ntfs-3g", "zram-generator",
     "pocl", "asciinema", "bat", "bc", "cmatrix", "cowsay", "fastfetch", "file-roller",
