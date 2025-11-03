@@ -104,7 +104,27 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
         "microsoft" => {
             if !is_nix() {
                 packages.extend(["hyperv", "xf86-video-fbdev"]);
-                services.extend(["hv_fcopy_daemon", "hv_kvp_daemon", "hv_vss_daemon"]);
+                
+                let unit_dir = "/mnt/etc/systemd/system";
+                let unit_path = "/mnt/etc/systemd/system/hv_fcopy_uio_daemon.service";
+                let unit_contents = r#"[Unit]
+Description=Hyper-V file copy service (uio_hv_generic)
+ConditionPathExists=/dev/vmbus/uio_hv_generic
+                    
+[Service]
+ExecStart=/usr/bin/hv_fcopy_uio_daemon -n
+                    
+[Install]
+WantedBy=multi-user.target
+"#;
+                    
+                // Ensure the target directory exists, then write the unit
+                fs::create_dir_all(unit_dir)
+                    .unwrap_or_else(|e| panic!("Failed to create {unit_dir}: {e}"));
+                fs::write(unit_path, unit_contents)
+                    .unwrap_or_else(|e| panic!("Failed to write {unit_path}: {e}"));
+
+                services.extend(["hv_fcopy_uio_daemon", "hv_kvp_daemon", "hv_vss_daemon"]);
             }
             else {
                 files_eval(

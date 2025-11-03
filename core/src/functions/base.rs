@@ -175,7 +175,7 @@ fn generate_kernel_cmdline() -> String {
     ];
 
     if hardware::is_hyperv_guest() {
-        params.push("video=hyperv_fb:3840x2160");
+        params.push("video=hyperv_fb:1920x1080"); // 1920x1080 is the maximum: https://wiki.archlinux.org/title/Hyper-V#Setting_resolution
     }
 
     format!("{early_root_param}{}", params.join(" "))
