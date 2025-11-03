@@ -1,7 +1,7 @@
 pub const COMMON: &[&str] = &[
     "linux-firmware", "network-manager-applet", "man-db", "man-pages", "nano", "sudo", "curl",
-    "accountsservice", "alacritty", "alsa-utils", "audit", "bind", "bluez", "dhcpcd", "dialog",
-    "dosfstools", "irqbalance", "lvm2", "memtest86+", "most", "mtools", "nbd", "net-tools",
+    "accountsservice", "alacritty", "alsa-utils", "apparmor", "audit", "bind", "bluez", "dhcpcd",
+    "dialog", "dosfstools", "irqbalance", "lvm2", "memtest86+", "most", "mtools", "nbd", "net-tools",
     "nfs-utils", "nss-mdns", "ntfsprogs", "pavucontrol", "pv", "rsync", "squashfs-tools",
     "testdisk", "usbutils", "wpa_supplicant", "xfsprogs",
     "pipewire", "pipewire-alsa", "wireplumber", "ntfs-3g", "zram-generator",
@@ -9,7 +9,7 @@ pub const COMMON: &[&str] = &[
     "fortune-mod", "git", "gparted", "gvfs-gphoto2", "gvfs-mtp", "hexedit", "jq", "keepassxc",
     "lolcat", "lsd", "nano-syntax-highlighting", "nautilus", "ncdu", "onionshare", "openvpn",
     "orca", "p7zip", "podman", "polkit", "sl", "torbrowser-launcher", "tree",
-    "ufw", "unzip", "vim", "vnstat", "which", "xclip", "xmlstarlet", "zoxide",
+    "unzip", "usbguard", "vim", "vnstat", "which", "xclip", "xmlstarlet", "zoxide",
     "athena-bash", "athena-config", "athena-kitty-config",
     "athena-tmux-config", "athena-tweak-tool", "athena-vscodium-themes", "athena-welcome",
     "htb-toolkit", "nist-feed",
@@ -17,8 +17,8 @@ pub const COMMON: &[&str] = &[
 
 pub const ARCH_ONLY: &[&str] = &[
     "systemd-sysvcompat","networkmanager","arch-install-scripts","broadcom-wl-dkms","edk2-shell",
-    "inetutils","mesa","mesa-utils","mkinitcpio-nfs-utils","mkinitcpio-openswap","netctl",
-    "ntp","profile-sync-daemon","sof-firmware","wireless_tools",
+    "inetutils", "iptables-nft", "mesa","mesa-utils","mkinitcpio-nfs-utils","mkinitcpio-openswap",
+    "netctl","ntp","profile-sync-daemon","sof-firmware","wireless_tools",
     "pipewire-pulse","pipewire-jack","ananicy","bashtop","imagemagick","lib32-glibc","mtpfs",
     "networkmanager-openvpn","noto-fonts-cjk", "octopi","openbsd-netcat","paru","pfetch","reflector",
     "toilet-fonts","wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config",
