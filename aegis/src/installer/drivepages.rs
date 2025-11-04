@@ -2221,7 +2221,6 @@ impl AlterPartition {
     } else {
       match status {
         PartStatus::Exists => vec![
-          Box::new(Button::new("Set Mount Point")),
           Box::new(Button::new(
             "Mark For Modification (data will be wiped on install)",
           )),
@@ -2275,8 +2274,6 @@ impl AlterPartition {
         "Alter Existing Partition",
         styled_block(vec![
           vec![(None, "Choose an action to perform on the selected partition.")],
-          vec![(None, "- "), (Some((Color::Green, Modifier::BOLD)), "'Set Mount Point'"),
-              (None, " specify where this partition will be mounted.")],
           vec![(None, "- "), (Some((Color::Green, Modifier::BOLD)), "'Mark For Modification'"),
               (None, " will flag this partition to be reformatted during installation.")],
           vec![(None, "- "), (Some((Color::Green, Modifier::BOLD)), "'Delete Partition'"),
