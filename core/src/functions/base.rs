@@ -22,10 +22,12 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
         // Repositories
         "athena-mirrorlist",
+        "blackarch-mirrorlist",
         "chaotic-mirrorlist",
         "rate-mirrors",
         "archlinux-keyring",
         "athena-keyring",
+        "blackarch-keyring",
         "chaotic-keyring",
     ];
 
