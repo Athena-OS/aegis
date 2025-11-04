@@ -1620,6 +1620,8 @@ impl NewPartition {
 
       let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot/efi") {
           vec!["boot".to_string(), "esp".to_string()]
+      } else if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot") {
+          vec!["bls_boot".to_string()]
       } else {
           Vec::new() // Default case to ensure `flags` is always a Vec<String>
       };
@@ -1637,7 +1639,8 @@ impl NewPartition {
         Some("SWAP".to_string())
       } else {
         match self.new_part_mount_point.as_deref() {
-          Some("/boot") | Some("/boot/efi") => Some("BOOT".to_string()),
+          Some("/boot/efi") => Some("ESP".to_string()),
+          Some("/boot") => Some("BOOT".to_string()),
           Some("/")     => Some("ROOT".to_string()),
           _             => None,
         }
@@ -2198,7 +2201,6 @@ impl AlterPartition {
           Box::new(Button::new(
             "Mark For Modification (data will be wiped on install)",
           )),
-          Box::new(Button::new("Delete Partition")),
           Box::new(Button::new("Back")),
         ],
         PartStatus::Modify => vec![
@@ -2224,7 +2226,6 @@ impl AlterPartition {
           Box::new(Button::new(
             "Mark For Modification (data will be wiped on install)",
           )),
-          Box::new(Button::new("Delete Partition")),
           Box::new(Button::new("Back")),
         ],
         PartStatus::Modify => vec![
@@ -2264,9 +2265,6 @@ impl AlterPartition {
           vec![(None, "- "),
               (Some((Color::Green, Modifier::BOLD)), "'Mark For Modification'"),
               (None, " will flag this partition to be reformatted during installation.")],
-          vec![(None, "- "),
-              (Some((Color::Green, Modifier::BOLD)), "'Delete Partition'"),
-              (None, " will remove this partition from the configuration.")],
         ]),
       )
     } else {
@@ -2276,8 +2274,6 @@ impl AlterPartition {
           vec![(None, "Choose an action to perform on the selected partition.")],
           vec![(None, "- "), (Some((Color::Green, Modifier::BOLD)), "'Mark For Modification'"),
               (None, " will flag this partition to be reformatted during installation.")],
-          vec![(None, "- "), (Some((Color::Green, Modifier::BOLD)), "'Delete Partition'"),
-              (None, " mark for deletion.")],
         ]),
       )
     };
@@ -2389,12 +2385,7 @@ impl Page for AlterPartition {
                       self.refresh_menu_from_device(device);
                       Signal::Wait
                   }
-                  1 => { // Delete
-                      part.set_status(PartStatus::Delete);
-                      device.calculate_free_space();
-                      Signal::Pop
-                  }
-                  2 => Signal::Pop, // Back
+                  1 => Signal::Pop, // Back
                   _ => Signal::Wait,
               }
           }
@@ -2424,6 +2415,7 @@ impl Page for AlterPartition {
                 4 => { // Delete
                   if let Some(p) = device.partition_by_id_mut(self.part_id) {
                     p.set_status(PartStatus::Delete);
+                    device.calculate_free_space();
                   }
                   Signal::Pop
                 }
@@ -2455,6 +2447,7 @@ impl Page for AlterPartition {
                 8 => { // Delete
                   if let Some(p) = device.partition_by_id_mut(self.part_id) {
                     p.set_status(PartStatus::Delete);
+                    device.calculate_free_space();
                   }
                   Signal::Pop
                 }

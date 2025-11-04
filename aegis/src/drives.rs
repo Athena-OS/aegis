@@ -891,7 +891,7 @@ impl Disk {
         DiskLabel::Gpt => (
             "ext4".into(),            // classic /boot on MBR
             "/boot".into(),           // mountpoint
-            vec!["boot".into()],      // only "boot" flag
+            vec!["bls_boot".into()],      // only "bls_boot" flag
         ),
         DiskLabel::Msdos => (
             "ext4".into(),            // classic /boot on MBR
@@ -1061,7 +1061,7 @@ impl Disk {
           Some("/boot".into()),
           Some("BOOT".into()),
           false,
-          vec![], // no flags needed; ESP already carries boot,esp
+          vec!["bls_boot".into()],
       );
       cursor = Self::align_up(boot.end(), align);
       self.layout.push(DiskItem::Partition(boot));
