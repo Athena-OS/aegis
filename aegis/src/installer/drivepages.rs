@@ -1810,54 +1810,128 @@ impl NewPartition {
     info_box.render(f, chunks[0]);
     self.enc_widgets.render(f, chunks[1]);
   }
+
   fn render_password_input(&mut self, f: &mut Frame, area: Rect) {
-    let chunks = split_vert!(area, 1, [
-      Constraint::Percentage(45),
-      Constraint::Length(7),
-      Constraint::Length(7),
-      Constraint::Percentage(41),
+    // Match PromptLuksPassword look: centered 60% column, two rows of height 5
+    let hor = split_hor!(area, 1, [
+      Constraint::Percentage(20),
+      Constraint::Percentage(60),
+      Constraint::Percentage(20),
     ]);
-    let info = InfoBox::new(
-      "LUKS Passphrase",
-      styled_block(vec![
-        vec![(None, "Enter and confirm the LUKS passphrase for this partition.")],
-        vec![(None, "It will be stored in-memory and added to the installer JSON.")],
-      ])
-    );
-    info.render(f, chunks[0]);
-    self.pass1.render(f, chunks[1]);
-    self.pass2.render(f, chunks[2]);
+    let col = split_vert!(hor[1], 1, [
+      Constraint::Length(5), // pass
+      Constraint::Length(5), // confirm
+      Constraint::Min(0),
+    ]);
+
+    self.pass1.render(f, col[0]);
+    self.pass2.render(f, col[1]);
   }
 
   fn handle_input_password(&mut self, installer: &mut Installer, event: KeyEvent) -> Signal {
+    use KeyCode::*;
     match event.code {
-      KeyCode::Esc => {
+      Esc => {
         // back to the encryption checkbox instead of discarding encrypt choice
         self.collecting_pass = false;
         self.enc_widgets.focus();
         Signal::Wait
       }
-      KeyCode::Enter => {
-        let p1 = self.pass1.get_value().unwrap().to_string();
-        let p2 = self.pass2.get_value().unwrap().to_string();
-        let p1 = p1.trim();
-        let p2 = p2.trim();
-        if p1.len() < 8 {
-          self.pass1.error("Passphrase must be at least 8 characters.");
+      Tab => {
+        // forward cycle: pass1 -> pass2 -> pass1
+        if self.pass1.is_focused() {
+          let v = self.pass1
+            .get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          if let Err(msg) = validate_passphrase(&v) {
+            self.pass1.error(msg);
+            return Signal::Wait;
+          }
+          self.pass1.clear_error();
+          self.pass1.unfocus();
+          self.pass2.focus();
+        } else if self.pass2.is_focused() {
+          self.pass2.unfocus();
+          self.pass1.focus();
+        } else {
+          self.pass1.focus();
+        }
+        Signal::Wait
+      }
+      BackTab => {
+        // backward cycle: pass2 -> pass1 -> pass2
+        if self.pass2.is_focused() {
+          self.pass2.unfocus();
+          self.pass1.focus();
+        } else if self.pass1.is_focused() {
+          self.pass1.unfocus();
+          self.pass2.focus();
+        } else {
+          self.pass1.focus();
+        }
+        Signal::Wait
+      }
+      Enter => {
+        // Enter should behave like "Next" when on first field and "Confirm" when on second
+        if self.pass1.is_focused() {
+          let v = self.pass1
+            .get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          let v = v.trim();
+          if v.len() < 8 {
+            self.pass1.error("Passphrase must be at least 8 characters.");
+            return Signal::Wait;
+          }
+          self.pass1.clear_error();
+          self.pass1.unfocus();
+          self.pass2.focus();
           return Signal::Wait;
         }
-        if p1 != p2 {
-          self.pass2.error("Passphrases do not match.");
-          return Signal::Wait;
-        }
-        self.new_part_luks_password = Some(p1.to_string());
-        self.collecting_pass = false;
 
-        // proceed to finalization
-        self.finalize_new_partition(installer)
+        if self.pass2.is_focused() {
+          let p1 = self.pass1
+            .get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          let p2 = self.pass2
+            .get_value()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+          let p1 = p1.trim();
+          let p2 = p2.trim();
+
+          if p2.is_empty() {
+            self.pass2.error("Confirmation cannot be empty.");
+            return Signal::Wait;
+          }
+          if p1.len() < 8 {
+            // belt and suspenders in case user tabbed back
+            self.pass1.error("Passphrase must be at least 8 characters.");
+            self.pass2.unfocus();
+            self.pass1.focus();
+            return Signal::Wait;
+          }
+          if p1 != p2 {
+            self.pass2.clear();
+            self.pass2.error("Passphrases do not match.");
+            return Signal::Wait;
+          }
+
+          self.new_part_luks_password = Some(p1.to_string());
+          self.collecting_pass = false;
+
+          // proceed to finalization
+          return self.finalize_new_partition(installer);
+        }
+
+        // If neither has focus yet, give it to the first editor
+        self.pass1.focus();
+        Signal::Wait
       }
       _ => {
-        // Prefer focusing first editor until it has content, then second
+        // Delegate other keys to the currently focused editor
         if self.pass1.is_focused() {
           self.pass1.handle_input(event)
         } else if self.pass2.is_focused() {
@@ -1869,6 +1943,7 @@ impl NewPartition {
       }
     }
   }
+
   pub fn render_fs_select(&mut self, f: &mut Frame, area: Rect) {
     let vert_chunks = split_vert!(
       area,
@@ -2469,6 +2544,14 @@ impl Page for AlterPartition {
   }
 }
 
+fn validate_passphrase(p: &str) -> Result<(), &'static str> {
+    if p.trim().len() < 8 {
+        Err("Passphrase must be at least 8 characters.")
+    } else {
+        Ok(())
+    }
+}
+
 pub struct PromptLuksPassword {
   dev_id: u64,
   pass_input: LineEditor,
@@ -2504,12 +2587,12 @@ impl PromptLuksPassword {
 
   fn cycle_forward(&mut self) {
     if self.pass_input.is_focused() {
-      // basic empty check before moving
+      // use the shared validator before moving on
       let v = self.pass_input.get_value()
         .and_then(|v| v.as_str().map(|s| s.to_string()))
         .unwrap_or_default();
-      if v.is_empty() {
-        self.pass_input.error("Passphrase cannot be empty");
+      if let Err(msg) = validate_passphrase(&v) {
+        self.pass_input.error(msg);
         return;
       }
       self.pass_input.clear_error();
@@ -2573,8 +2656,8 @@ impl Page for PromptLuksPassword {
           let v = self.pass_input.get_value()
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default();
-          if v.is_empty() {
-            self.pass_input.error("Passphrase cannot be empty");
+          if let Err(msg) = validate_passphrase(&v) {
+            self.pass_input.error(msg);
             return Signal::Wait;
           }
           self.pass_input.clear_error();
@@ -2594,24 +2677,23 @@ impl Page for PromptLuksPassword {
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_default();
 
-          if pass.is_empty() {
-            self.pass_input.error("Passphrase cannot be empty");
+          if let Err(msg) = validate_passphrase(&pass) {
+            self.pass_input.error(msg);
             self.pass_confirm.unfocus();
             self.pass_input.focus();
             return Signal::Wait;
           }
-          if confirm.is_empty() {
+          if confirm.trim().is_empty() {
             self.pass_confirm.error("Confirmation cannot be empty");
             return Signal::Wait;
           }
           if pass != confirm {
             self.pass_confirm.clear();
             self.pass_confirm.error("Passphrases do not match");
-            // keep focus on confirm so user can retry
             return Signal::Wait;
           }
 
-          // success: store into the partition's JSON-bound field
+          // success: store encrypt flag and write key
           if let Some(dev) = installer.drive_config.as_mut()
             && let Some(p) = dev.partition_by_id_mut(self.dev_id)
           {
