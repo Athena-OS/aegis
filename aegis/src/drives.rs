@@ -919,7 +919,7 @@ impl Disk {
       None,
       Some(boot_fs),
       Some(boot_mp),
-      Some("BOOT".into()),  // Partition label
+      Some("ESP".into()),  // Partition label
       false,
       boot_flags,
     );
@@ -1059,7 +1059,7 @@ impl Disk {
           None,
           Some("ext4".into()),
           Some("/boot".into()),
-          Some("BOOT".into()),
+          Some("XBOOT".into()),
           false,
           vec!["bls_boot".into()],
       );

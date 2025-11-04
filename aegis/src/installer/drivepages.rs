@@ -1589,7 +1589,7 @@ impl NewPartition {
       } else {
         match self.new_part_mount_point.as_deref() {
           Some("/boot/efi") => Some("ESP".to_string()),
-          Some("/boot") => Some("BOOT".to_string()),
+          Some("/boot") => Some("XBOOT".to_string()),
           Some("/")     => Some("ROOT".to_string()),
           _             => None,
         }
@@ -2888,7 +2888,8 @@ impl Page for SetMountPoint {
           part.set_mount_point(&mount_point);
           // ⬇️ auto-label always
           match mount_point.as_str() {
-            "/boot/efi" => part.set_label("BOOT"),
+            "/boot/efi" => part.set_label("ESP"),
+            "/boot" => part.set_label("XBOOT"),
             "/"     => part.set_label("ROOT"),
             _       => {}
           }
