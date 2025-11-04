@@ -1620,8 +1620,6 @@ impl NewPartition {
 
       let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot/efi") {
           vec!["boot".to_string(), "esp".to_string()]
-      } else if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot") {
-          vec!["boot".to_string()]
       } else {
           Vec::new() // Default case to ensure `flags` is always a Vec<String>
       };
@@ -2028,7 +2026,7 @@ impl NewPartition {
           (Some((Color::Green, Modifier::BOLD)), "/home"),
           (None, " for user data, "),
           (Some((Color::Green, Modifier::BOLD)), "/boot"),
-          (None, " for GRUB Legacy boot files, "),
+          (None, " for boot files, "),
           (Some((Color::Green, Modifier::BOLD)), "/boot/efi"),
           (None, " for EFI boot files, and "),
           (Some((Color::Green, Modifier::BOLD)), "/var"),
@@ -2971,7 +2969,7 @@ impl Page for SetMountPoint {
           part.set_mount_point(&mount_point);
           // ⬇️ auto-label always
           match mount_point.as_str() {
-            "/boot" | "/boot/efi" => part.set_label("BOOT"),
+            "/boot/efi" => part.set_label("BOOT"),
             "/"     => part.set_label("ROOT"),
             _       => {}
           }
