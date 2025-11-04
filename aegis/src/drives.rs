@@ -1293,11 +1293,10 @@ impl Partition {
       "ext2" => Some("ext2"),
       "btrfs" => Some("btrfs"),
       "xfs" => Some("xfs"),
-      "fat12" => Some("vfat"),
-      "fat16" => Some("vfat"),
       "fat32" => Some("vfat"),
       "ntfs" => Some("ntfs"),
       "swap" => Some("swap"),
+      "don't format" => Some("don't format"),
       _ => None,
     }
   }
@@ -1306,7 +1305,7 @@ impl Partition {
   pub fn fs_gpt_code(&self, is_esp: bool) -> Option<&'static str> {
     match self.fs_type.as_deref()? {
       "ext4" | "ext3" | "ext2" | "btrfs" | "xfs" => Some("8300"),
-      "fat12" | "fat16" | "fat32" => {
+      "fat32" => {
         if is_esp {
           Some("EF00")
         } else {

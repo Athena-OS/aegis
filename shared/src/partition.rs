@@ -154,6 +154,10 @@ fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice:
             exec("mkfs.f2fs", vec![String::from("-f"), String::from(&bdevice)]),
             format!("Formatting {bdevice} as f2fs").as_str(),
         ),
+        "ntfs" => exec_eval(
+            exec("mkfs.ntfs", vec![String::from("-F"), String::from(&bdevice)]),
+            format!("Formatting {bdevice} as ntfs").as_str(),
+        ),
         "linux-swap" | "swap" => {
             exec_eval(exec("mkswap", vec!["-L".into(), "swap".into(), bdevice.clone()]),
                       &format!("Formatting {bdevice} as linux-swap"));
@@ -377,7 +381,7 @@ pub fn partition_info() {
 fn fs_to_parted_fs(filesystem: &str) -> Option<&'static str> {
     match filesystem {
         // parted wants "fat32" (you still mkfs.vfat later)
-        "vfat" | "fat32" | "fat16" | "fat12" => Some("fat32"),
+        "vfat" | "fat32" => Some("fat32"),
 
         // return literals, not `filesystem`
         "ext4" => Some("ext4"),
@@ -385,9 +389,12 @@ fn fs_to_parted_fs(filesystem: &str) -> Option<&'static str> {
         "ext2" => Some("ext2"),
         "btrfs" => Some("btrfs"),
         "xfs"   => Some("xfs"),
+        "ntfs"  => Some("ntfs"),
 
         // swap GUID/type
         "linux-swap" | "swap" => Some("linux-swap"),
+
+        "don't format" => Some("don't format"),
 
         _ => None,
     }

@@ -417,8 +417,6 @@ impl SelectFilesystem {
       Box::new(Button::new("ext2")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("btrfs")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("xfs")) as Box<dyn ConfigWidget>,
-      Box::new(Button::new("fat12")) as Box<dyn ConfigWidget>,
-      Box::new(Button::new("fat16")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("fat32")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("ntfs")) as Box<dyn ConfigWidget>,
       Box::new(Button::new("swap")) as Box<dyn ConfigWidget>,
@@ -611,51 +609,6 @@ impl SelectFilesystem {
         ]),
       ),
       5 => InfoBox::new(
-        "fat12",
-        styled_block(vec![
-          vec![
-            (HIGHLIGHT, "FAT12"),
-            (None, " is a "),
-            (HIGHLIGHT, "simple "),
-            (None, "and "),
-            (HIGHLIGHT, "widely supported "),
-            (None, "filesystem primarily used for "),
-            (HIGHLIGHT, "small storage devices"),
-            (None, " like floppy disks."),
-          ],
-          vec![
-            (None, "It has "),
-            (HIGHLIGHT, "limitations "),
-            (None, "in terms of "),
-            (HIGHLIGHT, "maximum partition size "),
-            (None, "and file size, making it "),
-            (HIGHLIGHT, "less suitable for modern systems"),
-            (None, "."),
-          ],
-        ]),
-      ),
-      6 => InfoBox::new(
-        "fat16",
-        styled_block(vec![
-          vec![
-            (HIGHLIGHT, "FAT16"),
-            (None, " is an older filesystem that "),
-            (HIGHLIGHT, "extends FAT12"),
-            (None, " to support "),
-            (HIGHLIGHT, "larger partitions and files."),
-          ],
-          vec![
-            (None, "It is still used in some "),
-            (HIGHLIGHT, "embedded systems "),
-            (None, "and "),
-            (HIGHLIGHT, "older devices "),
-            (None, "but has "),
-            (HIGHLIGHT, "limitations compared to more modern filesystems"),
-            (None, "."),
-          ],
-        ]),
-      ),
-      7 => InfoBox::new(
         "fat32",
         styled_block(vec![
           vec![
@@ -688,7 +641,7 @@ impl SelectFilesystem {
           ],
         ]),
       ),
-      8 => InfoBox::new(
+      6 => InfoBox::new(
         "ntfs",
         styled_block(vec![
           vec![
@@ -726,7 +679,7 @@ impl SelectFilesystem {
           ],
         ]),
       ),
-      9 => InfoBox::new(
+      7 => InfoBox::new(
         "swap",
         styled_block(vec![
           vec![
@@ -743,7 +696,7 @@ impl SelectFilesystem {
           ],
         ]),
       ),
-      10 => InfoBox::new(
+      8 => InfoBox::new(
         "don't format",
         styled_block(vec![
           vec![
@@ -828,13 +781,11 @@ impl Page for SelectFilesystem {
           2 => "ext2",
           3 => "btrfs",
           4 => "xfs",
-          5 => "fat12",
-          6 => "fat16",
-          7 => "fat32",
-          8 => "ntfs",
-          9 => "swap",
-          10 => "don't format",
-          11 => return Signal::Pop,
+          5 => "fat32",
+          6 => "ntfs",
+          7 => "swap",
+          8 => "don't format",
+          9 => return Signal::Pop,
           _ => return Signal::Wait,
         }
         .to_string();
@@ -1518,8 +1469,6 @@ impl NewPartition {
         Box::new(Button::new("ext2")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("btrfs")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("xfs")) as Box<dyn ConfigWidget>,
-        Box::new(Button::new("fat12")) as Box<dyn ConfigWidget>,
-        Box::new(Button::new("fat16")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("fat32")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("ntfs")) as Box<dyn ConfigWidget>,
         Box::new(Button::new("swap")) as Box<dyn ConfigWidget>,
@@ -1970,12 +1919,10 @@ impl NewPartition {
           2 => "ext2",
           3 => "btrfs",
           4 => "xfs",
-          5 => "fat12",
-          6 => "fat16",
-          7 => "fat32",
-          8 => "ntfs",
-          9 => "swap",
-          10 => "don't format",
+          5 => "fat32",
+          6 => "ntfs",
+          7 => "swap",
+          8 => "don't format",
           _ => return Signal::Wait,
         }
         .to_string();
