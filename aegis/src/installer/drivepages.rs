@@ -2380,41 +2380,23 @@ impl Page for AlterPartition {
 
         match self.part_status {
           PartStatus::Exists => {
-            let Some(part) = device.partition_by_id_mut(self.part_id) else {
-              return Signal::Error(anyhow::anyhow!("No partition found with id {}", self.part_id));
-            };
-            if self.is_swap {
+              let Some(part) = device.partition_by_id_mut(self.part_id) else {
+                  return Signal::Error(anyhow::anyhow!("No partition found with id {}", self.part_id));
+              };
               match idx {
-                0 => { // Mark for modification
-                  part.set_status(PartStatus::Modify);
-                  self.refresh_menu_from_device(device);
-                  Signal::Wait
-                }
-                1 => { // Delete
-                  part.set_status(PartStatus::Delete);
-                  device.calculate_free_space();
-                  Signal::Pop
-                }
-                2 => Signal::Pop, // Back
-                _ => Signal::Wait,
+                  0 => { // Mark for modification
+                      part.set_status(PartStatus::Modify);
+                      self.refresh_menu_from_device(device);
+                      Signal::Wait
+                  }
+                  1 => { // Delete
+                      part.set_status(PartStatus::Delete);
+                      device.calculate_free_space();
+                      Signal::Pop
+                  }
+                  2 => Signal::Pop, // Back
+                  _ => Signal::Wait,
               }
-            } else {
-              match idx {
-                0 => Signal::Push(Box::new(SetMountPoint::new(self.part_id))),
-                1 => { // Mark for modification
-                  part.set_status(PartStatus::Modify);
-                  self.refresh_menu_from_device(device);
-                  Signal::Wait
-                }
-                2 => { // Delete
-                  part.set_status(PartStatus::Delete);
-                  device.calculate_free_space();
-                  Signal::Pop
-                }
-                3 => Signal::Pop, // Back
-                _ => Signal::Wait,
-              }
-            }
           }
 
           PartStatus::Modify => {
