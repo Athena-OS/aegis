@@ -339,7 +339,7 @@ fn build_and_sign_uki(
         args.push("--pcr-public-key".into());
         args.push(sys_pub.into());
         args.push("--phases".into());
-        args.push("enter-initrd:leave-initrd:sysinit:ready".into()); // default full chain :contentReference[oaicite:4]{index=4}
+        args.push("enter-initrd".into()); // default full chain :contentReference[oaicite:4]{index=4}
 
         // Pair #2: "initrd-only" policy → only up to switch-root
         args.push("--pcr-private-key".into());
@@ -347,7 +347,7 @@ fn build_and_sign_uki(
         args.push("--pcr-public-key".into());
         args.push(init_pub.into());
         args.push("--phases".into());
-        args.push("enter-initrd:leave-initrd".into());               // initrd-only policy :contentReference[oaicite:5]{index=5}
+        args.push("enter-initrd".into());               // initrd-only policy :contentReference[oaicite:5]{index=5}. Btw this allows us to autounlock LUKS when we enroll PCR11
     }
 
     args.push("--output".into());
