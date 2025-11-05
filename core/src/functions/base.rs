@@ -150,6 +150,9 @@ fn generate_kernel_cmdline() -> String {
             let cryptlabel = format!("{}crypted", device_path.trim_start_matches("/dev/"));
             early_root_param.push_str(&format!("rd.luks.name={uuid}={cryptlabel} "));
             early_root_param.push_str(&format!("root=/dev/mapper/{cryptlabel} "));
+            if tpm2_available_esapi() {
+                early_root_param.push_str("rd.luks.options=tpm2-device=auto ");
+            }            
         } else {
             error!("encrypt_check=true but luks_partitions is empty");
         }
@@ -165,6 +168,10 @@ fn generate_kernel_cmdline() -> String {
     if is_btrfs_root {
         early_root_param.push_str("rootflags=subvol=@ ");
     }
+
+    if tpm2_available_esapi() {
+        early_root_param.push_str("systemd-measure=yes ");
+    } 
 
     let mut params: Vec<&str> = vec![
         "lsm=landlock,lockdown,yama,integrity,apparmor,bpf",
