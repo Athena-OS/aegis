@@ -145,8 +145,8 @@ fn generate_kernel_cmdline() -> String {
     if let Some(root) = find_target_root_luks() {
         // Encrypted root (the one backing /mnt)
         // Use the *live* mapper name if we have it; that ensures rd.luks.name matches reality.
-        early_root_param.push_str(&format!("rd.luks.name={}={} ", root.luks_uuid, root.mapper_name));
-        early_root_param.push_str(&format!("root=/dev/mapper/{} ", root.mapper_name));
+        early_root_param.push_str(&format!("rd.luks.name={}={} ", root.luks_uuid, root.mapper_dev));
+        early_root_param.push_str(&format!("root=/dev/mapper/{} ", root.mapper_dev));
         if tpm2_available_esapi() {
             early_root_param.push_str("rd.luks.options=tpm2-device=auto ");
         }
@@ -382,7 +382,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     info!("Configuring systemd-boot + UKI + shim Secure Boot in {esp_str}");
 
     ensure_pcr_keys_in_chroot();
-    
+
     let cmdline = generate_kernel_cmdline();
     write_kernel_cmdline_file(&cmdline);
 
