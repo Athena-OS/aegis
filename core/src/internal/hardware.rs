@@ -43,7 +43,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                         "virtualbox.guest.enable =.*",
                         "virtualbox.guest.enable = lib.mkDefault true;",
                     ),
-                    "enable virtualbox guest additions",
+                    "Enable virtualbox guest additions",
                 );
             }
         }
@@ -72,7 +72,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                         "vmware.guest.enable =.*",
                         "vmware.guest.enable = lib.mkDefault true;",
                     ),
-                    "enable vmware guest additions",
+                    "Enable vmware guest additions",
                 );                
             }
         }
@@ -88,7 +88,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                         "spice-vdagentd.enable =.*",
                         "spice-vdagentd.enable = lib.mkDefault true;",
                     ),
-                    "enable spice vdagent",
+                    "Enable spice vdagent",
                 );
                 files_eval(
                     files::sed_file(
@@ -96,7 +96,7 @@ pub fn virt_check() -> (Packages, Services, SetParams) {
                         "qemuGuest.enable =.*",
                         "qemuGuest.enable = lib.mkDefault true;",
                     ),
-                    "enable qemu guest additions",
+                    "Enable qemu guest additions",
                 );                
             }
         }
@@ -133,7 +133,7 @@ WantedBy=multi-user.target
                         "hypervGuest.enable =.*",
                         "hypervGuest.enable = lib.mkDefault true;",
                     ),
-                    "enable kvm guest additions",
+                    "Enable kvm guest additions",
                 );                
             }
         }
@@ -208,7 +208,7 @@ pub fn cpu_check() -> Vec<&'static str> {
                     "cpu.intel.updateMicrocode =.*",
                     "cpu.intel.updateMicrocode = true;",
                 ),
-                "enable intel ucode",
+                "Enable intel ucode",
             );            
         }
     } else if cpu.contains("AMD") {
@@ -223,7 +223,7 @@ pub fn cpu_check() -> Vec<&'static str> {
                     "cpu.intel.updateMicrocode =.*",
                     "cpu.amd.updateMicrocode = true;",
                 ),
-                "enable amd ucode",
+                "Enable amd ucode",
             );            
         }
     }

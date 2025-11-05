@@ -46,6 +46,16 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
         ),
         "Open LUKS format",
     );
+    exec_eval(
+        exec(
+            "rm",
+            vec![
+                String::from("-rf"),
+                luks_k.clone(),
+            ],
+        ),
+        "Remove luks key",
+    );
 }
 
 fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {

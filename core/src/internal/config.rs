@@ -6,11 +6,9 @@ use log::{debug, error, info};
 use serde_json::{self, Value, Map};
 use shared::{
     args::{self, Config, ConfigInput, DesktopSetup, ExtendIntoString, PackageManager, ThemeSetup, DMSetup, ShellSetup, set_base, is_arch, is_nix},
-    encrypt::{find_luks_partitions},
-    exec::exec,
     files,
     partition,
-    returncode_eval::{exec_eval, files_eval},
+    returncode_eval::files_eval,
     strings::crash,
 };
 use std::{
@@ -416,57 +414,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     }
     /**************************/
     files::copy_multiple_files("/etc/NetworkManager/system-connections/*", "/mnt/etc/NetworkManager/system-connections/");
-
-    // Check TPM. The enforcement of PCRs must be done at the end of installation
-    let (_luks_partitions, encrypt_check) = find_luks_partitions();
-    //let (luks_partitions, encrypt_check) = find_luks_partitions();
-    if encrypt_check {
-        let luks_k = String::from("/run/luks");
-        /*
-        for (device_path, uuid) in &luks_partitions {
-            if tpm2_available_esapi() {
-                info!("Device: {device_path}, UUID: {uuid}");
-                info!("TPM 2.0 device detected and accessible.");
-                info!("Enrolling key on TPM...");
-                exec_eval(
-                    exec(
-                        "systemd-cryptenroll",
-                        vec![
-                            String::from("--tpm2-device=auto"),
-                            format!("--unlock-key-file={luks_k}"),
-                            String::from("--tpm2-pcrs=7+11+15"),
-                            String::from(device_path),
-                        ],
-                    ),
-                    &format!("Store {device_path} LUKS key in TPM."),
-                );
-
-                exec_eval(
-                    exec_archchroot(
-                        "tpm2_pcrread",
-                        vec![
-                        "sha256".into(),
-                        ],
-                    ),
-                    "Current PCR measurements.",
-                );
-            
-            } else {
-                info!("No accessible TPM 2.0 device found.");
-            }
-        }
-        */
-        exec_eval(
-            exec(
-                "rm",
-                vec![
-                    String::from("-rf"),
-                    luks_k.clone(),
-                ],
-            ),
-            "Remove luks key",
-        );
-    }
 
     info!("Installation log file copied to /var/log/aegis.log");
     files_eval(files::create_directory("/mnt/var/log"), "Create /mnt/var/log");

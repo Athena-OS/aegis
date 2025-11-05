@@ -4,7 +4,7 @@ use crate::internal::services::enable_service;
 use log::{info, error};
 use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch};
 use shared::exec::{exec, exec_archchroot, exec_output};
-use shared::encrypt::{find_luks_partitions, tpm2_available_esapi};
+use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
 use std::{fs, path::PathBuf};
@@ -140,24 +140,18 @@ fn generate_kernel_cmdline() -> String {
     let (fstype, fs_uuid) = detect_root_fs_info();
     let is_btrfs_root = fstype == "btrfs";
 
-    let (luks_partitions, encrypt_check) = find_luks_partitions();
-
     let mut early_root_param = String::new();
 
-    if encrypt_check {
-        // Encrypted root case
-        if let Some((device_path, uuid)) = luks_partitions.first() {
-            let cryptlabel = format!("{}crypted", device_path.trim_start_matches("/dev/"));
-            early_root_param.push_str(&format!("rd.luks.name={uuid}={cryptlabel} "));
-            early_root_param.push_str(&format!("root=/dev/mapper/{cryptlabel} "));
-            if tpm2_available_esapi() {
-                early_root_param.push_str("rd.luks.options=tpm2-device=auto ");
-            }            
-        } else {
-            error!("encrypt_check=true but luks_partitions is empty");
+    if let Some(root) = find_target_root_luks() {
+        // Encrypted root (the one backing /mnt)
+        // Use the *live* mapper name if we have it; that ensures rd.luks.name matches reality.
+        early_root_param.push_str(&format!("rd.luks.name={}={} ", root.luks_uuid, root.mapper_name));
+        early_root_param.push_str(&format!("root=/dev/mapper/{} ", root.mapper_name));
+        if tpm2_available_esapi() {
+            early_root_param.push_str("rd.luks.options=tpm2-device=auto ");
         }
     } else {
-        // Unencrypted root case
+        // Unencrypted root
         if !fs_uuid.is_empty() {
             early_root_param.push_str(&format!("root=UUID={fs_uuid} "));
         } else {
@@ -198,6 +192,73 @@ fn write_kernel_cmdline_file(cmdline: &str) {
     files_eval(
         files::append_file("/mnt/etc/kernel/cmdline", cmdline),
         "Write /etc/kernel/cmdline",
+    );
+}
+
+fn ensure_pcr_keys_in_chroot() {
+    if !tpm2_available_esapi() {
+        info!("TPM2 not available; skipping PCR key generation.");
+        return;
+    }
+
+    // Where we keep PCR keys inside the target system
+    let sysd_dir = "/etc/systemd";
+    let sys_priv  = format!("{sysd_dir}/tpm2-pcr-private-key-system.pem");
+    let sys_pub   = format!("{sysd_dir}/tpm2-pcr-public-key-system.pem");
+    let initrd_priv = format!("{sysd_dir}/tpm2-pcr-initrd-private-key.pem");
+    let initrd_pub  = format!("{sysd_dir}/tpm2-pcr-initrd-public-key.pem");
+
+    // Check existence inside /mnt
+    let need_system  = !std::path::Path::new(&format!("/mnt{sys_priv}")).exists()
+                    || !std::path::Path::new(&format!("/mnt{sys_pub}")).exists();
+    let need_initrd  = !std::path::Path::new(&format!("/mnt{initrd_priv}")).exists()
+                    || !std::path::Path::new(&format!("/mnt{initrd_pub}")).exists();
+
+    if !(need_system || need_initrd) {
+        info!("PCR keys already present; skipping ukify genkey.");
+        return;
+    }
+
+    // Make sure directory exists
+    std::fs::create_dir_all(format!("/mnt{sysd_dir}"))
+        .expect("Failed to create /mnt/etc/systemd");
+
+    // ukify genkey: generate only the missing pairs (ukify requires that outputs don't exist).
+    if need_system {
+        exec_eval(
+            exec_archchroot(
+                "ukify",
+                vec![
+                    "genkey".into(),
+                    "--pcr-private-key".into(), sys_priv.clone(),
+                    "--pcr-public-key".into(),  sys_pub.clone(),
+                ],
+            ),
+            "Generate system PCR signing keypair",
+        );
+    }
+    if need_initrd {
+        exec_eval(
+            exec_archchroot(
+                "ukify",
+                vec![
+                    "genkey".into(),
+                    "--pcr-private-key".into(), initrd_priv.clone(),
+                    "--pcr-public-key".into(),  initrd_pub.clone(),
+                ],
+            ),
+            "Generate initrd PCR signing keypair",
+        );
+    }
+
+    // Permissions are up to you; these are reasonable defaults
+    exec_eval(
+        exec_archchroot("chmod", vec!["400".into(), sys_priv]),
+        "Restrict system PCR private key",
+    );
+    exec_eval(
+        exec_archchroot("chmod", vec!["400".into(), initrd_priv]),
+        "Restrict initrd PCR private key",
     );
 }
 
@@ -260,6 +321,35 @@ fn build_and_sign_uki(
     args.push("--secureboot-certificate".into());
     args.push(format!("{secureboot_key_dir}/MOK.crt"));
 
+    if tpm2_available_esapi() {
+        // Make sure keys exist (safe if called already)
+        // (Nop here if you call ensure_pcr_keys_in_chroot() earlier.)
+        // ensure_pcr_keys_in_chroot();
+
+        let sys_priv = "/etc/systemd/tpm2-pcr-private-key-system.pem";
+        let sys_pub  = "/etc/systemd/tpm2-pcr-public-key-system.pem";
+        let init_priv = "/etc/systemd/tpm2-pcr-initrd-private-key.pem";
+        let init_pub  = "/etc/systemd/tpm2-pcr-initrd-public-key.pem";
+
+        args.push("--measure".into());
+
+        // Pair #1: "system" policy → full boot phases
+        args.push("--pcr-private-key".into());
+        args.push(sys_priv.into());
+        args.push("--pcr-public-key".into());
+        args.push(sys_pub.into());
+        args.push("--phases".into());
+        args.push("enter-initrd:leave-initrd:sysinit:ready".into()); // default full chain :contentReference[oaicite:4]{index=4}
+
+        // Pair #2: "initrd-only" policy → only up to switch-root
+        args.push("--pcr-private-key".into());
+        args.push(init_priv.into());
+        args.push("--pcr-public-key".into());
+        args.push(init_pub.into());
+        args.push("--phases".into());
+        args.push("enter-initrd:leave-initrd".into());               // initrd-only policy :contentReference[oaicite:5]{index=5}
+    }
+
     args.push("--output".into());
     args.push(uki_out.clone());
 
@@ -291,24 +381,34 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     let esp_str = espdir.to_str().unwrap();
     info!("Configuring systemd-boot + UKI + shim Secure Boot in {esp_str}");
 
-    // 0. Generate the cmdline ONCE
+    ensure_pcr_keys_in_chroot();
+    
     let cmdline = generate_kernel_cmdline();
-
-    //    Persist it for future kernel regen
     write_kernel_cmdline_file(&cmdline);
 
-    // 1. Install systemd-boot into ESP
+    let boot_is_mount = match exec_output(
+        "findmnt",
+        vec!["-n".into(), "-M".into(), "/mnt/boot".into()],
+    ) {
+        Ok(out) => out.status.success(),
+        Err(_)  => false,
+    };
+
+    let mut bootctl_args: Vec<String> = vec![
+        "--esp-path".into(),
+        esp_str.to_string(),
+    ];
+    if boot_is_mount {
+        info!("/boot is a separate partition; passing --boot-path to bootctl");
+        bootctl_args.push("--boot-path".into());
+        bootctl_args.push("/boot".into());
+    } else {
+        info!("/boot is not a separate partition; installing bootloader without --boot-path");
+    }
+    bootctl_args.push("install".into());
+
     exec_eval(
-        exec_archchroot(
-            "bootctl",
-            vec![
-                "--esp-path".into(),
-                esp_str.to_string(),
-                "--boot-path".into(),
-                "/boot".to_string(),
-                "install".into(),
-            ],
-        ),
+        exec_archchroot("bootctl", bootctl_args),
         "Install systemd-boot",
     );
 
