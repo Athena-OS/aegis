@@ -56,7 +56,9 @@ pub fn find_target_root_luks() -> Option<RootLuks> {
         return None;
     }
 
-    Some(RootLuks { luks_device: parent_dev, luks_uuid: uuid, mapper_dev })
+    let strip_mapper = mapper_dev.strip_prefix("/dev/mapper/").unwrap_or(&mapper_dev).to_string();
+
+    Some(RootLuks { luks_device: parent_dev, luks_uuid: uuid, mapper_dev:  strip_mapper })
 }
 
 pub fn tpm2_available_esapi() -> bool {
