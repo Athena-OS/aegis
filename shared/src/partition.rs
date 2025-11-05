@@ -48,7 +48,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     );
 }
 
-fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {
+fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {
     let mut plan = Vec::new();
     let mut bdevice = String::from(blockdevice);
     // Extract the block device name (i.e., sda3)
@@ -181,46 +181,6 @@ fn fmt_mount(diskdevice: &Path, mountpoint: &str, filesystem: &str, blockdevice:
         }
     }
 
-    if flags.iter().any(|f| f.eq_ignore_ascii_case("esp") || f.eq_ignore_ascii_case("boot")) {
-        let phys_part = blockdevice; // On the encrypted scenario, flags must be set on the *physical* partition, not on the mapper path.
-        if is_uefi() {
-        let esp_num = extract_partition_number(phys_part);
-            exec_eval(
-                exec(
-                    "parted",
-                    vec![
-                        String::from("-s"),
-                        diskdevice.to_string_lossy().to_string(),
-                        String::from("--"),
-                        String::from("set"),
-                        String::from(esp_num.as_str()), // It is the number ID of the EFI partition. i.e., if EFI partition is /dev/sda2, the number to set is 2
-                        String::from("esp"),
-                        String::from("on"),
-                    ],
-                ),
-                format!("Enable EFI system partition on partition number {esp_num}").as_str(),
-            );
-        }
-        else {
-            let boot_num = extract_partition_number(phys_part);
-            exec_eval(
-                exec(
-                    "parted",
-                    vec![
-                        String::from("-s"),
-                        diskdevice.to_string_lossy().to_string(),
-                        String::from("--"),
-                        String::from("set"),
-                        String::from(boot_num.as_str()),
-                        String::from("boot"),
-                        String::from("on"),
-                    ],
-                ),
-                "Set the root partition's boot flag to on",
-            );
-        }
-    }
-
     if !mountpoint.is_empty() {
         plan.push(MountSpec {
             device: bdevice.clone(),
@@ -305,7 +265,6 @@ pub fn partition(
         if p.action == "create" || p.action == "modify" {
             // Format + mount (or just mount if "don't format")
             let specs = fmt_mount(
-                &device,
                 p.mountpoint.as_deref().unwrap_or(""),
                 p.filesystem.as_deref().unwrap_or(""),
                 &p.blockdevice,
@@ -435,12 +394,15 @@ fn create_partition(
     let is_mbr = disklabel.eq_ignore_ascii_case("msdos") || (is_none_label && !is_uefi());
 
     let has_esp  = flags.iter().any(|f| f.eq_ignore_ascii_case("esp"));
+    let has_xbld  = flags.iter().any(|f| f.eq_ignore_ascii_case("bls_boot"));
     let has_boot = flags.iter().any(|f| f.eq_ignore_ascii_case("boot"));
     let is_swap  = filesystem.eq_ignore_ascii_case("swap") || filesystem.eq_ignore_ascii_case("linux-swap");
 
     // Decide a human label (optional). We set it after mkpart with `name N <LABEL>`.
     let label = if has_esp {
         "EFI"
+    } else if has_xbld {
+        "XBOOTLDR"
     } else if has_boot && !has_esp {
         "BIOS_GRUB"
     } else if is_swap {
@@ -464,6 +426,9 @@ fn create_partition(
         if has_esp { // Only in GPT I can use EFI boot partition
             // ESP is FAT; parted flag will mark it on GPT
             args.push(String::from("ESP"));
+            args.push(String::from("fat32"));
+        } else if has_xbld{
+            args.push(String::from("XBOOTLDR"));
             args.push(String::from("fat32"));
         } else if is_swap {
             // Use linux-swap so GUID becomes 8200
@@ -513,6 +478,9 @@ fn create_partition(
     // Only set flags on the current created partition if applicable
     if is_gpt && has_esp {
         exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "esp".into(), "on".into()]),
+            &format!("Enable ESP on partition #{partnum}"));
+    } else if is_gpt && has_xbld{
+        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bls_boot".into(), "on".into()]),
             &format!("Enable ESP on partition #{partnum}"));
     } else if is_gpt && has_boot && !has_esp {
         // For real BIOS-on-GPT you'd typically have a tiny bios_grub partition; this flag is for that case.

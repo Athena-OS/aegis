@@ -885,26 +885,26 @@ impl Disk {
     let (boot_fs, boot_mp, boot_flags): (String, String, Vec<String>) = match disk_label {
         DiskLabel::Gpt if is_uefi() => (
             "fat32".into(),           // ESP filesystem
-            "/boot/efi".into(),       // ESP mountpoint
+            "/efi".into(),       // ESP mountpoint
             vec!["boot".into(), "esp".into()], // mark as ESP
         ),
         DiskLabel::Gpt => (
-            "ext4".into(),            // classic /boot on MBR
+            "fat32".into(),            // classic /boot on MBR
             "/boot".into(),           // mountpoint
             vec!["bls_boot".into()],      // only "bls_boot" flag
         ),
         DiskLabel::Msdos => (
-            "ext4".into(),            // classic /boot on MBR
+            "fat32".into(),            // classic /boot on MBR
             "/boot".into(),           // mountpoint
             vec!["boot".into()],      // only "boot" flag
         ),
         DiskLabel::None if is_uefi() => (
             "fat32".into(),
-            "/boot/efi".into(),
+            "/efi".into(),
             vec!["boot".into(), "esp".into()],
         ),
         DiskLabel::None => (
-            "ext4".into(),
+            "fat32".into(),
             "/boot".into(),
             vec!["boot".into()],
         ),
@@ -1027,7 +1027,7 @@ impl Disk {
           one_mib_in_sectors(self.sector_size),
           align,
       );
-      // --- ESP (FAT32, /boot/efi) ---
+      // --- ESP (FAT32, /efi) ---
       let esp_sz = Self::align_up(
           mb_to_sectors(esp_mb.unwrap_or(512), self.sector_size),
           align,
@@ -1039,14 +1039,14 @@ impl Disk {
           PartStatus::Create,
           None,
           Some("fat32".into()),
-          Some("/boot/efi".into()),
+          Some("/efi".into()),
           Some("ESP".into()),
           false,
           vec!["boot".into(), "esp".into()],
       );
       cursor = Self::align_up(esp.end(), align);
       self.layout.push(DiskItem::Partition(esp));
-      // --- /boot (ext4, unencrypted) ---
+      // --- /boot (fat32, unencrypted) ---
       let boot_sz = Self::align_up(
           mb_to_sectors(boot_mb.unwrap_or(1024), self.sector_size),
           align,
@@ -1057,9 +1057,9 @@ impl Disk {
           self.sector_size,
           PartStatus::Create,
           None,
-          Some("ext4".into()),
+          Some("fat32".into()),
           Some("/boot".into()),
-          Some("XBOOT".into()),
+          Some("XBOOTLDR".into()),
           false,
           vec!["bls_boot".into()],
       );

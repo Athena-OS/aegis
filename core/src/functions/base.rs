@@ -199,7 +199,7 @@ fn write_kernel_cmdline_file(cmdline: &str) {
 ///
 /// kname: "linux-lts" or "linux-hardened"
 /// pretty: "LTS" or "Hardened" (for boot menu entry title)
-/// esp_str: ESP mount path *inside chroot* (usually "/boot/efi")
+/// esp_str: ESP mount path *inside chroot* (usually "/efi")
 /// secureboot_key_dir: path *inside chroot* to the key dir ("/etc/secureboot/keys")
 fn build_and_sign_uki(
     kname: &str,
@@ -297,8 +297,8 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
             vec![
                 "--esp-path".into(),
                 esp_str.to_string(),
-                "--boot-path".into(), // to create it Linux folder in /boot/efi/EFI instead of /boot/EFI when /boot and /boot/efi mountpoints exist simultaneously
-                esp_str.to_string(),
+                "--boot-path".into(),
+                "/boot".to_string(),
                 "install".into(),
             ],
         ),

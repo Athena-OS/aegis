@@ -398,7 +398,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     /*    BOOTLOADER CONFIG     */
     // mokutil needs to be run after root password creation
     if is_arch() && partition::is_uefi() {
-        base::configure_bootloader_systemd_boot_shim(PathBuf::from("/boot/efi"));
+        base::configure_bootloader_systemd_boot_shim(PathBuf::from("/efi"));
     }
 
     if is_nix() {

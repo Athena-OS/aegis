@@ -1567,7 +1567,7 @@ impl NewPartition {
       let is_swap = self.new_part_fs.as_deref() == Some("swap");
       let luks_path = "/run/luks";
 
-      let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot/efi") {
+      let mut flags = if !is_swap && self.new_part_mount_point.as_deref() == Some("/efi") {
           vec!["boot".to_string(), "esp".to_string()]
       } else if !is_swap && self.new_part_mount_point.as_deref() == Some("/boot") {
           vec!["bls_boot".to_string()]
@@ -1588,8 +1588,8 @@ impl NewPartition {
         Some("SWAP".to_string())
       } else {
         match self.new_part_mount_point.as_deref() {
-          Some("/boot/efi") => Some("ESP".to_string()),
-          Some("/boot") => Some("XBOOT".to_string()),
+          Some("/efi") => Some("ESP".to_string()),
+          Some("/boot") => Some("XBOOTLDR".to_string()),
           Some("/")     => Some("ROOT".to_string()),
           _             => None,
         }
@@ -2052,7 +2052,7 @@ impl NewPartition {
           (None, " for user data, "),
           (Some((Color::Green, Modifier::BOLD)), "/boot"),
           (None, " for boot files, "),
-          (Some((Color::Green, Modifier::BOLD)), "/boot/efi"),
+          (Some((Color::Green, Modifier::BOLD)), "/efi"),
           (None, " for EFI boot files, and "),
           (Some((Color::Green, Modifier::BOLD)), "/var"),
           (None, " for variable data."),
@@ -2105,8 +2105,8 @@ impl NewPartition {
         self.new_part_mount_point = Some(input.to_string());
         self.mount_input.unfocus();
 
-        // If /boot or /boot/efi, don't ask for encryption
-        if self.new_part_mount_point.as_deref() == Some("/boot") || self.new_part_mount_point.as_deref() == Some("/boot/efi") {
+        // If /boot or /efi, don't ask for encryption
+        if self.new_part_mount_point.as_deref() == Some("/boot") || self.new_part_mount_point.as_deref() == Some("/efi") {
           self.new_part_encrypt = Some(false);
           return self.finalize_new_partition(installer);
         }
@@ -2138,7 +2138,7 @@ impl Page for NewPartition {
       self.render_password_input(f, area);
     } else if self.new_part_mount_point.is_none() {
       self.render_mount_point_input(f, area);
-    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
+    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/efi")) {
       self.render_encryption_select(f, area);
     }
   }
@@ -2153,7 +2153,7 @@ impl Page for NewPartition {
       self.handle_input_password(installer, event)
     } else if self.new_part_mount_point.is_none() {
       self.handle_input_mount_point(installer, event)
-    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/boot/efi")) {
+    } else if self.new_part_encrypt.is_none() && (self.new_part_mount_point.as_deref() != Some("/boot") && self.new_part_mount_point.as_deref() != Some("/efi")) {
       self.handle_input_encryption_select(installer, event)
     } else {
       Signal::Pop
@@ -2923,7 +2923,7 @@ impl Page for SetMountPoint {
         vec![(None, "- "), (HIGHLIGHT, "/")],
         vec![(None, "- "), (HIGHLIGHT, "/home")],
         vec![(None, "- "), (HIGHLIGHT, "/boot")],
-        vec![(None, "- "), (HIGHLIGHT, "/boot/efi")],
+        vec![(None, "- "), (HIGHLIGHT, "/efi")],
         vec![(None, "Mount points must be absolute paths.")],
       ]),
     );
@@ -2970,8 +2970,8 @@ impl Page for SetMountPoint {
           part.set_mount_point(&mount_point);
           // ⬇️ auto-label always
           match mount_point.as_str() {
-            "/boot/efi" => part.set_label("ESP"),
-            "/boot" => part.set_label("XBOOT"),
+            "/efi" => part.set_label("ESP"),
+            "/boot" => part.set_label("XBOOTLDR"),
             "/"     => part.set_label("ROOT"),
             _       => {}
           }
