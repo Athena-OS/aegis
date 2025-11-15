@@ -3,7 +3,7 @@ use rand::{prelude::IndexedRandom, Rng};
 use std::{
   collections::VecDeque,
   fs::{File, OpenOptions},
-  io::{BufRead, BufReader, Seek, SeekFrom},
+  io::{BufReader, Read, Seek, SeekFrom},
   os::unix::process::ExitStatusExt,
   path::PathBuf,
   process::{Child, Command, Stdio},
@@ -2254,7 +2254,9 @@ pub struct LogBox<'a> {
   reader: Option<BufReader<File>>,  // file reader we tail from
   file_pos: u64,                    // current read offset
   log_path: Option<PathBuf>,        // path to the log file
-  last_pushed_blank: bool,
+  pending_bytes: Vec<u8>,   // bytes that didn't decode to valid UTF-8 yet
+  pending_line: String,     // decoded but not yet newline-terminated text
+  last_emitted_blank: bool, // collapse multiple blank lines in a row
 }
 
 impl<'a> LogBox<'a> {
@@ -2262,13 +2264,15 @@ impl<'a> LogBox<'a> {
     Self {
       title,
       focused: false,
-      line_buf: VecDeque::with_capacity(256),
-      max_buf_size: 1000, // more headroom than 100
+      line_buf: VecDeque::with_capacity(512),
+      max_buf_size: 1000,
       log_file: None,
       reader: None,
       file_pos: 0,
       log_path: None,
-      last_pushed_blank: false,
+      pending_bytes: Vec::new(),
+      pending_line: String::new(),
+      last_emitted_blank: false,
     }
   }
 
@@ -2290,7 +2294,6 @@ impl<'a> LogBox<'a> {
     self.reader = Some(reader);
     self.file_pos = file_pos;
     self.log_path = Some(path);
-    self.last_pushed_blank = false;
     Ok(())
   }
 
@@ -2298,119 +2301,131 @@ impl<'a> LogBox<'a> {
   /// - Keeps a pending fragment if a line didn't end with '\n' yet.
   /// - Preserves ANSI colors by feeding raw text to `IntoText`.
   /// - Detects truncation/rotation and resets cleanly.
-  /// - Collapses runs of blank lines.
   pub fn poll_log(&mut self) -> anyhow::Result<()> {
-      let Some(path) = &self.log_path else {
-          return Ok(());
+    let Some(path) = &self.log_path else { return Ok(()); };
+    if !path.exists() { return Ok(()); }
+
+    // Detect truncation/rotation.
+    let current_size = std::fs::metadata(path)?.len();
+    if current_size < self.file_pos {
+      self.file_pos = 0;
+      self.pending_bytes.clear();
+      self.pending_line.clear();
+    }
+    if current_size <= self.file_pos {
+      return Ok(());
+    }
+
+    // Read new bytes.
+    let mut f = File::open(path)?;
+    f.seek(SeekFrom::Start(self.file_pos))?;
+    let mut new_bytes = Vec::new();
+    f.read_to_end(&mut new_bytes)?;
+    if new_bytes.is_empty() { return Ok(()); }
+    self.file_pos = current_size;
+
+    // Prepend any undecoded bytes from last time.
+    let mut buf = Vec::with_capacity(self.pending_bytes.len() + new_bytes.len());
+    buf.extend_from_slice(&self.pending_bytes);
+    buf.extend_from_slice(&new_bytes);
+    self.pending_bytes.clear();
+
+    // Decode only the valid UTF-8 prefix; keep the rest for next time.
+    let valid_len = match std::str::from_utf8(&buf) {
+      Ok(_) => buf.len(),
+      Err(e) => e.valid_up_to(),
+    };
+    let decoded = String::from_utf8_lossy(&buf[..valid_len]).into_owned();
+    if valid_len < buf.len() {
+      self.pending_bytes.extend_from_slice(&buf[valid_len..]);
+    }
+
+    // Glue with any previously pending *line* content (no newline yet).
+    let mut text = String::with_capacity(self.pending_line.len() + decoded.len());
+    text.push_str(&self.pending_line);
+    text.push_str(&decoded);
+
+    // Normalize line endings:
+    // - turn CRLF into LF
+    // - handle bare CR as “overwrite this line”: keep only the tail after the last \r
+    //   per *line segment*.
+    text = text.replace("\r\n", "\n");
+    let mut normalized = String::with_capacity(text.len());
+    for seg in text.split('\n') {
+      if seg.is_empty() {
+        normalized.push('\n');
+        continue;
+      }
+      // Keep the part after the last '\r' (terminal-style line redraw).
+      let tail = match seg.rsplit_once('\r') {
+        Some((_, t)) => t,
+        None => seg,
       };
-      // If log file doesn’t exist (yet), nothing to read
-      if !path.exists() {
-          return Ok(());
+      normalized.push_str(tail);
+      normalized.push('\n');
+    }
+
+    // If the original didn't end with '\n', we just added one above. Remove it and
+    // keep that fragment as pending_line.
+    let ends_with_nl = text.ends_with('\n');
+    if !ends_with_nl && normalized.ends_with('\n') {
+      normalized.pop();
+    }
+
+    // Split into complete lines; last fragment becomes pending_line (if any).
+    let mut lines_iter = normalized.split('\n').peekable();
+    let mut last = None;
+    while let Some(l) = lines_iter.next() {
+      let is_last = lines_iter.peek().is_none() && !ends_with_nl;
+      if is_last {
+        last = Some(l.to_string());
+        break;
       }
-      // Detect truncation/rotation
-      let current_size = std::fs::metadata(path)?.len();
-      if current_size < self.file_pos {
-          // Reopen and start from 0
-          let file = OpenOptions::new()
-              .read(true)
-              .write(true)
-              .create(true)
-              .truncate(false)
-              .open(path)?;
-          let reader = BufReader::new(file.try_clone()?);
-          self.log_file = Some(file);
-          self.reader = Some(reader);
-          self.file_pos = 0;
-          self.last_pushed_blank = false;
-      }
-      // No new bytes to read
-      if current_size <= self.file_pos {
-          return Ok(());
-      }
-      // Ensure we have a reader
-      let reader = match &mut self.reader {
-          Some(r) => r,
-          None => {
-              let file = OpenOptions::new()
-                  .read(true)
-                  .write(true)
-                  .create(true)
-                  .truncate(false)
-                  .open(path)?;
-              let reader = BufReader::new(file.try_clone()?);
-              self.log_file = Some(file);
-              self.reader = Some(reader);
-              self.reader.as_mut().unwrap()
+
+      // Strip ANSI and CR tails again (paranoia) then collapse blanks.
+      let raw = l.strip_suffix('\r').unwrap_or(l);
+      let stripped = strip_ansi_escapes::strip_str(raw);
+      let blank = stripped.trim().is_empty();
+
+      if blank {
+        if !self.last_emitted_blank {
+          self.line_buf.push_back(String::new().into());
+          self.last_emitted_blank = true;
+        }
+      } else {
+        self.last_emitted_blank = false;
+        if let Ok(text) = stripped.into_text() {
+          for line in text.lines {
+            self.line_buf.push_back(line);
+            if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
           }
-      };
-      // Seek to where we left off and stream new lines
-      reader.seek(SeekFrom::Start(self.file_pos))?;
-      let mut raw = String::new();
-      while reader.read_line(&mut raw)? > 0 {
-          // Strip ANSI (we still re-apply color if present via IntoText)
-          let stripped = strip_ansi_escapes::strip_str(raw.trim_end_matches('\n').trim_end());
-          let is_blank = stripped.trim().is_empty();
-          if is_blank {
-              if !self.last_pushed_blank {
-                  // push a single blank line
-                  self.line_buf.push_back(String::new().into());
-                  if self.line_buf.len() > self.max_buf_size {
-                      self.line_buf.pop_front();
-                  }
-                  self.last_pushed_blank = true;
-              }
-          } else {
-              // keep colored output if present
-              if let Ok(text) = stripped.into_text() {
-                  for parsed_line in text.lines {
-                      self.line_buf.push_back(parsed_line);
-                      if self.line_buf.len() > self.max_buf_size {
-                          self.line_buf.pop_front();
-                      }
-                  }
-              } else {
-                  self.line_buf.push_back(stripped.to_string().into());
-                  if self.line_buf.len() > self.max_buf_size {
-                      self.line_buf.pop_front();
-                  }
-              }
-              self.last_pushed_blank = false;
-          }
-          raw.clear();
+        } else {
+          self.line_buf.push_back(raw.to_string().into());
+        }
       }
-      // Update our read position to current file size
-      self.file_pos = current_size;
-      Ok(())
+      if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
+    }
+
+    // Store the trailing (incomplete) line for next tick.
+    self.pending_line = last.unwrap_or_default();
+    Ok(())
   }
 
   /// Optional: push lines directly into the UI buffer (not the file).
   pub fn write_log(&mut self, log_output: &str) {
-      let stripped = strip_ansi_escapes::strip_str(log_output);
-      let is_blank = stripped.trim().is_empty();
-      if is_blank {
-          if !self.last_pushed_blank {
-              self.line_buf.push_back(String::new().into());
-              if self.line_buf.len() > self.max_buf_size {
-                  self.line_buf.pop_front();
-              }
-              self.last_pushed_blank = true;
-          }
-      } else {
-          if let Ok(text) = stripped.into_text() {
-              for parsed_line in text.lines {
-                  self.line_buf.push_back(parsed_line);
-                  if self.line_buf.len() > self.max_buf_size {
-                      self.line_buf.pop_front();
-                  }
-              }
-          } else {
-              self.line_buf.push_back(stripped.to_string().into());
-              if self.line_buf.len() > self.max_buf_size {
-                  self.line_buf.pop_front();
-              }
-          }
-          self.last_pushed_blank = false;
+    if let Ok(text) = log_output.into_text() {
+      for line in text.lines {
+        self.line_buf.push_back(line);
+        if self.line_buf.len() > self.max_buf_size {
+          self.line_buf.pop_front();
+        }
       }
+    } else {
+      self.line_buf.push_back(log_output.to_string().into());
+      if self.line_buf.len() > self.max_buf_size {
+        self.line_buf.pop_front();
+      }
+    }
   }
 }
 
