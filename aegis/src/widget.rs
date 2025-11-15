@@ -2279,19 +2279,17 @@ impl<'a> LogBox<'a> {
     // (You can truncate earlier in your setup if desired.)
     let file = OpenOptions::new()
       .read(true)
+      .write(true)
       .create(true)
       .truncate(false)
       .open(&path)?;
 
-    // Start from EOF so we only show live content.
-    let file_pos = file.metadata()?.len();
-
-    self.reader = Some(BufReader::new(file.try_clone()?));
-    self.log_file = Some(file); // retained for API compatibility; not used below
+    let file_pos = file.metadata()?.len(); // start reading at EOF
+    let reader = BufReader::new(file.try_clone()?);
+    self.log_file = Some(file);
+    self.reader = Some(reader);
     self.file_pos = file_pos;
     self.log_path = Some(path);
-    self.pending_fragment.clear();
-    self.line_buf.clear();
     Ok(())
   }
 
@@ -2311,14 +2309,15 @@ impl<'a> LogBox<'a> {
 
     // If file shrank, treat as truncation/rotation.
     if current_size < self.file_pos {
-      self.file_pos = 0;
-      self.pending_fragment.clear();
-      self.line_buf.clear();
-
-      // Reopen the reader
-      let file = OpenOptions::new().read(true).create(true).truncate(false).open(path)?;
-      self.reader = Some(BufReader::new(file.try_clone()?));
-      self.log_file = Some(file);
+        self.file_pos = 0;
+    
+        // File exists (we just got its metadata), so open read-only
+        let file = OpenOptions::new()
+            .read(true)
+            .open(path)?;
+        let reader = BufReader::new(file.try_clone()?);
+        self.log_file = Some(file);
+        self.reader = Some(reader);
     }
 
     // Nothing new to read
@@ -2327,13 +2326,19 @@ impl<'a> LogBox<'a> {
     }
 
     // Ensure we have a reader
-    if self.reader.is_none() {
-      let file = OpenOptions::new().read(true).create(true).truncate(false).open(path)?;
-      self.reader = Some(BufReader::new(file.try_clone()?));
-      self.log_file = Some(file);
-    }
-    let reader = self.reader.as_mut().unwrap();
-
+    let reader = match &mut self.reader {
+        Some(reader) => reader,
+        None => {
+            // We already returned early if !path.exists(), so open read-only
+            let file = OpenOptions::new()
+                .read(true)
+                .open(path)?;
+            let reader = BufReader::new(file.try_clone()?);
+            self.log_file = Some(file);
+            self.reader = Some(reader);
+            self.reader.as_mut().unwrap()
+        }
+    };
     // Seek to last read position
     reader.seek(SeekFrom::Start(self.file_pos))?;
 
