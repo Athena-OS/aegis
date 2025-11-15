@@ -3,7 +3,7 @@ use rand::{prelude::IndexedRandom, Rng};
 use std::{
   collections::VecDeque,
   fs::{File, OpenOptions},
-  io::{BufRead, BufReader, Seek, SeekFrom},
+  io::{BufReader, Read, Seek, SeekFrom},
   os::unix::process::ExitStatusExt,
   path::PathBuf,
   process::{Child, Command, Stdio},
@@ -2244,142 +2244,139 @@ impl ConfigWidget for ProgressBar {
 /// - Circular buffer to prevent memory growth
 /// - Handles log rotation and file truncation
 /// - Efficient incremental reading
+// Add/ensure these imports exist at the top of the file:
 pub struct LogBox<'a> {
   title: String,
   focused: bool,
-  pub line_buf: VecDeque<Line<'a>>, // Circular buffer of log lines
-  max_buf_size: usize,              // Maximum lines to keep in memory
-  log_file: Option<File>,           // File handle for writing
-  reader: Option<BufReader<File>>,  // File reader for monitoring
-  file_pos: u64,                    // Current read position in file
-  log_path: Option<PathBuf>,        // Path to the log file
+  pub line_buf: VecDeque<Line<'a>>, // circular buffer
+  max_buf_size: usize,              // max lines to keep
+  log_file: Option<File>,           // (kept for API compatibility; not used)
+  reader: Option<BufReader<File>>,  // file reader we tail from
+  file_pos: u64,                    // current read offset
+  log_path: Option<PathBuf>,        // path to the log file
+  pending_fragment: String,         // holds last partial line (no trailing '\n')
 }
 
 impl<'a> LogBox<'a> {
   pub fn new(title: String) -> Self {
-    let line_buf = std::iter::repeat_n(String::new().into(), 100)
-      .collect::<Vec<_>>()
-      .into();
     Self {
       title,
       focused: false,
-      line_buf,
-      max_buf_size: 100,
+      line_buf: VecDeque::with_capacity(256),
+      max_buf_size: 1000, // more headroom than 100
       log_file: None,
       reader: None,
       file_pos: 0,
       log_path: None,
+      pending_fragment: String::new(),
     }
   }
 
   pub fn open_log<P: Into<PathBuf>>(&mut self, path: P) -> anyhow::Result<()> {
     let path = path.into();
 
-    // Open the file for read/write, create if missing, but don't truncate
+    // Open read-only for tailing; don't truncate here.
+    // (You can truncate earlier in your setup if desired.)
     let file = OpenOptions::new()
       .read(true)
-      .write(true)
       .create(true)
       .truncate(false)
       .open(&path)?;
 
-    let file_pos = file.metadata()?.len(); // start reading at EOF
-    let reader = BufReader::new(file.try_clone()?);
-    self.log_file = Some(file);
-    self.reader = Some(reader);
+    // Start from EOF so we only show live content.
+    let file_pos = file.metadata()?.len();
+
+    self.reader = Some(BufReader::new(file.try_clone()?));
+    self.log_file = Some(file); // retained for API compatibility; not used below
     self.file_pos = file_pos;
     self.log_path = Some(path);
+    self.pending_fragment.clear();
+    self.line_buf.clear();
     Ok(())
   }
 
-  /// Poll the log file for new content - call this each render cycle
-  ///
-  /// Efficiently reads only new lines since last poll:
-  /// - Detects file truncation/rotation and handles gracefully
-  /// - Parses ANSI escape codes for colored output
-  /// - Maintains circular buffer to prevent memory bloat
+  /// Call this every render tick to read any new bytes appended to the file.
+  /// - Keeps a pending fragment if a line didn't end with '\n' yet.
+  /// - Preserves ANSI colors by feeding raw text to `IntoText`.
+  /// - Detects truncation/rotation and resets cleanly.
   pub fn poll_log(&mut self) -> anyhow::Result<()> {
     let Some(path) = &self.log_path else {
       return Ok(());
     };
-
-    // Early return if log file doesn't exist yet
     if !path.exists() {
-      return Ok(());
+      return Ok(()); // nothing to show yet
     }
 
-    // Check current file size for changes
     let current_size = std::fs::metadata(path)?.len();
 
-    // Handle log rotation or truncation
+    // If file shrank, treat as truncation/rotation.
     if current_size < self.file_pos {
       self.file_pos = 0;
-      // Reopen the file since it was truncated or rotated
-      let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(path)?;
-      let reader = BufReader::new(file.try_clone()?);
+      self.pending_fragment.clear();
+      self.line_buf.clear();
+
+      // Reopen the reader
+      let file = OpenOptions::new().read(true).create(true).truncate(false).open(path)?;
+      self.reader = Some(BufReader::new(file.try_clone()?));
       self.log_file = Some(file);
-      self.reader = Some(reader);
     }
 
-    // No new data to read
+    // Nothing new to read
     if current_size <= self.file_pos {
       return Ok(());
     }
 
-    // Use existing reader, seeking to our position if needed
-    let reader = match &mut self.reader {
-      Some(reader) => reader,
-      None => {
-        // If no reader exists, create one
-        let file = OpenOptions::new()
-          .read(true)
-          .write(true)
-          .create(true)
-          .truncate(false)
-          .open(path)?;
-        let reader = BufReader::new(file.try_clone()?);
-        self.log_file = Some(file);
-        self.reader = Some(reader);
-        self.reader.as_mut().unwrap()
-      }
-    };
+    // Ensure we have a reader
+    if self.reader.is_none() {
+      let file = OpenOptions::new().read(true).create(true).truncate(false).open(path)?;
+      self.reader = Some(BufReader::new(file.try_clone()?));
+      self.log_file = Some(file);
+    }
+    let reader = self.reader.as_mut().unwrap();
 
+    // Seek to last read position
     reader.seek(SeekFrom::Start(self.file_pos))?;
 
-    // Read and process all new lines
-    let mut line = String::new();
-    while reader.read_line(&mut line)? > 0 {
-      let trimmed = strip_ansi_escapes::strip_str(line.trim_end());
+    // Read all new bytes; handle non-UTF8 safely
+    let mut bytes = Vec::new();
+    reader.read_to_end(&mut bytes)?;
+    let chunk = String::from_utf8_lossy(&bytes);
 
-      // Parse ANSI escape codes for colored terminal output
-      if let Ok(text) = trimmed.into_text() {
-        for parsed_line in text.lines {
-          self.line_buf.push_back(parsed_line);
-          // Maintain circular buffer size
+    // Combine with any previous partial line
+    let combined = std::mem::take(&mut self.pending_fragment) + &chunk;
+
+    // Split while keeping '\n' to know which are complete lines
+    for piece in combined.split_inclusive('\n') {
+      if piece.ends_with('\n') {
+        // Complete line: trim just the newline (keep ANSI)
+        let raw = piece.trim_end_matches('\n');
+
+        if let Ok(text) = raw.into_text() {
+          for parsed_line in text.lines {
+            self.line_buf.push_back(parsed_line);
+            if self.line_buf.len() > self.max_buf_size {
+              self.line_buf.pop_front();
+            }
+          }
+        } else {
+          // Fallback: push raw
+          self.line_buf.push_back(raw.to_string().into());
           if self.line_buf.len() > self.max_buf_size {
             self.line_buf.pop_front();
           }
         }
       } else {
-        // Fallback for lines that can't be parsed
-        self.line_buf.push_back(trimmed.to_string().into());
-        if self.line_buf.len() > self.max_buf_size {
-          self.line_buf.pop_front();
-        }
+        // No trailing newline: keep for next poll
+        self.pending_fragment = piece.to_string();
       }
-
-      line.clear();
     }
 
-    // Update file position to track what we've read
+    // We consumed everything up to current_size
     self.file_pos = current_size;
     Ok(())
   }
+
+  /// Optional: push lines directly into the UI buffer (not the file).
   pub fn write_log(&mut self, log_output: &str) {
     if let Ok(text) = log_output.into_text() {
       for line in text.lines {
@@ -2401,33 +2398,23 @@ impl<'a> ConfigWidget for LogBox<'a> {
   fn handle_input(&mut self, _key: KeyEvent) -> Signal {
     Signal::Wait
   }
+
   fn render(&self, f: &mut Frame, area: Rect) {
-    let lines = self.line_buf.iter().cloned().collect::<Vec<Line>>();
+    // Show the last N lines that fit in the box
     let rows = area.height.saturating_sub(2) as usize;
-    let visible_lines = lines
-      .iter()
-      .skip(lines.len().saturating_sub(rows))
-      .cloned()
-      .collect::<Vec<Line>>();
-    let paragraph = Paragraph::new(visible_lines)
-      .block(
-        Block::default()
-          .title(self.title.clone())
-          .borders(Borders::ALL),
-      )
-      .wrap(ratatui::widgets::Wrap { trim: true });
+    let start = self.line_buf.len().saturating_sub(rows);
+    let visible: Vec<Line> = self.line_buf.iter().skip(start).cloned().collect();
+
+    let paragraph = Paragraph::new(visible)
+      .block(Block::default().title(self.title.clone()).borders(Borders::ALL))
+      .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
   }
-  fn focus(&mut self) {
-    self.focused = true;
-  }
-  fn unfocus(&mut self) {
-    self.focused = false;
-  }
-  fn is_focused(&self) -> bool {
-    self.focused
-  }
+
+  fn focus(&mut self)   { self.focused = true; }
+  fn unfocus(&mut self) { self.focused = false; }
+  fn is_focused(&self) -> bool { self.focused }
 }
 
 #[derive(Clone)]

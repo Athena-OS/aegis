@@ -1,5 +1,5 @@
 use std::{
-  fs::File,
+  fs::{File, OpenOptions},
   collections::VecDeque,
   fmt::{Debug, Display},
   io::{Read,Write},
@@ -4592,6 +4592,11 @@ impl<'a> InstallProgress<'a> {
       let help_modal = HelpModal::new("Installation Progress", help_content);
 
       let mut log_box = LogBox::new("Logs".into());
+      OpenOptions::new()
+          .create(true)
+          .write(true)  // Each time I start a new install, it makes the aegis.log file empty
+          .truncate(true)      // one-time clean slate
+          .open(&log_path)?;
       log_box.open_log(log_path.clone())?;
 
       Ok(Self {
@@ -4624,14 +4629,16 @@ impl<'a> InstallProgress<'a> {
     Ok(vec![
 			(Line::from("Athena OS Installation..."),
 			vec![
-			command!("sh", "-c", format!("echo Beginning Athena OS Installation... > {log_file_path} 2>&1")),
+			command!("sh", "-c", format!("echo Beginning Athena OS Installation... >> {log_file_path} 2>&1")),
 			command!("sh", "-c", format!("echo Writing logs in {log_file_path} >> {log_file_path} 2>&1")),
-			command!(
-        "sh", "-c",
+      command!(
+        "sh",
+        "-c",
         format!(
-          r#""aegis" \
-              --system-file "{}" --drives-file "{}" >> "{}" 2>&1"#,
-          system_cfg_path, disk_cfg_path, log_file_path
+          "stdbuf -oL -eL -- aegis --system-file '{}' --drives-file '{}' >> '{}' 2>&1",
+          system_cfg_path,
+          disk_cfg_path,
+          log_file_path
         )
       ),
       command!("sh", "-c", format!("echo Writing logs in {log_file_path} >> {log_file_path} 2>&1")),
@@ -4671,7 +4678,6 @@ impl<'a> Page for InstallProgress<'a> {
     // Update progress bar with completion percentage
     //let progress = (self.steps.progress() * 100.0) as u32;
     self.progress_bar.tick();
-    self.progress_bar.render(f, chunks[1]);
     if self.steps.has_error() {
         self.signal = Some(Signal::Push(Box::new(InstallFailed::new(self._log_file.clone()))));
     } else if self.steps.is_complete() {
