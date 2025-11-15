@@ -2254,7 +2254,7 @@ pub struct LogBox<'a> {
   reader: Option<BufReader<File>>,  // file reader we tail from
   file_pos: u64,                    // current read offset
   log_path: Option<PathBuf>,        // path to the log file
-  pending_fragment: String,         // holds last partial line (no trailing '\n')
+  pending: String,         // holds the partial (unterminated) line between polls
 }
 
 impl<'a> LogBox<'a> {
@@ -2268,7 +2268,7 @@ impl<'a> LogBox<'a> {
       reader: None,
       file_pos: 0,
       log_path: None,
-      pending_fragment: String::new(),
+      pending: String::new(),
     }
   }
 
@@ -2301,83 +2301,76 @@ impl<'a> LogBox<'a> {
     let Some(path) = &self.log_path else {
       return Ok(());
     };
+  
     if !path.exists() {
-      return Ok(()); // nothing to show yet
+      return Ok(());
     }
-
+  
+    // Detect truncation/rotation
     let current_size = std::fs::metadata(path)?.len();
-
-    // If file shrank, treat as truncation/rotation.
     if current_size < self.file_pos {
-        self.file_pos = 0;
-    
-        // File exists (we just got its metadata), so open read-only
-        let file = OpenOptions::new()
-            .read(true)
-            .open(path)?;
-        let reader = BufReader::new(file.try_clone()?);
-        self.log_file = Some(file);
-        self.reader = Some(reader);
+      // file was truncated/rotated; restart from beginning
+      self.file_pos = 0;
+      self.pending.clear();
     }
-
+  
     // Nothing new to read
     if current_size <= self.file_pos {
       return Ok(());
     }
-
-    // Ensure we have a reader
-    let reader = match &mut self.reader {
-        Some(reader) => reader,
-        None => {
-            // We already returned early if !path.exists(), so open read-only
-            let file = OpenOptions::new()
-                .read(true)
-                .open(path)?;
-            let reader = BufReader::new(file.try_clone()?);
-            self.log_file = Some(file);
-            self.reader = Some(reader);
-            self.reader.as_mut().unwrap()
-        }
-    };
-    // Seek to last read position
-    reader.seek(SeekFrom::Start(self.file_pos))?;
-
-    // Read all new bytes; handle non-UTF8 safely
+  
+    // Read raw bytes from last position to EOF
+    let mut f = File::open(path)?;
+    f.seek(SeekFrom::Start(self.file_pos))?;
     let mut bytes = Vec::new();
-    reader.read_to_end(&mut bytes)?;
+    f.read_to_end(&mut bytes)?;
+    if bytes.is_empty() {
+      return Ok(());
+    }
+  
+    // We consumed all new bytes on disk
+    self.file_pos = current_size;
+  
+    // Decode (lossy) and prepend any pending fragment
     let chunk = String::from_utf8_lossy(&bytes);
-
-    // Combine with any previous partial line
-    let combined = std::mem::take(&mut self.pending_fragment) + &chunk;
-
-    // Split while keeping '\n' to know which are complete lines
-    for piece in combined.split_inclusive('\n') {
-      if piece.ends_with('\n') {
-        // Complete line: trim just the newline (keep ANSI)
-        let raw = piece.trim_end_matches('\n');
-
-        if let Ok(text) = raw.into_text() {
-          for parsed_line in text.lines {
-            self.line_buf.push_back(parsed_line);
-            if self.line_buf.len() > self.max_buf_size {
-              self.line_buf.pop_front();
-            }
-          }
-        } else {
-          // Fallback: push raw
-          self.line_buf.push_back(raw.to_string().into());
+    let mut combined = String::with_capacity(self.pending.len() + chunk.len());
+    combined.push_str(&self.pending);
+    combined.push_str(&chunk);
+  
+    // Split into lines; if there’s no trailing '\n', keep the last fragment
+    let ends_with_nl = combined.ends_with('\n');
+    let mut parts = combined.split('\n').collect::<Vec<&str>>();
+  
+    self.pending.clear();
+    if !ends_with_nl
+      && let Some(tail) = parts.pop() {
+        self.pending.push_str(tail); // carry the incomplete line to next poll
+      }
+  
+    // Push only complete lines to the UI buffer
+    for raw in parts {
+      // Trim CR for CRLF logs, but don't touch the start of the line
+      let raw = raw.strip_suffix('\r').unwrap_or(raw);
+    
+      // Remove ANSI codes (keeps the UI clean/stable)
+      let stripped = strip_ansi_escapes::strip_str(raw);
+    
+      // Convert to ratatui lines; fall back to plain if parsing fails
+      if let Ok(text) = stripped.into_text() {
+        for parsed_line in text.lines {
+          self.line_buf.push_back(parsed_line);
           if self.line_buf.len() > self.max_buf_size {
             self.line_buf.pop_front();
           }
         }
       } else {
-        // No trailing newline: keep for next poll
-        self.pending_fragment = piece.to_string();
+        self.line_buf.push_back(stripped.to_string().into());
+        if self.line_buf.len() > self.max_buf_size {
+          self.line_buf.pop_front();
+        }
       }
     }
-
-    // We consumed everything up to current_size
-    self.file_pos = current_size;
+  
     Ok(())
   }
 
