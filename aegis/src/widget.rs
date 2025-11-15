@@ -2256,7 +2256,6 @@ pub struct LogBox<'a> {
   log_path: Option<PathBuf>,        // path to the log file
   pending_bytes: Vec<u8>,   // bytes that didn't decode to valid UTF-8 yet
   pending_line: String,     // decoded but not yet newline-terminated text
-  last_emitted_blank: bool, // collapse multiple blank lines in a row
 }
 
 impl<'a> LogBox<'a> {
@@ -2272,7 +2271,6 @@ impl<'a> LogBox<'a> {
       log_path: None,
       pending_bytes: Vec::new(),
       pending_line: String::new(),
-      last_emitted_blank: false,
     }
   }
 
@@ -2305,18 +2303,16 @@ impl<'a> LogBox<'a> {
     let Some(path) = &self.log_path else { return Ok(()); };
     if !path.exists() { return Ok(()); }
 
-    // Detect truncation/rotation.
+    // detect truncation/rotation
     let current_size = std::fs::metadata(path)?.len();
     if current_size < self.file_pos {
       self.file_pos = 0;
       self.pending_bytes.clear();
-      self.pending_line.clear();
+      // keep pending_line; if the file was truncated we’ll rebuild naturally
     }
-    if current_size <= self.file_pos {
-      return Ok(());
-    }
+    if current_size <= self.file_pos { return Ok(()); }
 
-    // Read new bytes.
+    // read new bytes
     let mut f = File::open(path)?;
     f.seek(SeekFrom::Start(self.file_pos))?;
     let mut new_bytes = Vec::new();
@@ -2324,13 +2320,13 @@ impl<'a> LogBox<'a> {
     if new_bytes.is_empty() { return Ok(()); }
     self.file_pos = current_size;
 
-    // Prepend any undecoded bytes from last time.
+    // prepend undecoded tail from last time
     let mut buf = Vec::with_capacity(self.pending_bytes.len() + new_bytes.len());
     buf.extend_from_slice(&self.pending_bytes);
     buf.extend_from_slice(&new_bytes);
     self.pending_bytes.clear();
 
-    // Decode only the valid UTF-8 prefix; keep the rest for next time.
+    // decode only valid UTF-8 prefix; keep remainder for next tick
     let valid_len = match std::str::from_utf8(&buf) {
       Ok(_) => buf.len(),
       Err(e) => e.valid_up_to(),
@@ -2340,74 +2336,37 @@ impl<'a> LogBox<'a> {
       self.pending_bytes.extend_from_slice(&buf[valid_len..]);
     }
 
-    // Glue with any previously pending *line* content (no newline yet).
-    let mut text = String::with_capacity(self.pending_line.len() + decoded.len());
-    text.push_str(&self.pending_line);
-    text.push_str(&decoded);
-
-    // Normalize line endings:
-    // - turn CRLF into LF
-    // - handle bare CR as “overwrite this line”: keep only the tail after the last \r
-    //   per *line segment*.
-    text = text.replace("\r\n", "\n");
-    let mut normalized = String::with_capacity(text.len());
-    for seg in text.split('\n') {
-      if seg.is_empty() {
-        normalized.push('\n');
-        continue;
-      }
-      // Keep the part after the last '\r' (terminal-style line redraw).
-      let tail = match seg.rsplit_once('\r') {
-        Some((_, t)) => t,
-        None => seg,
-      };
-      normalized.push_str(tail);
-      normalized.push('\n');
-    }
-
-    // If the original didn't end with '\n', we just added one above. Remove it and
-    // keep that fragment as pending_line.
-    let ends_with_nl = text.ends_with('\n');
-    if !ends_with_nl && normalized.ends_with('\n') {
-      normalized.pop();
-    }
-
-    // Split into complete lines; last fragment becomes pending_line (if any).
-    let mut lines_iter = normalized.split('\n').peekable();
-    let mut last = None;
-    while let Some(l) = lines_iter.next() {
-      let is_last = lines_iter.peek().is_none() && !ends_with_nl;
-      if is_last {
-        last = Some(l.to_string());
-        break;
-      }
-
-      // Strip ANSI and CR tails again (paranoia) then collapse blanks.
-      let raw = l.strip_suffix('\r').unwrap_or(l);
-      let stripped = strip_ansi_escapes::strip_str(raw);
-      let blank = stripped.trim().is_empty();
-
-      if blank {
-        if !self.last_emitted_blank {
-          self.line_buf.push_back(String::new().into());
-          self.last_emitted_blank = true;
+    // Stream-normalize: handle '\r' (overwrite), finalize on '\n', skip blanks
+    for ch in decoded.chars() {
+      match ch {
+        '\r' => {
+          // terminal-style redraw: toss the current work-in-progress line
+          self.pending_line.clear();
         }
-      } else {
-        self.last_emitted_blank = false;
-        if let Ok(text) = stripped.into_text() {
-          for line in text.lines {
-            self.line_buf.push_back(line);
-            if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
+        '\n' => {
+          // finalize a line; strip ANSI, discard blanks
+          let raw = std::mem::take(&mut self.pending_line);
+          let stripped = strip_ansi_escapes::strip_str(&raw);
+          if !stripped.trim().is_empty() {
+            if let Ok(text) = stripped.into_text() {
+              for line in text.lines {
+                self.line_buf.push_back(line);
+                if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
+              }
+            } else {
+              self.line_buf.push_back(raw.into());
+              if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
+            }
           }
-        } else {
-          self.line_buf.push_back(raw.to_string().into());
+          // else: skip truly blank lines
+        }
+        _ => {
+          // build the current line
+          self.pending_line.push(ch);
         }
       }
-      if self.line_buf.len() > self.max_buf_size { self.line_buf.pop_front(); }
     }
 
-    // Store the trailing (incomplete) line for next tick.
-    self.pending_line = last.unwrap_or_default();
     Ok(())
   }
 
