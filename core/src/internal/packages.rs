@@ -22,7 +22,7 @@ pub const ARCH_ONLY: &[&str] = &[
     "pipewire-pulse","pipewire-jack","ananicy","bashtop","imagemagick","lib32-glibc","mtpfs",
     "networkmanager-openvpn","noto-fonts-cjk", "octopi","openbsd-netcat","paru","pfetch","reflector",
     "toilet-fonts","wget","athena-cyber-hub","athena-firefox-config","athena-powershell-config",
-    "athena-vim-config","kando-bin"
+    "athena-vim-config","kando-bin","cai"
 ];
 
 // Small helpers
