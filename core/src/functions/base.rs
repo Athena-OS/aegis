@@ -7,7 +7,7 @@ use shared::exec::{exec, exec_archchroot, exec_output};
 use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, process::Command};
 
 pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     let (kernel_to_install, kernel_headers_to_install) = (kernel, format!("{kernel}-headers"));
@@ -538,18 +538,26 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
 
     // 8. Pre-register the Athena key with mokutil so first boot asks user
     //    "Enroll this key?" in MOK Manager. This avoids making them open BIOS UI.
-    exec_eval(
-        exec_archchroot(
-            "mokutil",
-            vec![
-                "--import".into(),
-                format!("{secureboot_key_dir}/MOK.cer"),
-                "-P".into(), // no password prompt path. If you prefer pwd-confirm flow,
-                             // remove -P and handle mokutil --password instead.
-            ],
-        ),
-        "Schedule AthenaSecureBoot.cer enrollment in MOK Manager at first boot",
-    );
+    let mok_path = format!("{secureboot_key_dir}/MOK.cer");
+    let output = Command::new("arch-chroot")
+        .arg("/mnt")
+        .arg("mokutil")
+        .arg("--import")
+        .arg(&mok_path)
+        .arg("-P")
+        .output()
+        .expect("Failed to run arch-chroot / mokutil");
+
+    if output.status.success() {
+        info!("MOK import scheduled successfully.");
+    } else {
+        error!(
+            "mokutil failed (probably no Secure Boot) - ignoring.\nstatus: {status}\nstderr:\n{stderr}",
+            status = output.status,
+            stderr = String::from_utf8_lossy(&output.stderr),
+        );
+        // IMPORTANT: don’t return Err, don’t panic – just log and continue
+    }
 
     info!("systemd-boot + UKI + shim configured. On first boot, MOK Manager will ask to enroll AthenaSecureBoot.cer; accept it to boot securely without touching firmware setup.");
 }
