@@ -1,13 +1,14 @@
 use crate::internal::hardware;
 use crate::internal::install::install;
 use crate::internal::services::enable_service;
+use efivar::{self, efi, system};
 use log::{info, error};
 use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch};
 use shared::exec::{exec, exec_archchroot, exec_output};
 use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf};
 
 pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     let (kernel_to_install, kernel_headers_to_install) = (kernel, format!("{kernel}-headers"));
@@ -273,7 +274,7 @@ fn build_and_sign_uki(
     kname: &str,
     pretty: &str,
     esp_str: &str,
-    secureboot_key_dir: &str,
+    secureboot_key_dir: Option<&str>,
     cmdline: &str,
 ) {
     let uki_out = format!("{esp_str}/EFI/Athena/{kname}.efi");
@@ -313,13 +314,15 @@ fn build_and_sign_uki(
     args.push("--uname".into());
     args.push(kname.to_string());
 
-    args.push("--signtool=sbsign".into());
+    if let Some(dir) = secureboot_key_dir {
+        args.push("--signtool=sbsign".into());
 
-    args.push("--secureboot-private-key".into());
-    args.push(format!("{secureboot_key_dir}/MOK.key"));
+        args.push("--secureboot-private-key".into());
+        args.push(format!("{dir}/MOK.key"));
 
-    args.push("--secureboot-certificate".into());
-    args.push(format!("{secureboot_key_dir}/MOK.crt"));
+        args.push("--secureboot-certificate".into());
+        args.push(format!("{dir}/MOK.crt"));
+    }
 
     if tpm2_available_esapi() {
         // Make sure keys exist (safe if called already)
@@ -381,6 +384,9 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     let esp_str = espdir.to_str().unwrap();
     info!("Configuring systemd-boot + UKI + shim Secure Boot in {esp_str}");
 
+    let sb_supported = secure_boot_supported();
+    let secureboot_key_dir = "/etc/secureboot/keys";
+
     ensure_pcr_keys_in_chroot();
 
     let cmdline = generate_kernel_cmdline();
@@ -412,76 +418,150 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         "Install systemd-boot",
     );
 
-    // 2. Generate Secure Boot keypair (MOK.key / MOK.crt / MOK.cer)
-    let secureboot_key_dir = "/etc/secureboot/keys";
-    std::fs::create_dir_all(format!("/mnt{secureboot_key_dir}"))
-        .expect("Failed to create secureboot key dir");
+    if sb_supported {
+        // 2. Generate Secure Boot keypair (MOK.key / MOK.crt / MOK.cer)
+        std::fs::create_dir_all(format!("/mnt{secureboot_key_dir}"))
+            .expect("Failed to create secureboot key dir");
 
-    exec_eval(
-        exec_archchroot(
-            "openssl",
-            vec![
-                "req".into(),
-                "-newkey".into(), "rsa:2048".into(),
-                "-nodes".into(),
-                "-keyout".into(), format!("{secureboot_key_dir}/MOK.key"),
-                "-new".into(),
-                "-x509".into(),
-                "-sha256".into(),
-                "-days".into(), "3650".into(),
-                "-subj".into(), "/CN=Athena OS Secure Boot Key/".into(),
-                "-out".into(), format!("{secureboot_key_dir}/MOK.crt"),
-            ],
-        ),
-        "Generate Athena Secure Boot keypair",
+        exec_eval(
+            exec_archchroot(
+                "openssl",
+                vec![
+                    "req".into(),
+                    "-newkey".into(), "rsa:2048".into(),
+                    "-nodes".into(),
+                    "-keyout".into(), format!("{secureboot_key_dir}/MOK.key"),
+                    "-new".into(),
+                    "-x509".into(),
+                    "-sha256".into(),
+                    "-days".into(), "3650".into(),
+                    "-subj".into(), "/CN=Athena OS Secure Boot Key/".into(),
+                    "-out".into(), format!("{secureboot_key_dir}/MOK.crt"),
+                ],
+            ),
+            "Generate Athena Secure Boot keypair",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "chmod",
+                vec![
+                    "400".into(),
+                    format!("{secureboot_key_dir}/MOK.key"),
+                ],
+            ),
+            "Restrict Secure Boot private key permissions",
+        );
+
+        exec_eval(
+            exec_archchroot(
+                "openssl",
+                vec![
+                    "x509".into(),
+                    "-outform".into(), "DER".into(),
+                    "-in".into(),  format!("{secureboot_key_dir}/MOK.crt"),
+                    "-out".into(), format!("{secureboot_key_dir}/MOK.cer"),
+                ],
+            ),
+            "Generate DER (.cer) version of Athena Secure Boot cert",
+        );
+
+        // 3. Sign systemd-boot itself
+        exec_eval(
+            exec_archchroot(
+                "sbsign",
+                vec![
+                    "--key".into(),  format!("{secureboot_key_dir}/MOK.key"),
+                    "--cert".into(), format!("{secureboot_key_dir}/MOK.crt"),
+                    "--output".into(), format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+                    format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+                ],
+            ),
+            "Sign systemd-boot with Athena key",
+        );
+
+        // 4. Set up shim as stage0 so Secure Boot works out-of-the-box,
+        //    and so first boot triggers MOK Manager instead of forcing firmware DB enrollment.
+        //
+        // Firmware will execute BOOTX64.EFI. We want that to be shim (Microsoft-signed),
+        // so Secure Boot allows it immediately.
+        //
+        // Then shim will try to load "grubx64.efi". We give it *our signed systemd-boot*
+        // under that name, and after the user enrolls AthenaSecureBoot.cer in MOK Manager,
+        // shim will allow it.
+        //
+        // So:
+        //   ESP/EFI/BOOT/BOOTX64.EFI      <- shimx64.efi (MS-signed, from shim-signed pkg)
+        //   ESP/EFI/BOOT/grubx64.efi      <- signed systemd-bootx64.efi
+        //
+        std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/BOOT"))
+            .expect("Failed to create ESP/EFI/BOOT directory");
+
+        // Copy shim
+        files::copy_file(
+            "/mnt/usr/share/shim-signed/shimx64.efi",
+            &format!("/mnt{esp_str}/EFI/BOOT/BOOTX64.EFI"),
+        );
+
+        // Copy MokManager so shim can start MOK enrollment UI at first boot
+        files::copy_file(
+            "/mnt/usr/share/shim-signed/mmx64.efi",
+            &format!("/mnt{esp_str}/EFI/BOOT/mmx64.efi"),
+        );
+
+        // Copy our signed systemd-boot binary where shim expects "grubx64.efi"
+        files::copy_file(
+            &format!("/mnt{esp_str}/EFI/systemd/systemd-bootx64.efi"),
+            &format!("/mnt{esp_str}/EFI/BOOT/grubx64.efi"),
+        );
+
+        // 5. Copy Athena public cert somewhere obvious on ESP.
+        //    Shim/MOK Manager will ask to enroll it on first boot (after mokutil below).
+        std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/Athena"))
+            .expect("Failed to create ESP/EFI/Athena directory");
+        files::copy_file(
+            &format!("/mnt{secureboot_key_dir}/MOK.cer"),
+            &format!("/mnt{esp_str}/EFI/Athena/AthenaSecureBoot.cer"),
+        );
+
+        // 6. Pre-register the Athena key with mokutil so first boot asks user
+        //    "Enroll this key?" in MOK Manager. This avoids making them open BIOS UI.
+        exec_eval(
+            exec_archchroot(
+                "mokutil",
+                vec![
+                    "--import".into(),
+                    format!("{secureboot_key_dir}/MOK.cer"),
+                    "-P".into(), // no password prompt path. If you prefer pwd-confirm flow,
+                                 // remove -P and handle mokutil --password instead.
+                ],
+            ),
+            "Schedule AthenaSecureBoot.cer enrollment in MOK Manager at first boot",
+        );
+
+        info!("systemd-boot + UKI + shim configured. On first boot, MOK Manager will ask to enroll AthenaSecureBoot.cer; accept it to boot securely without touching firmware setup.");
+    }
+
+    // 7. Build + sign UKIs for BOTH kernels using the SAME cmdline string
+    build_and_sign_uki(
+        "linux-lts",
+        "LTS",
+        esp_str,
+        if sb_supported { Some(secureboot_key_dir) } else { None },
+        &cmdline,
+    );
+    build_and_sign_uki(
+        "linux-hardened",
+        "Hardened",
+        esp_str,
+        if sb_supported { Some(secureboot_key_dir) } else { None },
+        &cmdline,
     );
 
-    exec_eval(
-        exec_archchroot(
-            "chmod",
-            vec![
-                "400".into(),
-                format!("{secureboot_key_dir}/MOK.key"),
-            ],
-        ),
-        "Restrict Secure Boot private key permissions",
-    );
-
-    exec_eval(
-        exec_archchroot(
-            "openssl",
-            vec![
-                "x509".into(),
-                "-outform".into(), "DER".into(),
-                "-in".into(),  format!("{secureboot_key_dir}/MOK.crt"),
-                "-out".into(), format!("{secureboot_key_dir}/MOK.cer"),
-            ],
-        ),
-        "Generate DER (.cer) version of Athena Secure Boot cert",
-    );
-
-    // 3. Sign systemd-boot itself
-    exec_eval(
-        exec_archchroot(
-            "sbsign",
-            vec![
-                "--key".into(),  format!("{secureboot_key_dir}/MOK.key"),
-                "--cert".into(), format!("{secureboot_key_dir}/MOK.crt"),
-                "--output".into(), format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
-                format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
-            ],
-        ),
-        "Sign systemd-boot with Athena key",
-    );
-
-    // 4. Build + sign UKIs for BOTH kernels using the SAME cmdline string
-    build_and_sign_uki("linux-lts", "LTS", esp_str, secureboot_key_dir, &cmdline);
-    build_and_sign_uki("linux-hardened", "Hardened", esp_str, secureboot_key_dir, &cmdline);
-
-    // 5. Write loader.conf, pick linux-lts as default
+    // 8. Write loader.conf, pick linux-lts as default
     let loader_dir = format!("/mnt{esp_str}/loader");
     let entries_dir = format!("{loader_dir}/entries");
-    std::fs::create_dir_all(&entries_dir).expect("Failed to create loader/entries dir");
+    fs::create_dir_all(&entries_dir).expect("Failed to create loader/entries dir");
 
     files::create_file(&format!("{loader_dir}/loader.conf"));
     files_eval(
@@ -491,75 +571,6 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         ),
         "Write loader.conf",
     );
-
-    // 6. Set up shim as stage0 so Secure Boot works out-of-the-box,
-    //    and so first boot triggers MOK Manager instead of forcing firmware DB enrollment.
-    //
-    // Firmware will execute BOOTX64.EFI. We want that to be shim (Microsoft-signed),
-    // so Secure Boot allows it immediately.
-    //
-    // Then shim will try to load "grubx64.efi". We give it *our signed systemd-boot*
-    // under that name, and after the user enrolls AthenaSecureBoot.cer in MOK Manager,
-    // shim will allow it.
-    //
-    // So:
-    //   ESP/EFI/BOOT/BOOTX64.EFI      <- shimx64.efi (MS-signed, from shim-signed pkg)
-    //   ESP/EFI/BOOT/grubx64.efi      <- signed systemd-bootx64.efi
-    //
-    std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/BOOT"))
-        .expect("Failed to create ESP/EFI/BOOT directory");
-
-    // Copy shim
-    files::copy_file(
-        "/mnt/usr/share/shim-signed/shimx64.efi",
-        &format!("/mnt{esp_str}/EFI/BOOT/BOOTX64.EFI"),
-    );
-
-    // Copy MokManager so shim can start MOK enrollment UI at first boot
-    files::copy_file(
-        "/mnt/usr/share/shim-signed/mmx64.efi",
-        &format!("/mnt{esp_str}/EFI/BOOT/mmx64.efi"),
-    );
-
-    // Copy our signed systemd-boot binary where shim expects "grubx64.efi"
-    files::copy_file(
-        &format!("/mnt{esp_str}/EFI/systemd/systemd-bootx64.efi"),
-        &format!("/mnt{esp_str}/EFI/BOOT/grubx64.efi"),
-    );
-
-    // 7. Copy Athena public cert somewhere obvious on ESP.
-    //    Shim/MOK Manager will ask to enroll it on first boot (after mokutil below).
-    std::fs::create_dir_all(format!("/mnt{esp_str}/EFI/Athena"))
-        .expect("Failed to create ESP/EFI/Athena directory");
-    files::copy_file(
-        &format!("/mnt{secureboot_key_dir}/MOK.cer"),
-        &format!("/mnt{esp_str}/EFI/Athena/AthenaSecureBoot.cer"),
-    );
-
-    // 8. Pre-register the Athena key with mokutil so first boot asks user
-    //    "Enroll this key?" in MOK Manager. This avoids making them open BIOS UI.
-    let mok_path = format!("{secureboot_key_dir}/MOK.cer");
-    let output = Command::new("arch-chroot")
-        .arg("/mnt")
-        .arg("mokutil")
-        .arg("--import")
-        .arg(&mok_path)
-        .arg("-P")
-        .output()
-        .expect("Failed to run arch-chroot / mokutil");
-
-    if output.status.success() {
-        info!("MOK import scheduled successfully.");
-    } else {
-        error!(
-            "mokutil failed (probably no Secure Boot) - ignoring.\nstatus: {status}\nstderr:\n{stderr}",
-            status = output.status,
-            stderr = String::from_utf8_lossy(&output.stderr),
-        );
-        // IMPORTANT: don’t return Err, don’t panic – just log and continue
-    }
-
-    info!("systemd-boot + UKI + shim configured. On first boot, MOK Manager will ask to enroll AthenaSecureBoot.cer; accept it to boot securely without touching firmware setup.");
 }
 
 fn init_keyrings_mirrors() {
@@ -785,6 +796,37 @@ pub fn configure_zram() {
         files::append_file("/mnt/etc/systemd/zram-generator.conf", "[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\nswap-priority = 100\nfs-type = swap"),
         "Write zram-generator config",
     );
+}
+
+fn secure_boot_supported() -> bool {
+    // Represents firmware variables of the running system
+    let vm = system();
+
+    // "SecureBoot" under the standard EFI global vendor GUID
+    let var = efi::Variable::new("SecureBoot");
+
+    match vm.exists(&var) {
+        Ok(true) => {
+            // SecureBoot variable exists → firmware implements Secure Boot
+            true
+        }
+        Ok(false) => {
+            // Variable simply not there → very strong sign SB is not implemented
+            info!(
+                "SecureBoot EFI variable not found; \
+                 treating Secure Boot as unsupported on this firmware."
+            );
+            false
+        }
+        Err(e) => {
+            // Any error talking to efivarfs / firmware → fail closed
+            info!(
+                "Error querying SecureBoot EFI variable ({e}); \
+                 treating Secure Boot as unsupported."
+            );
+            false
+        }
+    }
 }
 
 pub fn enable_system_services() {
