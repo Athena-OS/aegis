@@ -309,10 +309,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     info!("Setting timezone : {}", config.timezone);
     locale::set_timezone(config.timezone.as_str());
     /**************************/
-    if is_arch() {
-        info!("Processing all presets.");
-        base::preset_process();
-    }
     info!("Hostname : {}", config.hostname);
     network::set_hostname(config.hostname.as_str());
 

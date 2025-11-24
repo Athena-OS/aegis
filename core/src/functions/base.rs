@@ -3,7 +3,7 @@ use crate::internal::install::install;
 use crate::internal::services::enable_service;
 use efivar::{self, efi, system};
 use log::{info, error};
-use shared::args::{Base, distro_base, ExtendIntoString, InstallMode, PackageManager, is_arch};
+use shared::args::{ExtendIntoString, PackageManager, is_arch};
 use shared::exec::{exec, exec_archchroot, exec_output};
 use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
@@ -11,13 +11,14 @@ use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
 use std::{fs, path::PathBuf};
 
 pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
-    let (kernel_to_install, kernel_headers_to_install) = (kernel, format!("{kernel}-headers"));
+    let kernels = vec![
+        kernel.to_string(),              // the user-selected kernel (e.g. "linux-lts")
+        "linux-hardened".to_string(),    // always install hardened too
+    ];
+    let kernel_headers: Vec<String> =
+        kernels.iter().map(|k| format!("{}-headers", k)).collect();
+
     let arch_base_pkg: Vec<&str> = vec![
-        // Kernel
-        kernel_to_install,
-        &kernel_headers_to_install,
-        "linux-hardened",
-        "linux-hardened-headers",
         // Base Arch
         "base",
         "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
@@ -32,6 +33,8 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         "chaotic-keyring",
     ];
 
+    packages.extend_into(&kernels);
+    packages.extend_into(kernel_headers);
     packages.extend_into(arch_base_pkg);
 
     if tpm2_available_esapi() {
@@ -47,7 +50,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
 
     let (virt_packages, virt_services, virt_params) = hardware::virt_check();
     let cpu_packages = hardware::cpu_check();
-    let gpu_packages = hardware::gpu_check(kernel_to_install);
+    let gpu_packages = hardware::gpu_check(kernel); // linux-lts
     packages.extend_into(virt_packages);
     packages.extend_into(cpu_packages);
     packages.extend_into(gpu_packages);
@@ -58,57 +61,101 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
     }
 
-    let exit_code = match distro_base() {
-        Base::AthenaArch   => {
-            let code = install(PackageManager::Pacstrap, packages, None);
-            files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
-            files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
-            files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
-            files::copy_file("/mnt/usr/local/share/athena/release/os-release-athena", "/mnt/usr/lib/os-release");
-            hardware::set_cores();
-            exec_eval(
-                exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
-                    "sed",
-                    vec![
-                        String::from("-i"),
-                        String::from("-e"),
-                        String::from("s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g"),
-                        String::from("/mnt/etc/mkinitcpio.conf"),
-                    ],
-                ),
-                "Set mkinitcpio hooks",
-            );
-            files_eval(
-                files::sed_file(
-                    "/mnt/etc/mkinitcpio.conf",
-                    "#COMPRESSION=\"lz4\"",
-                    "COMPRESSION=\"gzip\"", // systemd-stub (and therefore UKI) expects an initrd compressed with gzip
-                ),
-                "Set compression algorithm",
-            );
-            code
-        }
-
-        Base::AthenaFedora => {
-            install(PackageManager::Dnf, packages, Some(InstallMode::Install))
-        }
-        _ => {
-            info!("No installation process for selected base system.");
-            0
-        }
-    };
-
-    // Enable the necessary services after installation
-    for service in virt_services {
-        enable_service(service);
+    let code = install(PackageManager::Pacstrap, vec!["mkinitcpio".to_string()], None); // By installing it as first package, we can work on its config files without building the initramfs image. It must be done only one time at the end of the kernel package installation
+    if code != 0 {
+        // Log if you want
+        error!("mkinitcpio installation failed with exit code {code}");
+        return code; // or just `code` if you don't want early return
+    }
+    
+    files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
+    files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
+    files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
+    files::copy_file("/mnt/usr/local/share/athena/release/os-release-athena", "/mnt/usr/lib/os-release");
+    hardware::set_cores();
+    exec_eval(
+        exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
+            "sed",
+            vec![
+                "-i".into(),
+                "-e".into(),
+                "s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g".into(),
+                "/mnt/etc/mkinitcpio.conf".into(),
+            ],
+        ),
+        "Set mkinitcpio hooks",
+    );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/mkinitcpio.conf",
+            "#COMPRESSION=\"lz4\"",
+            "COMPRESSION=\"gzip\"", // systemd-stub (and therefore UKI) expects an initrd compressed with gzip
+        ),
+        "Set compression algorithm",
+    );
+    let preset_dir = "/mnt/etc/mkinitcpio.d";
+    std::fs::create_dir_all(preset_dir).unwrap();
+    // By creating our custom presets (with UKI entry), the kernel installation won't create its default preset files
+    for k in &kernels {
+        let preset_path = format!("{}/{}.preset", preset_dir, k);
+        let content = format!(
+r#"ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-{kernel}"
+                
+PRESETS=('default')
+                
+default_uki="/efi/EFI/Athena/{kernel}.efi"
+default_options=""
+"#,
+            kernel = k,
+        );
+    
+        std::fs::write(&preset_path, content)
+            .expect("Failed to write mkinitcpio preset");
+        info!("Created mkinitcpio preset: {}", preset_path);
     }
 
-    // After the packages are installed, apply sed commands for virt service
+    if let Some(vendor) = sys_vendor() {
+        let vendor_lc = vendor.to_lowercase();
+
+        if vendor_lc.contains("apple") {
+            info!("Detected Apple hardware (sys_vendor='{vendor}'). Setting Mac-specific MODULES.");
+
+            exec_eval(
+                exec(
+                    "sed",
+                    vec![
+                        "-i".into(),
+                        "-e".into(),
+                        r"/^MODULES=()/ s/()/(usb_storage uas xhci_hcd ahci libahci sd_mod usbhid hid_apple)/".into(),
+                        "-e".into(),
+                        r"/^MODULES=([^)]*)/ { /usb_storage uas xhci_hcd ahci libahci sd_mod usbhid hid_apple/! s/)/ usb_storage uas xhci_hcd ahci libahci sd_mod usbhid hid_apple)/ }".into(),
+                        "/mnt/etc/mkinitcpio.conf".into(),
+                    ],
+                ),
+                "Set mkinitcpio MODULES for Apple computer.",
+            );
+        }
+    } else {
+        info!("Could not read /sys/class/dmi/id/sys_vendor. Leaving MODULES as default.");
+    }
+
+    // Apply sed commands for virt service for mkinitcpio.conf
     for (description, args) in virt_params {
         exec_eval(
             exec("sed", args),  // Apply each file change via `sed`
             &description,       // Log the description of the file change
         );
+    }
+
+    let code = install(PackageManager::Pacstrap, packages, None);
+    if code != 0 {
+        error!("Package installation failed with exit code {code}");
+    }
+
+    // Enable the necessary services after installation
+    for service in virt_services {
+        enable_service(service);
     }
     
     files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
@@ -121,20 +168,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         ),
         "Set nsswitch configuration",
     );
-    exit_code
-}
-
-pub fn preset_process() {
-    // mkinitcpio -P must be run after all the edits on /etc/mkinitcpio.conf file
-    exec_eval(
-        exec_archchroot(
-            "mkinitcpio",
-            vec![
-                String::from("-P"),
-            ],
-        ),
-        "Run mkinitcpio presets processing",
-    );
+    code
 }
 
 fn generate_kernel_cmdline() -> String {
@@ -826,6 +860,20 @@ fn secure_boot_supported() -> bool {
             );
             false
         }
+    }
+}
+
+fn sys_vendor() -> Option<String> {
+    match fs::read_to_string("/sys/class/dmi/id/sys_vendor") {
+        Ok(vendor) => {
+            let v = vendor.trim().to_string();
+            if v.is_empty() {
+                None
+            } else {
+                Some(v)
+            }
+        }
+        Err(_) => None,
     }
 }
 

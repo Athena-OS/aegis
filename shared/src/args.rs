@@ -214,7 +214,6 @@ pub fn parse_partitions(s: &str) -> Result<Partition, &'static str> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Base {
     AthenaArch,
-    AthenaFedora,
     AthenaNix,
     Other,
 }
@@ -224,7 +223,6 @@ pub static BASE: OnceLock<Base> = OnceLock::new();
 pub fn set_base(s: &str) {
     let b = match s {
         "Athena Arch"   => Base::AthenaArch,
-        "Athena Fedora" => Base::AthenaFedora,
         "Athena Nix"    => Base::AthenaNix,
         _               => Base::Other,
     };
@@ -236,7 +234,6 @@ pub fn distro_base() -> Base {
 }
 
 pub fn is_arch() -> bool   { distro_base() == Base::AthenaArch }
-pub fn is_fedora() -> bool { distro_base() == Base::AthenaFedora }
 pub fn is_nix() -> bool    { distro_base() == Base::AthenaNix }
 
 #[derive(Debug, Args)]
