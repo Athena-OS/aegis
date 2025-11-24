@@ -61,7 +61,14 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
     }
 
-    let code = install(PackageManager::Pacstrap, vec!["mkinitcpio".to_string()], None); // By installing it as first package, we can work on its config files without building the initramfs image. It must be done only one time at the end of the kernel package installation
+    let code = install(
+        PackageManager::Pacstrap,
+        vec![
+            "pacman".to_string(),
+            "mkinitcpio".to_string()
+        ],
+        None
+    ); // By installing it as first package, we can work on its config files without building the initramfs image. It must be done only one time at the end of the kernel package installation
     if code != 0 {
         // Log if you want
         error!("mkinitcpio installation failed with exit code {code}");
