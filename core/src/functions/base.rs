@@ -148,7 +148,7 @@ default_options=""
         );
     }
 
-    let code = install(PackageManager::Pacstrap, packages, None);
+    let code = install(PackageManager::Pacman, packages, None);
     if code != 0 {
         error!("Package installation failed with exit code {code}");
         return code;
