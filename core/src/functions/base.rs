@@ -76,6 +76,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     }
     
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
+    files::copy_file("/etc/pacman.d/athena-mirrorlist", "/mnt/etc/pacman.d/athena-mirrorlist");
     files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
     files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
     
@@ -90,7 +91,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
                 "/mnt/etc/mkinitcpio.conf".into(),
             ],
         ),
-        "Set mkinitcpio hooks",
+        "Set mkinitcpio hooks.",
     );
     files_eval(
         files::sed_file(
@@ -98,7 +99,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
             "#COMPRESSION=\"lz4\"",
             "COMPRESSION=\"gzip\"", // systemd-stub (and therefore UKI) expects an initrd compressed with gzip
         ),
-        "Set compression algorithm",
+        "Set compression algorithm.",
     );
     let preset_dir = "/mnt/etc/mkinitcpio.d";
     std::fs::create_dir_all(preset_dir).unwrap();
@@ -118,7 +119,7 @@ default_options=""
         );
     
         std::fs::write(&preset_path, content)
-            .expect("Failed to write mkinitcpio preset");
+            .expect("Failed to write mkinitcpio preset.");
         info!("Created mkinitcpio preset: {}", preset_path);
     }
 
