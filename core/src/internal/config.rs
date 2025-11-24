@@ -294,7 +294,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         package_set.dedup();
         exit_code = base::install_packages(package_set, kernel);
         if exit_code != 0 {
-            error!("Installation failed. Exit code: {exit_code}");
             return exit_code;
         }
         base::genfstab();
@@ -403,7 +402,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         info!("Install Athena OS");
         exit_code = install(PackageManager::Nix, vec![], None);
         if exit_code != 0 {
-            error!("Installation failed. Exit code: {exit_code}");
             return exit_code;
         }
     }
@@ -433,6 +431,5 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
 
-    info!("Installation finished! You may reboot now!");
     exit_code
 }

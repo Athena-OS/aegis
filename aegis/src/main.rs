@@ -2,7 +2,7 @@ use std::{env, io, path::{Path, PathBuf}};
 
 use clap::Parser;
 use core::internal::config::{install_config, read_config};
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use shared::{
   args::{Cli, ConfigInput},
   exec::check_if_root,
@@ -133,7 +133,10 @@ fn main() -> anyhow::Result<()> {
           // If config files are provided by cli, run immediately install_config function to install the system
           let exit_code = install_config(&sources, log_path);
           if exit_code != 0 {
-              anyhow::bail!("Installation failed with exit code {exit_code}");
+              error!("Installation failed with exit code {exit_code}");
+          }
+          else {
+              info!("Installation finished! You may reboot now!");
           }
       }
       return Ok(()); // <-- important: don't fall through to TUI

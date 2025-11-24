@@ -1,5 +1,6 @@
 use crate::exec::exec_output;
 use log::info;
+use std::path::Path;
 use tss_esapi::{Context, TctiNameConf};
 
 #[derive(Debug, Clone)]
@@ -62,11 +63,18 @@ pub fn find_target_root_luks() -> Option<RootLuks> {
 }
 
 pub fn tpm2_available_esapi() -> bool {
-    // Prefer the kernel RM (/dev/tpmrm0); fall back to /dev/tpm0 if needed.
-    // If omit the device path, the loader will try sensible defaults.
+    // Quick check to avoid calling ESAPI if no device exists
+    if !Path::new("/dev/tpmrm0").exists() && !Path::new("/dev/tpm0").exists() {
+        info!("No TPM device nodes found. TPM 2 not available.");
+        return false;
+    }
+
     let tcti = TctiNameConf::Device(Default::default());
     match Context::new(tcti) {
-        Ok(mut _ctx) => true,   // we could also query properties here
+        Ok(_) => {
+            info!("TPM2 available via ESAPI");
+            true
+        }
         Err(e) => {
             info!("TPM2 not available: {:?}", e);
             false
