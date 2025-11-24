@@ -67,6 +67,9 @@ pub fn tpm2_available_esapi() -> bool {
     let tcti = TctiNameConf::Device(Default::default());
     match Context::new(tcti) {
         Ok(mut _ctx) => true,   // we could also query properties here
-        Err(_e) => false,
+        Err(e) => {
+            info!("TPM2 not available: {:?}", e);
+            false
+        }
     }
 }

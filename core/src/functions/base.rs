@@ -71,7 +71,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     files::copy_file("/etc/pacman.d/mirrorlist", "/mnt/etc/pacman.d/mirrorlist"); // It must run after "pacman-mirrorlist" pkg install, that is in base package group
     files::copy_file("/etc/pacman.d/blackarch-mirrorlist", "/mnt/etc/pacman.d/blackarch-mirrorlist");
     files::copy_file("/etc/pacman.d/chaotic-mirrorlist", "/mnt/etc/pacman.d/chaotic-mirrorlist");
-    files::copy_file("/mnt/usr/local/share/athena/release/os-release-athena", "/mnt/usr/lib/os-release");
+    
     hardware::set_cores();
     exec_eval(
         exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
@@ -151,14 +151,15 @@ default_options=""
     let code = install(PackageManager::Pacstrap, packages, None);
     if code != 0 {
         error!("Package installation failed with exit code {code}");
+        return code;
     }
+    files::copy_file("/mnt/usr/local/share/athena/release/os-release-athena", "/mnt/usr/lib/os-release");
+    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 
     // Enable the necessary services after installation
     for service in virt_services {
         enable_service(service);
     }
-    
-    files::copy_file("/etc/skel/.bashrc", "/mnt/etc/skel/.bashrc");
 
     files_eval(
         files::sed_file(
