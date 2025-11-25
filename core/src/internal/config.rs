@@ -163,7 +163,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     let config = read_config(inputs);
     set_base(&config.base);
     let mut exit_code = 0;
-    let kernel = "linux-lts";
+    //let kernel = "linux-lts";
+    let kernel = "linuxS";
     let mut package_set = packages::to_strings(packages::COMMON);
     
     packages::extend(&mut package_set, packages::ARCH_ONLY);
