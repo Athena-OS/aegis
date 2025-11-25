@@ -41,6 +41,7 @@ pub fn set_locale(locale: String) {
             files::append_file("/mnt/etc/locale.conf", "LANG=en_US.UTF-8"),
             "Edit locale.conf",
         );
+        files::create_file("/mnt/etc/locale.gen");
         for i in (0..locale.split(' ').count()).step_by(2) {
             files_eval(
                 files::append_file(
