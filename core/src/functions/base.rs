@@ -20,7 +20,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
 
     let arch_base_pkg: Vec<String> = vec![
         // Base Arch
-        "base".into(),
+        "pacman".into(),
         "mkinitcpio".into(),
         "glibc-locales".into(), // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
         // Repositories
