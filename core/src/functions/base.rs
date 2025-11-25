@@ -101,6 +101,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
         ),
         "Set compression algorithm.",
     );
+    /*
     let preset_dir = "/mnt/etc/mkinitcpio.d";
     std::fs::create_dir_all(preset_dir).unwrap();
     // By creating our custom presets (with UKI entry), the kernel installation won't create its default preset files
@@ -122,6 +123,7 @@ default_options=""
             .expect("Failed to write mkinitcpio preset.");
         info!("Created mkinitcpio preset: {}", preset_path);
     }
+    */
 
     if let Some(vendor) = sys_vendor() {
         let vendor_lc = vendor.to_lowercase();
