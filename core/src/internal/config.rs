@@ -288,6 +288,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     }
     /**************************/
     /*        KEYBOARD       */
+    fs::create_dir_all("/mnt/etc").unwrap();
     let chosen_kbd = config.keyboard_layout.as_deref().unwrap_or("us");
     info!("Using keymap : {chosen_kbd}");
     if let Err(e) = locale::set_keyboard(chosen_kbd) {
@@ -298,7 +299,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     if !is_nix() {
         package_set.sort();
         package_set.dedup();
-        fs::create_dir_all("/mnt/etc").unwrap();
         exit_code = base::install_packages(package_set, kernel);
         if exit_code != 0 {
             return exit_code;
