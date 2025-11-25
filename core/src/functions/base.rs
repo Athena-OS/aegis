@@ -584,6 +584,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     }
 
     // 7. Build + sign UKIs for BOTH kernels using the SAME cmdline string
+    /*
     build_and_sign_uki(
         "linux",
         "Vanilla",
@@ -591,7 +592,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         if sb_supported { Some(secureboot_key_dir) } else { None },
         &cmdline,
     );
-    /*
+    */
     build_and_sign_uki(
         "linux-lts",
         "LTS",
@@ -599,7 +600,6 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         if sb_supported { Some(secureboot_key_dir) } else { None },
         &cmdline,
     );
-    */
     build_and_sign_uki(
         "linux-hardened",
         "Hardened",
@@ -614,7 +614,6 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     fs::create_dir_all(&entries_dir).expect("Failed to create loader/entries dir");
 
     files::create_file(&format!("{loader_dir}/loader.conf"));
-    /*
     files_eval(
         files::append_file(
             &format!("{loader_dir}/loader.conf"),
@@ -622,7 +621,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         ),
         "Write loader.conf",
     );
-    */
+    /*
     files_eval(
         files::append_file(
             &format!("{loader_dir}/loader.conf"),
@@ -630,6 +629,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         ),
         "Write loader.conf",
     );
+    */
 }
 
 fn init_keyrings_mirrors() {
