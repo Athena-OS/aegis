@@ -1,4 +1,4 @@
-use shared::args::{is_arch, is_nix};
+use shared::args::is_nix;
 use shared::exec::exec_archchroot;
 use shared::files;
 use shared::keyboard;
@@ -42,19 +42,17 @@ pub fn set_locale(locale: String) {
             "Edit locale.conf",
         );
         for i in (0..locale.split(' ').count()).step_by(2) {
-            if is_arch() {
-                files_eval(
-                    files::append_file(
-                        "/mnt/etc/locale.gen",
-                        &format!(
-                            "{} {}\n",
-                            locale.split(' ').collect::<Vec<&str>>()[i],
-                            locale.split(' ').collect::<Vec<&str>>()[i + 1]
-                        ),
+            files_eval(
+                files::append_file(
+                    "/mnt/etc/locale.gen",
+                    &format!(
+                        "{} {}\n",
+                        locale.split(' ').collect::<Vec<&str>>()[i],
+                        locale.split(' ').collect::<Vec<&str>>()[i + 1]
                     ),
-                    "Add locales to locale.gen",
-                );
-            }
+                ),
+                "Add locales to locale.gen",
+            );
             if locale.split(' ').collect::<Vec<&str>>()[i] != "en_US.UTF-8" {
                 files_eval(
                     files::sed_file(
@@ -70,9 +68,7 @@ pub fn set_locale(locale: String) {
                 );
             }
         }
-        if is_arch(){
-            exec_eval(exec_archchroot("locale-gen", vec![]), "generate locales");
-        }
+        exec_eval(exec_archchroot("locale-gen", vec![]), "Generate locales.");
     } else {
         // Split the string into words using whitespace as delimiters and take only the first part
         let locale_part = locale.split_whitespace().next().unwrap_or("en_US.UTF-8");

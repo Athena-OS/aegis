@@ -287,19 +287,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
     /**************************/
-    
-    /********** INSTALLATION **********/
-    if !is_nix() {
-        package_set.sort();
-        package_set.dedup();
-        exit_code = base::install_packages(package_set, kernel);
-        if exit_code != 0 {
-            return exit_code;
-        }
-        base::genfstab();
-    }
 
-    /********** CONFIGURATION **********/
     /*         LOCALES        */
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locale : {}", config.locale);
@@ -315,8 +303,16 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     info!("Hostname : {}", config.hostname);
     network::set_hostname(config.hostname.as_str());
 
-    /**************************/
+    /********** INSTALLATION **********/
     if !is_nix() {
+        package_set.sort();
+        package_set.dedup();
+        exit_code = base::install_packages(package_set, kernel);
+        if exit_code != 0 {
+            return exit_code;
+        }
+        base::genfstab();
+
         network::create_hosts();
         /**************************/
         /*     DESKTOP CONFIG     */
@@ -405,8 +401,6 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             return exit_code;
         }
     }
-    
-    /**************************/
 
     /**************************/
     if !is_nix() {

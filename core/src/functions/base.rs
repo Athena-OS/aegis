@@ -18,24 +18,24 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     let kernel_headers: Vec<String> =
         kernels.iter().map(|k| format!("{}-headers", k)).collect();
 
-    let arch_base_pkg: Vec<&str> = vec![
+    let arch_base_pkg: Vec<String> = vec![
         // Base Arch
-        "base",
-        "glibc-locales", // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
+        "base".into(),
+        "mkinitcpio".into(),
+        "glibc-locales".into(), // Prebuilt locales to prevent locales warning message during the pacstrap install of base metapackage
         // Repositories
-        "athena-mirrorlist",
-        "blackarch-mirrorlist",
-        "chaotic-mirrorlist",
-        "rate-mirrors",
-        "archlinux-keyring",
-        "athena-keyring",
-        "blackarch-keyring",
-        "chaotic-keyring",
+        "athena-mirrorlist".into(),
+        "blackarch-mirrorlist".into(),
+        "chaotic-mirrorlist".into(),
+        "rate-mirrors".into(),
+        "archlinux-keyring".into(),
+        "athena-keyring".into(),
+        "blackarch-keyring".into(),
+        "chaotic-keyring".into(),
     ];
 
     packages.extend_into(&kernels);
     packages.extend_into(kernel_headers);
-    packages.extend_into(arch_base_pkg);
 
     if tpm2_available_esapi() {
         packages.extend_into(["tpm2-tools"]);
@@ -63,10 +63,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
 
     let code = install(
         PackageManager::Pacstrap,
-        vec![
-            "pacman".to_string(),
-            "mkinitcpio".to_string()
-        ],
+        arch_base_pkg,
         None
     ); // By installing it as first package, we can work on its config files without building the initramfs image. It must be done only one time at the end of the kernel package installation
     if code != 0 {
