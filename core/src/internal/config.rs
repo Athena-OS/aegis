@@ -287,32 +287,38 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
     /**************************/
-    fs::create_dir_all("/mnt/etc").unwrap();
-    /*         LOCALES        */
-    // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
-    info!("Adding Locale : {}", config.locale);
-    locale::set_locale(config.locale.clone());
+    /*        KEYBOARD       */
     let chosen_kbd = config.keyboard_layout.as_deref().unwrap_or("us");
     info!("Using keymap : {chosen_kbd}");
     if let Err(e) = locale::set_keyboard(chosen_kbd) {
         error!("Error setting keyboard configuration: {e}");
     }
+    
+    /********** INSTALLATION **********/
+    if !is_nix() {
+        package_set.sort();
+        package_set.dedup();
+        fs::create_dir_all("/mnt/etc").unwrap();
+        exit_code = base::install_packages(package_set, kernel);
+        if exit_code != 0 {
+            return exit_code;
+        }
+        base::genfstab();
+    }
+
+    /********** CONFIGURATION **********/
+    /*         LOCALES        */
+    // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
+    info!("Adding Locale : {}", config.locale);
+    locale::set_locale(config.locale.clone());
     info!("Setting timezone : {}", config.timezone);
     locale::set_timezone(config.timezone.as_str());
     /**************************/
     info!("Hostname : {}", config.hostname);
     network::set_hostname(config.hostname.as_str());
 
-    /********** INSTALLATION **********/
+    /**************************/
     if !is_nix() {
-        package_set.sort();
-        package_set.dedup();
-        exit_code = base::install_packages(package_set, kernel);
-        if exit_code != 0 {
-            return exit_code;
-        }
-        base::genfstab();
-
         network::create_hosts();
         /**************************/
         /*     DESKTOP CONFIG     */
@@ -401,6 +407,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
             return exit_code;
         }
     }
+    
+    /**************************/
 
     /**************************/
     if !is_nix() {
