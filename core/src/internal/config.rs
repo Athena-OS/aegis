@@ -287,7 +287,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
         }
     }
     /**************************/
-
+    fs::create_dir_all("/mnt/etc").unwrap();
     /*         LOCALES        */
     // Set locales at the beginning to prevent some warning messages about "Setting locale failed"
     info!("Adding Locale : {}", config.locale);

@@ -55,7 +55,6 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     packages.extend_into(cpu_packages);
     packages.extend_into(gpu_packages);
 
-    std::fs::create_dir_all("/mnt/etc").unwrap();
     if is_arch() {
         init_keyrings_mirrors(); // Need to initialize keyrings before installing base package group otherwise get keyring errors. It uses rate-mirrors for Arch and Chaotic AUR on the host
         files::copy_file("/etc/pacman.conf", "/mnt/etc/pacman.conf"); // It must be done before installing any Athena and Chaotic AUR package
