@@ -131,6 +131,7 @@ pub struct Disk {
     // second JSON has: { "type": "disk", "device": "/dev/nvme0n1", "content": { ... } }
     #[serde(rename = "type")]
     pub disk_type: String,
+    pub mode: String,
     pub device: String,
     pub content: DiskContent,
 }

@@ -58,6 +58,93 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     );
 }
 
+pub fn partition(
+    device: PathBuf,
+    table_type: &str,
+    mode: &str,
+    partitions: &mut [args::Partition],
+) {
+    let mut plan: Vec<MountSpec> = Vec::new();
+    let is_none_label = table_type.eq_ignore_ascii_case("none");
+    let is_msdos_label = table_type.eq_ignore_ascii_case("msdos");
+    let is_auto_mode = mode.eq_ignore_ascii_case("auto");
+
+    if !device.exists() {
+        crash(format!("The device {device:?} doesn't exist"), 1);
+    }
+    debug!("Partitioning process");
+
+    if is_none_label || (is_msdos_label && is_auto_mode) { // If the disk has no partition table or it is msdos and auto partitioning mode, I will create a GPT one
+        if is_uefi() {
+            exec_eval(
+                exec(
+                    "parted",
+                    vec![
+                        "-s".into(),
+                        device.to_string_lossy().to_string(),
+                        "--".into(),
+                        "mklabel".into(),
+                        "gpt".into(),
+                    ],
+                ),
+                &format!("Create a GPT partition table on {}", device.display()),
+            );
+        }
+        else {
+            exec_eval(
+                exec(
+                    "parted",
+                    vec![
+                        "-s".into(),
+                        device.to_string_lossy().to_string(),
+                        "--".into(),
+                        "mklabel".into(),
+                        "msdos".into(),
+                    ],
+                ),
+                &format!("Create an MSDOS (MBR) partition table on {}", device.display()),
+            );
+        }
+    }
+
+    // --- Phase A: deletes first ---
+    for p in partitions.iter() {
+        if p.action == "delete" {
+            info!("Deleting {}", &p.blockdevice);
+            delete_partition(&device, &p.blockdevice, p.mountpoint.as_deref().unwrap_or(""));
+        }
+    }
+
+    // --- Phase B: creates / modifies ---
+    for p in partitions.iter_mut() {
+        if p.action == "create" {
+            info!("Creating {}", &p.blockdevice);
+            create_partition(
+                &device,
+                &p.blockdevice,
+                &p.start,
+                &p.end,
+                p.filesystem.as_deref().unwrap_or(""),
+                &p.flags,
+                table_type,
+            );
+        }
+        
+        if p.action == "create" || p.action == "modify" {
+            // Format + mount (or just mount if "don't format")
+            let specs = fmt_mount(
+                p.mountpoint.as_deref().unwrap_or(""),
+                p.filesystem.as_deref().unwrap_or(""),
+                &p.blockdevice,
+                &p.flags,
+            );
+            plan.extend(specs);
+        }
+    }
+
+    mount_queue(plan);
+}
+
 fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {
     let mut plan = Vec::new();
     let mut bdevice = String::from(blockdevice);
@@ -201,90 +288,6 @@ fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[Str
     }
 
     plan
-}
-
-pub fn partition(
-    device: PathBuf,
-    table_type: &str,
-    partitions: &mut [args::Partition],
-) {
-    let mut plan: Vec<MountSpec> = Vec::new();
-    let is_none_label = table_type.eq_ignore_ascii_case("none");
-
-    if !device.exists() {
-        crash(format!("The device {device:?} doesn't exist"), 1);
-    }
-    debug!("Partitioning process");
-
-    if is_none_label { // If the disk has no partition table, I will create a GPT one
-        if is_uefi() {
-            exec_eval(
-                exec(
-                    "parted",
-                    vec![
-                        "-s".into(),
-                        device.to_string_lossy().to_string(),
-                        "--".into(),
-                        "mklabel".into(),
-                        "gpt".into(),
-                    ],
-                ),
-                &format!("Create a GPT partition table on {}", device.display()),
-            );
-        }
-        else {
-            exec_eval(
-                exec(
-                    "parted",
-                    vec![
-                        "-s".into(),
-                        device.to_string_lossy().to_string(),
-                        "--".into(),
-                        "mklabel".into(),
-                        "msdos".into(),
-                    ],
-                ),
-                &format!("Create an MSDOS (MBR) partition table on {}", device.display()),
-            );
-        }
-    }
-
-    // --- Phase A: deletes first ---
-    for p in partitions.iter() {
-        if p.action == "delete" {
-            info!("Deleting {}", &p.blockdevice);
-            delete_partition(&device, &p.blockdevice, p.mountpoint.as_deref().unwrap_or(""));
-        }
-    }
-
-    // --- Phase B: creates / modifies ---
-    for p in partitions.iter_mut() {
-        if p.action == "create" {
-            info!("Creating {}", &p.blockdevice);
-            create_partition(
-                &device,
-                &p.blockdevice,
-                &p.start,
-                &p.end,
-                p.filesystem.as_deref().unwrap_or(""),
-                &p.flags,
-                table_type,
-            );
-        }
-        
-        if p.action == "create" || p.action == "modify" {
-            // Format + mount (or just mount if "don't format")
-            let specs = fmt_mount(
-                p.mountpoint.as_deref().unwrap_or(""),
-                p.filesystem.as_deref().unwrap_or(""),
-                &p.blockdevice,
-                &p.flags,
-            );
-            plan.extend(specs);
-        }
-    }
-
-    mount_queue(plan);
 }
 
 pub fn mount(partition: &str, mountpoint: &str, options: &str) {

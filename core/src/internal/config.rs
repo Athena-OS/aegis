@@ -170,9 +170,11 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     packages::extend(&mut package_set, packages::ARCH_ONLY);
 
     /*    PARTITIONING    */
-    let disk_type = config.partition.content.table_type;
+    let part_table = config.partition.content.table_type;
+    let mode = config.partition.mode;
     info!("Disk device to use : {}", config.partition.device);
-    info!("Partition Table type : {disk_type}");
+    info!("Partition Table type : {part_table}");
+    info!("Partitioning mode: {mode}");
 
     // Build args::Partition list from the structured JSON.
     // Encrypt per-partition if flags contain "encrypt".
@@ -200,7 +202,8 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     
     partition::partition(
         device,
-        &disk_type,
+        &part_table,
+        &mode,
         &mut partitions,
     );
 
