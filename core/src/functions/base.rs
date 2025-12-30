@@ -758,7 +758,7 @@ pub fn genfstab() {
     );
 }
 
-pub fn install_nix_config() {
+pub fn install_nix_config(device: &str) {
     info!("Set nix channels.");
     // As channel we use nixos-unstable instead of nixpkgs-unstable because 'nixos-' has additional tests that ensure kernel and bootloaders actually work. And some other critical packages.
     exec_eval(
@@ -857,6 +857,14 @@ pub fn install_nix_config() {
         ),
         "Set hardware-configuration path",
     );
+    files_eval(
+        files::sed_file(
+            "/mnt/etc/nixos/modules/boot/grub/default.nix",
+            "/dev/sda",
+            device,
+        ),
+        "Set bootloader device",
+    ); 
     hardware::cpu_check();
     hardware::virt_check();
 }

@@ -176,9 +176,9 @@ pub fn exec_unit(
     let cmdline = fmt_cmdline(program, &full_args);
 
     let msg = if err_text.is_empty() {
-        format!("{cmdline} exited with {status}")
+        format!("'{cmdline}' command exited with {status}")
     } else {
-        format!("{cmdline} failed: {err_text}")
+        format!("'{cmdline}' command failed. {err_text}")
     };
 
     match on_fail {
@@ -246,17 +246,20 @@ pub fn exec_workdir(
         .output()?; // captures stdout/stderr
 
     if out.status.success() {
-        Ok(())
-    } else {
-        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        Err(io::Error::other(
-            if err.is_empty() {
-                format!("{command} {:?} exited with {}", args, out.status)
-            } else {
-                format!("{command} {args:?} failed: {err}")
-            },
-        ))
+        return Ok(());
     }
+
+    let err_text = String::from_utf8_lossy(&out.stderr).trim().to_string();
+
+    let cmdline = fmt_cmdline(command, &args);
+
+    let msg = if err_text.is_empty() {
+        format!("(In {workdir}) '{cmdline}' command exited with {}", out.status)
+    } else {
+        format!("(In {workdir}) '{cmdline}' command failed. {err_text}")
+    };
+
+    Err(io::Error::other(msg))
 }
 
 pub fn check_if_root() -> bool {

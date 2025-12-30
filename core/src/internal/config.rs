@@ -208,7 +208,7 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     );
 
     if is_nix() {
-        base::install_nix_config();
+        base::install_nix_config(&config.partition.device);
     }
     /* BOOTLOADER SET */
 
