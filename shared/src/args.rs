@@ -47,6 +47,20 @@ pub struct Cli {
     pub dry: bool,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum ExecMode<'a> {
+    Direct,
+    Chroot { root: &'a str },
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum OnFail {
+    /// Non-zero exit status => return Err (current behavior)
+    Error,
+    /// Non-zero exit status => log and return Ok(status)
+    Continue,
+}
+
 #[derive(Clone, Debug)]
 pub enum ConfigInput {
     File(PathBuf),

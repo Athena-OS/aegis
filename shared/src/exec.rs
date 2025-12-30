@@ -1,4 +1,6 @@
 use log::error;
+use crate::args::{ExecMode, OnFail};
+use crate::strings::fmt_cmdline;
 use std::process::{Command, ExitStatus, Output, Stdio};
 use std::io::{self, BufRead, BufReader, Read};
 
@@ -102,65 +104,37 @@ fn unmount_nixroot_base() -> io::Result<()> {
     Ok(())
 }
 
-/// Executes a command inside the chroot environment.
-pub fn exec_chroot(command: &str, args: Vec<String>) -> io::Result<()> {
-    let mut child = Command::new("chroot")
-        .arg("/mnt")
-        .arg(command)
-        .args(&args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped()) // we'll log it via info!()
-        .stderr(Stdio::piped()) // we'll capture it for error reporting
-        .spawn()?;
-
-    // --- log stdout line-by-line via info!() ---
-    let mut stdout = child.stdout.take().expect("piped stdout");
-    let stdout_handle = std::thread::spawn(move || -> io::Result<()> {
-        let mut reader = BufReader::new(&mut stdout);
-        let mut line = Vec::<u8>::new();
-        loop {
-            line.clear();
-            let n = reader.read_until(b'\n', &mut line)?;
-            if n == 0 { break; }
-            let text = String::from_utf8_lossy(&line).trim_end_matches(&['\r','\n'][..]).to_string();
-            log::info!("{text}");
-        }
-        Ok(())
-    });
-
-    // --- capture stderr fully (no live print) ---
-    let mut stderr = child.stderr.take().expect("piped stderr");
-    let stderr_handle = std::thread::spawn(move || -> io::Result<Vec<u8>> {
-        let mut v = Vec::new();
-        stderr.read_to_end(&mut v)?;
-        Ok(v)
-    });
-
-    let status = child.wait()?;
-    stdout_handle.join().unwrap()?;              // propagate stdout I/O errors
-    let stderr_buf = stderr_handle.join().unwrap()?; // captured stderr
-
-    if status.success() {
-        Ok(())
-    } else {
-        let err_text = String::from_utf8_lossy(&stderr_buf).trim().to_string();
-        let msg = if err_text.is_empty() {
-            format!("{command} {args:?} exited with {status}")
-        } else {
-            format!("{command} {args:?} failed: {err_text}")
-        };
-        Err(io::Error::other(msg))
-    }
+pub fn exec(
+    mode: ExecMode<'_>,
+    command: &str,
+    args: Vec<String>,
+    on_fail: OnFail,
+) -> io::Result<()> {
+    exec_unit(mode, command, args, on_fail).map(|_| ())
 }
 
-pub fn exec_archchroot(command: &str, args: Vec<String>) -> io::Result<()> {
-    let mut child = Command::new("arch-chroot")
-        .arg("/mnt")
-        .arg(command)
-        .args(&args)
+pub fn exec_unit(
+    mode: ExecMode<'_>,
+    command: &str,
+    args: Vec<String>,
+    on_fail: OnFail,
+) -> io::Result<ExitStatus> {
+    let (program, full_args): (&str, Vec<String>) = match mode {
+        ExecMode::Direct => (command, args),
+        ExecMode::Chroot { root } => {
+            let mut v = Vec::with_capacity(2 + args.len());
+            v.push(root.to_string());
+            v.push(command.to_string());
+            v.extend(args);
+            ("arch-chroot", v)
+        }
+    };
+
+    let mut child = Command::new(program)
+        .args(&full_args)
         .stdin(Stdio::null())
-        .stdout(Stdio::piped()) // we'll log it via info!()
-        .stderr(Stdio::piped()) // we'll capture it for error reporting
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()?;
 
     // --- log stdout line-by-line via info!() ---
@@ -171,14 +145,18 @@ pub fn exec_archchroot(command: &str, args: Vec<String>) -> io::Result<()> {
         loop {
             line.clear();
             let n = reader.read_until(b'\n', &mut line)?;
-            if n == 0 { break; }
-            let text = String::from_utf8_lossy(&line).trim_end_matches(&['\r','\n'][..]).to_string();
+            if n == 0 {
+                break;
+            }
+            let text = String::from_utf8_lossy(&line)
+                .trim_end_matches(&['\r', '\n'][..])
+                .to_string();
             log::info!("{text}");
         }
         Ok(())
     });
 
-    // --- capture stderr fully (no live print) ---
+    // --- capture stderr fully ---
     let mut stderr = child.stderr.take().expect("piped stderr");
     let stderr_handle = std::thread::spawn(move || -> io::Result<Vec<u8>> {
         let mut v = Vec::new();
@@ -187,19 +165,28 @@ pub fn exec_archchroot(command: &str, args: Vec<String>) -> io::Result<()> {
     });
 
     let status = child.wait()?;
-    stdout_handle.join().unwrap()?;              // propagate stdout I/O errors
+    stdout_handle.join().unwrap()?; // propagate stdout I/O errors
     let stderr_buf = stderr_handle.join().unwrap()?; // captured stderr
 
     if status.success() {
-        Ok(())
+        return Ok(status);
+    }
+
+    let err_text = String::from_utf8_lossy(&stderr_buf).trim().to_string();
+    let cmdline = fmt_cmdline(program, &full_args);
+
+    let msg = if err_text.is_empty() {
+        format!("{cmdline} exited with {status}")
     } else {
-        let err_text = String::from_utf8_lossy(&stderr_buf).trim().to_string();
-        let msg = if err_text.is_empty() {
-            format!("{command} {args:?} exited with {status}")
-        } else {
-            format!("{command} {args:?} failed: {err_text}")
-        };
-        Err(io::Error::other(msg))
+        format!("{cmdline} failed: {err_text}")
+    };
+
+    match on_fail {
+        OnFail::Error => Err(io::Error::other(msg)),
+        OnFail::Continue => {
+            log::warn!("{msg}");
+            Ok(status)
+        }
     }
 }
 
@@ -232,54 +219,6 @@ pub fn exec_nixroot(
     }
 
     result
-}
-
-pub fn exec(command: &str, args: Vec<String>) -> io::Result<()> {
-    let mut child = Command::new(command)
-        .args(&args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped()) // we'll log it via info!()
-        .stderr(Stdio::piped()) // we'll capture it for error reporting
-        .spawn()?;
-
-    // --- log stdout line-by-line via info!() ---
-    let mut stdout = child.stdout.take().expect("piped stdout");
-    let stdout_handle = std::thread::spawn(move || -> io::Result<()> {
-        let mut reader = BufReader::new(&mut stdout);
-        let mut line = Vec::<u8>::new();
-        loop {
-            line.clear();
-            let n = reader.read_until(b'\n', &mut line)?;
-            if n == 0 { break; }
-            let text = String::from_utf8_lossy(&line).trim_end_matches(&['\r','\n'][..]).to_string();
-            log::info!("{text}");
-        }
-        Ok(())
-    });
-
-    // --- capture stderr fully (no live print) ---
-    let mut stderr = child.stderr.take().expect("piped stderr");
-    let stderr_handle = std::thread::spawn(move || -> io::Result<Vec<u8>> {
-        let mut v = Vec::new();
-        stderr.read_to_end(&mut v)?;
-        Ok(v)
-    });
-
-    let status = child.wait()?;
-    stdout_handle.join().unwrap()?;              // propagate stdout I/O errors
-    let stderr_buf = stderr_handle.join().unwrap()?; // captured stderr
-
-    if status.success() {
-        Ok(())
-    } else {
-        let err_text = String::from_utf8_lossy(&stderr_buf).trim().to_string();
-        let msg = if err_text.is_empty() {
-            format!("{command} {args:?} exited with {status}")
-        } else {
-            format!("{command} {args:?} failed: {err_text}")
-        };
-        Err(io::Error::other(msg))
-    }
 }
 
 pub fn exec_output(command: &str, args: Vec<String>) -> Result<Output, io::Error> {

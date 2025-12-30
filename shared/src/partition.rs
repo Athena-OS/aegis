@@ -1,4 +1,4 @@
-use crate::args::{self, MountSpec};
+use crate::args::{self, ExecMode, MountSpec, OnFail};
 use crate::exec::{exec, exec_output, exec_workdir};
 use crate::returncode_eval::exec_eval;
 use crate::strings::crash;
@@ -22,6 +22,7 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
     let luks_k = String::from("/run/luks");
     exec_eval(
         exec(
+            ExecMode::Direct,
             "cryptsetup",
             vec![
                 String::from("luksFormat"),
@@ -30,11 +31,13 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 String::from("-d"),
                 luks_k.clone(),
             ],
+            OnFail::Error,
         ),
         "Format LUKS partition",
     );
     exec_eval(
         exec(
+            ExecMode::Direct,
             "cryptsetup",
             vec![
                 String::from("luksOpen"),
@@ -43,16 +46,19 @@ fn encrypt_blockdevice(blockdevice: &str, cryptlabel: &str) {
                 String::from("-d"),
                 luks_k.clone(),
             ],
+            OnFail::Error,
         ),
         "Open LUKS format",
     );
     exec_eval(
         exec(
+            ExecMode::Direct,
             "rm",
             vec![
                 String::from("-rf"),
                 luks_k.clone(),
             ],
+            OnFail::Error,
         ),
         "Remove luks key",
     );
@@ -78,6 +84,7 @@ pub fn partition(
         if is_uefi() {
             exec_eval(
                 exec(
+                    ExecMode::Direct,
                     "parted",
                     vec![
                         "-s".into(),
@@ -86,6 +93,7 @@ pub fn partition(
                         "mklabel".into(),
                         "gpt".into(),
                     ],
+                    OnFail::Error,
                 ),
                 &format!("Create a GPT partition table on {}", device.display()),
             );
@@ -93,6 +101,7 @@ pub fn partition(
         else {
             exec_eval(
                 exec(
+                    ExecMode::Direct,
                     "parted",
                     vec![
                         "-s".into(),
@@ -101,6 +110,7 @@ pub fn partition(
                         "mklabel".into(),
                         "msdos".into(),
                     ],
+                    OnFail::Error,
                 ),
                 &format!("Create an MSDOS (MBR) partition table on {}", device.display()),
             );
@@ -158,41 +168,41 @@ fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[Str
 
     match filesystem {
         "vfat" | "fat32" => exec_eval(
-            exec("mkfs.vfat", vec![String::from("-F32"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.vfat", vec![String::from("-F32"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as vfat").as_str(),
         ),
         "bfs" => exec_eval(
-            exec("mkfs.bfs", vec![String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.bfs", vec![String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as bfs").as_str(),
         ),
         "cramfs" => exec_eval(
-            exec("mkfs.cramfs", vec![String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.cramfs", vec![String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as cramfs").as_str(),
         ),
         "ext3" => exec_eval(
-            exec("mkfs.ext3", vec![String::from("-F"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.ext3", vec![String::from("-F"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as ext3").as_str(),
         ),
         "fat" => exec_eval(
-            exec("mkfs.fat", vec![String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.fat", vec![String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as fat").as_str(),
         ),
         "msdos" => exec_eval(
-            exec("mkfs.msdos", vec![String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.msdos", vec![String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as msdos").as_str(),
         ),
         "xfs" => exec_eval(
-            exec("mkfs.xfs", vec![String::from("-f"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.xfs", vec![String::from("-f"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as xfs").as_str(),
         ),
         "btrfs" => {
-            exec_eval(exec("mkfs.btrfs", vec!["-f".into(), bdevice.clone()]),
+            exec_eval(exec(ExecMode::Direct, "mkfs.btrfs", vec!["-f".into(), bdevice.clone()], OnFail::Error),
                       &format!("Formatting {bdevice} as btrfs"));
 
             // Create subvolumes in a temporary staging mount (not /mnt)
             // Use a device-specific staging dir to avoid collisions
             let stage = format!("/mnt/.staging-btrfs-{}", bdevice.trim_start_matches("/dev/").replace('/', "_"));
-            exec_eval(exec("mkdir", vec!["-p".into(), stage.clone()]),
+            exec_eval(exec(ExecMode::Direct, "mkdir", vec!["-p".into(), stage.clone()], OnFail::Error),
                       &format!("Create staging dir {stage}"));
 
             // Temporary mount only for subvolume creation
@@ -236,27 +246,27 @@ fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[Str
             return plan;
         }
         "ext2" => exec_eval(
-            exec("mkfs.ext2", vec![String::from("-F"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.ext2", vec![String::from("-F"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as ext2").as_str(),
         ),
         "ext4" => exec_eval(
-            exec("mkfs.ext4", vec![String::from("-F"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.ext4", vec![String::from("-F"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as ext4").as_str(),
         ),
         "minix" => exec_eval(
-            exec("mkfs.minix", vec![String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.minix", vec![String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as minix").as_str(),
         ),
         "f2fs" => exec_eval(
-            exec("mkfs.f2fs", vec![String::from("-f"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.f2fs", vec![String::from("-f"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as f2fs").as_str(),
         ),
         "ntfs" => exec_eval(
-            exec("mkfs.ntfs", vec![String::from("-F"), String::from(&bdevice)]),
+            exec(ExecMode::Direct, "mkfs.ntfs", vec![String::from("-F"), String::from(&bdevice)], OnFail::Error),
             format!("Formatting {bdevice} as ntfs").as_str(),
         ),
         "linux-swap" | "swap" => {
-            exec_eval(exec("mkswap", vec!["-L".into(), "swap".into(), bdevice.clone()]),
+            exec_eval(exec(ExecMode::Direct, "mkswap", vec!["-L".into(), "swap".into(), bdevice.clone()], OnFail::Error),
                       &format!("Formatting {bdevice} as linux-swap"));
             // Queue swap activation (no mountpoint)
             plan.push(MountSpec {
@@ -294,6 +304,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
     if !options.is_empty() {
         exec_eval(
             exec(
+                ExecMode::Direct,
                 "mount",
                 vec![
                     String::from(partition),
@@ -301,6 +312,7 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
                     String::from("-o"),
                     String::from(options),
                 ],
+                OnFail::Error,
             ),
             format!(
                 "Mount {partition} with options {options} at {mountpoint}"
@@ -310,8 +322,13 @@ pub fn mount(partition: &str, mountpoint: &str, options: &str) {
     } else {
         exec_eval(
             exec(
+                ExecMode::Direct,
                 "mount",
-                vec![String::from(partition), String::from(mountpoint)],
+                vec![
+                    String::from(partition),
+                    String::from(mountpoint)
+                ],
+                OnFail::Error,
             ),
             format!("Mount {partition} with no options at {mountpoint}").as_str(),
         );
@@ -325,7 +342,7 @@ pub fn umount(mountpoint: &str) {
     // Only umount if it appears as a mounted path
     if mounts.lines().any(|line| line.split_whitespace().nth(1) == Some(mountpoint)) {
         exec_eval(
-            exec("umount", vec!["-R".to_string(), mountpoint.to_string()]),
+            exec(ExecMode::Direct, "umount", vec!["-R".to_string(), mountpoint.to_string()], OnFail::Error),
             &format!("Unmount command processed on {mountpoint}"),
         );
     } else {
@@ -340,11 +357,13 @@ pub fn is_uefi() -> bool {
 pub fn partition_info() {
     exec_eval(
         exec(
+            ExecMode::Direct,
             "lsblk",
             vec![
                 String::from("-o"),
                 String::from("NAME,SIZE,FSTYPE,UUID,MOUNTPOINT"),
             ],
+            OnFail::Error,
         ),
         "Show lsblk",
     );
@@ -466,7 +485,7 @@ fn create_partition(
 
     info!("Running: parted {args:?}");
     exec_eval(
-        exec("parted", args),
+        exec(ExecMode::Direct, "parted", args, OnFail::Error),
         &format!("Create partition {blockdevice} from {start_sector} to {end_sector}"),
     );
 
@@ -474,6 +493,7 @@ fn create_partition(
     if is_gpt && !label.is_empty() {
         exec_eval(
             exec(
+                ExecMode::Direct,
                 "parted",
                 vec![
                     "-s".into(),
@@ -483,6 +503,7 @@ fn create_partition(
                     partnum.clone(),
                     label.into(),
                 ],
+                OnFail::Error,
             ),
             &format!("Name partition #{partnum} as {label}"),
         );
@@ -490,28 +511,28 @@ fn create_partition(
 
     // Only set flags on the current created partition if applicable
     if is_gpt && has_esp {
-        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "esp".into(), "on".into()]),
+        exec_eval(exec(ExecMode::Direct, "parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "esp".into(), "on".into()], OnFail::Error),
             &format!("Enable ESP on partition #{partnum}"));
     } else if is_gpt && has_xbld{
-        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bls_boot".into(), "on".into()]),
+        exec_eval(exec(ExecMode::Direct, "parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bls_boot".into(), "on".into()], OnFail::Error),
             &format!("Enable ESP on partition #{partnum}"));
     } else if is_gpt && has_boot && !has_esp {
         // For real BIOS-on-GPT you'd typically have a tiny bios_grub partition; this flag is for that case.
-        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bios_grub".into(), "on".into()]),
+        exec_eval(exec(ExecMode::Direct, "parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "bios_grub".into(), "on".into()], OnFail::Error),
             &format!("Enable BIOS_GRUB on partition #{partnum}"));
     } else if is_mbr && has_boot {
-        exec_eval(exec("parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "boot".into(), "on".into()]),
+        exec_eval(exec(ExecMode::Direct, "parted", vec!["-s".into(), dev.clone(), "--".into(), "set".into(), partnum.clone(), "boot".into(), "on".into()], OnFail::Error),
             &format!("Enable boot flag on partition #{partnum}"));
     }
 
     /*
     // Inform kernel so /dev nodes appear quickly
     exec_eval(
-        exec("partprobe", vec![dev.clone()]),
+        exec(ExecMode::Direct, "partprobe", vec![dev.clone()], OnFail::Error),
         &format!("Inform kernel of new partition on {}", device.display()),
     );
     // optional but often helpful
-    exec_eval(exec("udevadm", vec!["settle".into()]), "Wait for /dev nodes");
+    exec_eval(exec(ExecMode::Direct, "udevadm", vec!["settle".into()], OnFail::Error), "Wait for /dev nodes");
     */
 }
 
@@ -524,11 +545,13 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
     // Best-effort swapoff (non-fatal if not active)
     exec_eval(
         exec(
+            ExecMode::Direct,
             "sh",
             vec![
                 String::from("-c"),
                 format!("swapoff '{}' || true", blockdevice),
             ],
+            OnFail::Error,
         ),
         format!("Swapoff {blockdevice} (if active)").as_str(),
     );
@@ -536,11 +559,13 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
     // Best-effort recursive unmount by mountpoint (non-fatal if not mounted)
     exec_eval(
         exec(
+            ExecMode::Direct,
             "sh",
             vec![
                 String::from("-c"),
                 format!("umount -R '{}' || true", mountpoint),
             ],
+            OnFail::Error,
         ),
         format!("Umount {mountpoint} (best-effort)").as_str(),
     );
@@ -550,11 +575,13 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
         let name = blockdevice.trim_start_matches("/dev/mapper/").to_string();
         exec_eval(
             exec(
+                ExecMode::Direct,
                 "sh",
                 vec![
                     String::from("-c"),
                     format!("cryptsetup luksClose '{}' || true", name),
                 ],
+                OnFail::Error,
             ),
             format!("Close LUKS mapper for {blockdevice} (if open)").as_str(),
         );
@@ -575,6 +602,7 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
     // --- delete the partition from the label (via parted) --------------------
     exec_eval(
         exec(
+            ExecMode::Direct,
             "parted",
             vec![
                 String::from("-s"),
@@ -583,6 +611,7 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
                 String::from("rm"),
                 partnum.clone(),
             ],
+            OnFail::Error,
         ),
         format!("Delete partition #{partnum} on {}", device.display()).as_str(),
     );
@@ -590,7 +619,7 @@ fn delete_partition(device: &Path, blockdevice: &str, mountpoint: &str) {
     // --- inform the kernel about the table change ----------------------------
     /*
     exec_eval(
-        exec("partprobe", vec![device.to_string_lossy().to_string()]),
+        exec(ExecMode::Direct, "partprobe", vec![device.to_string_lossy().to_string()], OnFail::Error),
         format!(
             "Inform kernel of partition table changes on {}",
             device.display()
@@ -625,7 +654,7 @@ fn mount_queue(mut plan: Vec<MountSpec>) {
 
     for m in plan {
         if m.is_swap {
-            exec_eval(exec("swapon", vec![m.device.clone()]),
+            exec_eval(exec(ExecMode::Direct, "swapon", vec![m.device.clone()], OnFail::Error),
                       &format!("Activate swap {}", m.device));
             continue;
         }
@@ -659,7 +688,7 @@ pub fn close_luks_best_effort(blockdevice: &str) {
     );
     if let Some(name) = conventional.strip_prefix("/dev/mapper/") {
         exec_eval(
-            exec("sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", name)]),
+            exec(ExecMode::Direct, "sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", name)], OnFail::Error),
             &format!("Close LUKS mapper (conventional) {}", name),
         );
     }
@@ -677,7 +706,7 @@ pub fn close_luks_best_effort(blockdevice: &str) {
             if typ == "crypt" && pk == blockdevice
                 && let Some(mapper) = name.strip_prefix("/dev/mapper/") {
                     exec_eval(
-                        exec("sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", mapper)]),
+                        exec(ExecMode::Direct, "sh", vec!["-c".into(), format!("cryptsetup luksClose '{}' || true", mapper)], OnFail::Error),
                         &format!("Close LUKS mapper {}", mapper),
                     );
                 }

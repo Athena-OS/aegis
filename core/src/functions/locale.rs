@@ -1,5 +1,5 @@
-use shared::args::is_nix;
-use shared::exec::exec_archchroot;
+use shared::args::{ExecMode, OnFail, is_nix};
+use shared::exec::exec;
 use shared::files;
 use shared::keyboard;
 use shared::returncode_eval::exec_eval;
@@ -8,18 +8,27 @@ use shared::returncode_eval::files_eval;
 pub fn set_timezone(timezone: &str) {
     if !is_nix() {
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "ln",
                 vec![
                     "-sf".to_string(),
                     format!("/usr/share/zoneinfo/{}", timezone),
                     "/etc/localtime".to_string(),
                 ],
+                OnFail::Error,
             ),
             "Set timezone",
         );
         exec_eval(
-            exec_archchroot("hwclock", vec!["--systohc".to_string()]),
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
+                "hwclock",
+                vec![
+                    "--systohc".to_string(),
+                ],
+                OnFail::Error
+            ),
             "Set system clock",
         );
     } else {
@@ -69,7 +78,14 @@ pub fn set_locale(locale: String) {
                 );
             }
         }
-        exec_eval(exec_archchroot("locale-gen", vec![]), "Generate locales.");
+        exec_eval(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
+                "locale-gen",
+                vec![],
+                OnFail::Error,
+            ),
+            "Generate locales.");
     } else {
         // Split the string into words using whitespace as delimiters and take only the first part
         let locale_part = locale.split_whitespace().next().unwrap_or("en_US.UTF-8");

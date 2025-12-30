@@ -2,9 +2,12 @@ use crate::strings::crash;
 use log::{info};
 use std::io;
 
-pub fn exec_eval(result: Result<(), std::io::Error>, logmsg: &str) {
+pub fn exec_eval<T>(result: Result<T, std::io::Error>, logmsg: &str) -> T {
     match result {
-        Ok(()) => log::info!("{logmsg}"),
+        Ok(v) => {
+            log::info!("{logmsg}");
+            v
+        }
         Err(e) => {
             let code = e.raw_os_error().unwrap_or(1);
             crate::strings::crash(format!("{e}"), code);

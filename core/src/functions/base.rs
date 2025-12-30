@@ -3,8 +3,8 @@ use crate::internal::install::install;
 use crate::internal::services::enable_service;
 use efivar::{self, efi, system};
 use log::{info, error};
-use shared::args::{ExtendIntoString, PackageManager, is_arch};
-use shared::exec::{exec, exec_archchroot, exec_output};
+use shared::args::{ExecMode, ExtendIntoString, OnFail, PackageManager, is_arch};
+use shared::exec::{exec, exec_output};
 use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
@@ -78,7 +78,8 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     
     hardware::set_cores();
     exec_eval(
-        exec( // Using exec instead of exec_archchroot because in exec_archchroot, these sed arguments need some chars to be escaped
+        exec( // Using direct exec instead of ArchChroot exec because in the latter, these sed arguments need some chars to be escaped
+            ExecMode::Direct,
             "sed",
             vec![
                 "-i".into(),
@@ -86,6 +87,7 @@ pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
                 "s/^HOOKS=.*/HOOKS=(base systemd autodetect modconf kms keyboard sd-vconsole block sd-encrypt lvm2 filesystems fsck)/g".into(),
                 "/mnt/etc/mkinitcpio.conf".into(),
             ],
+            OnFail::Error,
         ),
         "Set mkinitcpio hooks.",
     );
@@ -129,6 +131,7 @@ default_options=""
 
             exec_eval(
                 exec(
+                    ExecMode::Direct,
                     "sed",
                     vec![
                         "-i".into(),
@@ -138,6 +141,7 @@ default_options=""
                         r"/^MODULES=([^)]*)/ { /usb_storage uas xhci_hcd ahci libahci sd_mod usbhid hid_apple xhci_pci ehci_pci ohci_hcd uhci_hcd/! s/)/ usb_storage uas xhci_hcd ahci libahci sd_mod usbhid hid_apple xhci_pci ehci_pci ohci_hcd uhci_hcd)/ }".into(),
                         "/mnt/etc/mkinitcpio.conf".into(),
                     ],
+                    OnFail::Error,
                 ),
                 "Set mkinitcpio MODULES for Apple computer.",
             );
@@ -149,7 +153,7 @@ default_options=""
     // Apply sed commands for virt service for mkinitcpio.conf
     for (description, args) in virt_params {
         exec_eval(
-            exec("sed", args),  // Apply each file change via `sed`
+            exec(ExecMode::Direct, "sed", args, OnFail::Error),  // Apply each file change via `sed`
             &description,       // Log the description of the file change
         );
     }
@@ -268,26 +272,30 @@ fn ensure_pcr_keys_in_chroot() {
     // ukify genkey: generate only the missing pairs (ukify requires that outputs don't exist).
     if need_system {
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "ukify",
                 vec![
                     "genkey".into(),
                     "--pcr-private-key".into(), sys_priv.clone(),
                     "--pcr-public-key".into(),  sys_pub.clone(),
                 ],
+                OnFail::Error,
             ),
             "Generate system PCR signing keypair",
         );
     }
     if need_initrd {
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "ukify",
                 vec![
                     "genkey".into(),
                     "--pcr-private-key".into(), initrd_priv.clone(),
                     "--pcr-public-key".into(),  initrd_pub.clone(),
                 ],
+                OnFail::Error,
             ),
             "Generate initrd PCR signing keypair",
         );
@@ -295,11 +303,11 @@ fn ensure_pcr_keys_in_chroot() {
 
     // Permissions are up to you; these are reasonable defaults
     exec_eval(
-        exec_archchroot("chmod", vec!["400".into(), sys_priv]),
+        exec(ExecMode::Chroot { root: "/mnt" }, "chmod", vec!["400".into(), sys_priv], OnFail::Error),
         "Restrict system PCR private key",
     );
     exec_eval(
-        exec_archchroot("chmod", vec!["400".into(), initrd_priv]),
+        exec(ExecMode::Chroot { root: "/mnt" }, "chmod", vec!["400".into(), initrd_priv], OnFail::Error),
         "Restrict initrd PCR private key",
     );
 }
@@ -398,7 +406,7 @@ fn build_and_sign_uki(
     args.push(uki_out.clone());
 
     exec_eval(
-        exec_archchroot("ukify", args),
+        exec(ExecMode::Chroot { root: "/mnt" }, "ukify", args, OnFail::Error),
         &format!("Create+sign UKI for {kname}"),
     );
 
@@ -455,7 +463,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
     bootctl_args.push("install".into());
 
     exec_eval(
-        exec_archchroot("bootctl", bootctl_args),
+        exec(ExecMode::Chroot { root: "/mnt" }, "bootctl", bootctl_args, OnFail::Error),
         "Install systemd-boot",
     );
 
@@ -465,7 +473,8 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
             .expect("Failed to create secureboot key dir");
 
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "openssl",
                 vec![
                     "req".into(),
@@ -479,23 +488,27 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
                     "-subj".into(), "/CN=Athena OS Secure Boot Key/".into(),
                     "-out".into(), format!("{secureboot_key_dir}/MOK.crt"),
                 ],
+                OnFail::Error,
             ),
             "Generate Athena Secure Boot keypair",
         );
 
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "chmod",
                 vec![
                     "400".into(),
                     format!("{secureboot_key_dir}/MOK.key"),
                 ],
+                OnFail::Error,
             ),
             "Restrict Secure Boot private key permissions",
         );
 
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "openssl",
                 vec![
                     "x509".into(),
@@ -503,13 +516,15 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
                     "-in".into(),  format!("{secureboot_key_dir}/MOK.crt"),
                     "-out".into(), format!("{secureboot_key_dir}/MOK.cer"),
                 ],
+                OnFail::Error,
             ),
             "Generate DER (.cer) version of Athena Secure Boot cert",
         );
 
         // 3. Sign systemd-boot itself
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "sbsign",
                 vec![
                     "--key".into(),  format!("{secureboot_key_dir}/MOK.key"),
@@ -517,6 +532,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
                     "--output".into(), format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
                     format!("{esp_str}/EFI/systemd/systemd-bootx64.efi"),
                 ],
+                OnFail::Error,
             ),
             "Sign systemd-boot with Athena key",
         );
@@ -568,7 +584,8 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
         // 6. Pre-register the Athena key with mokutil so first boot asks user
         //    "Enroll this key?" in MOK Manager. This avoids making them open BIOS UI.
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "mokutil",
                 vec![
                     "--import".into(),
@@ -576,6 +593,7 @@ pub fn configure_bootloader_systemd_boot_shim(espdir: PathBuf) {
                     "-P".into(), // no password prompt path. If you prefer pwd-confirm flow,
                                  // remove -P and handle mokutil --password instead.
                 ],
+                OnFail::Error,
             ),
             "Schedule AthenaSecureBoot.cer enrollment in MOK Manager at first boot",
         );
@@ -636,6 +654,7 @@ fn init_keyrings_mirrors() {
     info!("Getting fastest mirrors for your location");
     exec_eval(
         exec( // It is done on the live system
+            ExecMode::Direct,
             "rate-mirrors",
             vec![
                 String::from("--concurrency"),
@@ -646,12 +665,14 @@ fn init_keyrings_mirrors() {
                 String::from("/etc/pacman.d/mirrorlist"), // It must be saved not in the chroot environment but on the host machine of Live Environment. Next, it will be copied automatically on the target system.
                 String::from("arch"),
             ],
+            OnFail::Continue,
         ),
         "Set fastest Arch Linux mirrors on the host",
     );
 
     exec_eval(
         exec(
+            ExecMode::Direct,
             "rate-mirrors",
             vec![
                 String::from("--concurrency"),
@@ -662,12 +683,14 @@ fn init_keyrings_mirrors() {
                 String::from("/etc/pacman.d/blackarch-mirrorlist"),
                 String::from("blackarch"),
             ],
+            OnFail::Continue,
         ),
         "Set fastest mirrors from BlackArch on the target system",
     );
     
     exec_eval(
         exec(
+            ExecMode::Direct,
             "rate-mirrors",
             vec![
                 String::from("--concurrency"),
@@ -678,6 +701,7 @@ fn init_keyrings_mirrors() {
                 String::from("/etc/pacman.d/chaotic-mirrorlist"), //In chroot we don't need to specify /mnt
                 String::from("chaotic-aur"),
             ],
+            OnFail::Continue,
         ),
         "Set fastest mirrors from Chaotic AUR on the target system",
     );
@@ -685,29 +709,35 @@ fn init_keyrings_mirrors() {
     info!("Upgrade keyrings on the host");
     exec_eval(
         exec(
+            ExecMode::Direct,
             "rm",
             vec![
                 String::from("-rf"),
                 String::from("/etc/pacman.d/gnupg"),
             ],
+            OnFail::Error,
         ),
         "Removing keys",
     );
     exec_eval(
         exec(
+            ExecMode::Direct,
             "pacman-key",
             vec![
                 String::from("--init"),
             ],
+            OnFail::Error,
         ),
         "Initialize keys",
     );
     exec_eval(
         exec(
+            ExecMode::Direct,
             "pacman-key",
             vec![
                 String::from("--populate"),
             ],
+            OnFail::Error,
         ),
         "Populate keys",
     );
@@ -716,11 +746,13 @@ fn init_keyrings_mirrors() {
 pub fn genfstab() {
     exec_eval(
         exec(
+            ExecMode::Direct,
             "bash",
             vec![
                 String::from("-c"),
                 String::from("genfstab -U /mnt >> /mnt/etc/fstab"),
             ],
+            OnFail::Error,
         ),
         "Generate fstab",
     );
@@ -731,22 +763,26 @@ pub fn install_nix_config() {
     // As channel we use nixos-unstable instead of nixpkgs-unstable because 'nixos-' has additional tests that ensure kernel and bootloaders actually work. And some other critical packages.
     exec_eval(
         exec(
+            ExecMode::Direct,
             "nix-channel",
             vec![
                 String::from("--add"),
                 String::from("https://nixos.org/channels/nixos-unstable"),
                 String::from("nixpkgs"),
             ],
+            OnFail::Error,
         ),
         "Set nixpkgs nix channel on the host",
     );
     // This update is done on the host, not on the target system
     exec_eval(
         exec(
+            ExecMode::Direct,
             "nix-channel",
             vec![
                 String::from("--update"),
             ],
+            OnFail::Error,
         ),
         "Update nix channels on the host",
     );
@@ -755,6 +791,7 @@ pub fn install_nix_config() {
     // nix-shell seems to work as non-sudo only by using --run; --command works only as sudo
     exec_eval(
         exec(
+            ExecMode::Direct,
             "nix-shell",
             vec![
                 String::from("-p"),
@@ -762,35 +799,41 @@ pub fn install_nix_config() {
                 String::from("--command"),
                 String::from("nixos-generate-config --root /mnt"),
             ],
+            OnFail::Error,
         ),
         "Run nixos-generate-config",
     );
     info!("Download latest Athena OS configuration.");
     exec_eval(
         exec(
+            ExecMode::Direct,
             "curl",
             vec![
                 String::from("-o"),
                 String::from("/tmp/athena-nix.zip"),
                 String::from("https://codeload.github.com/Athena-OS/athena-nix/zip/refs/heads/main"),
             ],
+            OnFail::Error,
         ),
         "Getting latest Athena OS configuration.",
     );
     exec_eval(
         exec(
+            ExecMode::Direct,
             "unzip",
             vec![
                 String::from("/tmp/athena-nix.zip"),
                 String::from("-d"),
                 String::from("/tmp/"),
             ],
+            OnFail::Error,
         ),
         "Extract Athena OS configuration archive.",
     );
     info!("Install Athena OS configuration.");
     exec_eval(
         exec(
+            ExecMode::Direct,
             "cp",
             vec![
                 String::from("-rf"),
@@ -802,6 +845,7 @@ pub fn install_nix_config() {
                 String::from("/tmp/athena-nix-main/nixos/default.nix"),
                 String::from("/mnt/etc/nixos/"),
             ],
+            OnFail::Error,
         ),
         "Move Athena OS configuration to /mnt/etc/nixos/.",
     );

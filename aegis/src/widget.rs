@@ -1,4 +1,3 @@
-use crate::{split_hor, split_vert};
 use rand::{prelude::IndexedRandom, Rng};
 use std::{
   collections::VecDeque,
@@ -24,7 +23,7 @@ use ratatui::{
   },
 };
 
-use crate::{installer::Signal, ui_down, ui_up};
+use crate::installer::Signal;
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 

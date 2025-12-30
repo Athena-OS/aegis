@@ -1,6 +1,6 @@
 use log::{error, info};
-use shared::args::is_nix;
-use shared::exec::{exec_archchroot};
+use shared::args::{ExecMode, OnFail, is_nix};
+use shared::exec::exec;
 use shared::files;
 use shared::returncode_eval::{exec_eval, files_eval};
 
@@ -22,7 +22,8 @@ pub fn new_user(username: &str, password: &str, groups: &[String], shell: &str) 
             &_ => "/usr/bin/bash",
         };
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "useradd",
                 vec![
                     String::from("-m"),
@@ -32,18 +33,21 @@ pub fn new_user(username: &str, password: &str, groups: &[String], shell: &str) 
                     format!("{}", _password.replace('\n', "")),
                     sanitized_username.clone(),
                 ],
+                OnFail::Error,
             ),
             format!("Create user {sanitized_username}").as_str(),
         );
         if !groups.is_empty() {
             exec_eval(
-                exec_archchroot(
+                exec(
+                    ExecMode::Chroot { root: "/mnt" },
                     "usermod",
                     vec![
                         String::from("-aG"),
                         groups.join(","),
                         sanitized_username.clone(),
                     ],
+                    OnFail::Error,
                 ),
                 format!("Add user {sanitized_username} to specified groups").as_str(),
             );
@@ -115,13 +119,15 @@ pub fn new_user(username: &str, password: &str, groups: &[String], shell: &str) 
 pub fn root_pass(root_pass: &str) {
     if !is_nix() {
         exec_eval(
-            exec_archchroot(
+            exec(
+                ExecMode::Chroot { root: "/mnt" },
                 "usermod",
                 vec![
                     String::from("--password"),
                     format!("{}", root_pass.replace('\n', "")),
                     String::from("root"),
                 ],
+                OnFail::Error,
             ),
             "set root password",
         );
