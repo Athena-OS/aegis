@@ -153,6 +153,18 @@ pub fn partition(
     }
 
     mount_queue(plan);
+    exec_eval(
+        exec(
+            ExecMode::Direct,
+            "kpartx",
+            vec![
+                String::from("-av"),
+                device.to_string_lossy().to_string(),
+            ],
+            OnFail::Error,
+        ),
+        &format!("Make kernel aware of changes on {} device", device.display()),
+    );
 }
 
 fn fmt_mount(mountpoint: &str, filesystem: &str, blockdevice: &str, flags: &[String]) -> Vec<MountSpec> {
