@@ -540,7 +540,6 @@ impl Disk {
           "blockdevice": dev_path,                       // String or null
           "start":      p.start().to_string(),                      // sectors
           "end":        (p.start() + p.size().saturating_sub(1)).to_string(), // sectors
-          "sectors":    p.size(),                       // sectors
           //"bytes":      p.size_bytes(p.sector_size),    // bytes
           "size":       size_str,                       // "100%", "50G", etc.
           "type":       part_type,                      // "filesystem" or GPT code
