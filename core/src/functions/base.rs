@@ -8,7 +8,7 @@ use shared::exec::{exec, exec_output};
 use shared::encrypt::{find_target_root_luks, tpm2_available_esapi};
 use shared::files;
 use shared::returncode_eval::{exec_eval, exec_eval_result, files_eval};
-use std::{fs, path::PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 
 pub fn install_packages(mut packages: Vec<String>, kernel: &str) -> i32 {
     let kernels = vec![
@@ -909,8 +909,19 @@ pub fn configure_zram() {
 }
 
 fn secure_boot_supported() -> bool {
-    // Represents firmware variables of the running system
-    let vm = system();
+    // If we’re not on a UEFI system (or efivarfs isn’t exposed), SB is effectively “unsupported”.
+    if !Path::new("/sys/firmware/efi").exists() {
+        info!("No /sys/firmware/efi; treating Secure Boot as unsupported.");
+        return false;
+    }
+
+    let vm = match std::panic::catch_unwind(system) {
+        Ok(vm) => vm,
+        Err(_) => {
+            info!("efivar::system() panicked; treating Secure Boot as unsupported.");
+            return false;
+        }
+    };
 
     // "SecureBoot" under the standard EFI global vendor GUID
     let var = efi::Variable::new("SecureBoot");
@@ -918,22 +929,17 @@ fn secure_boot_supported() -> bool {
     match vm.exists(&var) {
         Ok(true) => {
             // SecureBoot variable exists → firmware implements Secure Boot
+            info!("SecureBoot supported.");
             true
         }
         Ok(false) => {
             // Variable simply not there → very strong sign SB is not implemented
-            info!(
-                "SecureBoot EFI variable not found; \
-                 treating Secure Boot as unsupported on this firmware."
-            );
+            info!("SecureBoot EFI variable not found; treating Secure Boot as unsupported.");
             false
         }
         Err(e) => {
             // Any error talking to efivarfs / firmware → fail closed
-            info!(
-                "Error querying SecureBoot EFI variable ({e}); \
-                 treating Secure Boot as unsupported."
-            );
+            info!("Error querying SecureBoot EFI variable ({e}); treating Secure Boot as unsupported.");
             false
         }
     }
