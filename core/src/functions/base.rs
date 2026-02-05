@@ -219,7 +219,6 @@ fn generate_kernel_cmdline() -> String {
         "loglevel=3",
         "nvme_load=yes",
         "zswap.enabled=0",
-        "fbcon=nodefer",
         "nowatchdog",
     ];
 
