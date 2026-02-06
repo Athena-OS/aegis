@@ -1958,9 +1958,9 @@ impl BaseSys {
       help_modal,
     }
   }
-  pub fn get_basesystem_info<'a>(idx: usize) -> InfoBox<'a> {
-    match idx {
-      0 => {
+  pub fn get_basesystem_info<'a>(name: &str) -> InfoBox<'a> {
+    match name {
+      "Athena Arch" => {
         
           let logo = decode_logo(
               "H4sIAAAAAAAAA52TUQ6EIAxE/z0FRyWuGg+waTRovFtPIilxV2Va0H7SmddCi3MwmLpGy2xMI9OM80d6NERXjaFEQl3O1DJ9mTzTUuk5FejFviJvbtQbqyj7xIwRzwmQ8xaDYCVWkLloowFEExgOjUY7o+zW/qqKtoovptIG2bCO6RP3rKnm/a5qXfbWpgJNz+/vm5SOddyVFqWTwyGfx+cEAYSsMvCn7Yi2HWcEzBuVBAAA"
@@ -2005,7 +2005,7 @@ impl BaseSys {
 
           InfoBox::new("Athena Arch", styled_block(blocks))
         },
-      1 => {
+      "Athena Nix" => {
         
           let logo = decode_logo(
               "H4sIAAAAAAAAA6WUzQ3DIAyF70zBqDnkkAncWjTqbkzSSlCw8U+tJPIFw/sQz45znl+FR4W9hZLqWbKGlJn8VeH4BVrZCm+SKAwRY7iEEEKKOTMeKMllAjHdo+t34ILE1cOd1sizxnNy2bM8Lh7EY3SKpo/ZteJiPmMym+E+nL1/fXzrCBdqtCPzCAN64bv+U7SjZ4VtxACQAmepDzj416BeftXaizeIaaJWzBgrXveH5pLb+RcIszBtvZF4jlMz9VV/AOenEZ3PBQAA"
@@ -2051,7 +2051,7 @@ impl BaseSys {
 
           InfoBox::new("Athena Nix", styled_block(blocks))
         },
-      2 => {
+      "Athena Fedora" => {
 
           let logo = decode_logo(
               "H4sIAAAAAAAAA+NSwAMeTevARDBJLhL1YTUGpyHYNeAwhihTcInRRDOOMFMgwtG4tMIApj5U5cQEO6ZBBHQRGZ0Y5hLSRIah+IOWmHDDrmzo6MehlJSEQzA+cRuDlgBJ1Y0lAaPp4eICAA0CX3KVBAAA"
@@ -2160,13 +2160,18 @@ impl Page for BaseSys {
       ]
     );
 
-    let idx = self.systems.selected_idx;
-    let info_box = Self::get_basesystem_info(idx);
     self.systems.render(f, hor_chunks[1]);
-    if idx < 9 {
-      info_box.render(f, vert_chunks[1]);
-    }
-
+    
+    let selected = self
+      .systems
+      .items
+      .get(self.systems.selected_idx)
+      .map(|s| s.as_str())
+      .unwrap_or("");
+    
+    let info_box = Self::get_basesystem_info(selected);
+    info_box.render(f, vert_chunks[1]);
+    
     self.help_modal.render(f, area);
   }
 
@@ -2550,6 +2555,10 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
+      "None" => InfoBox::new(
+        "None",
+        styled_block(vec![vec![(None, "No desktop environment will be installed.")]]),
+      ),
       _ => InfoBox::new(
         "Unknown Desktop Environment",
         styled_block(vec![vec![(
@@ -2740,9 +2749,9 @@ impl Design {
       help_modal,
     }
   }
-  pub fn get_design_info<'a>(idx: usize) -> InfoBox<'a> {
-    match idx {
-      0 => InfoBox::new(
+  pub fn get_design_info<'a>(name: &str) -> InfoBox<'a> {
+    match name {
+      "Cyborg" => InfoBox::new(
         "Cyborg",
         styled_block(vec![
           vec![
@@ -2776,7 +2785,7 @@ impl Design {
           ],
         ]),
       ),
-      1 => InfoBox::new(
+      "Frost" => InfoBox::new(
         "Frost",
         styled_block(vec![
           vec![
@@ -2814,7 +2823,7 @@ impl Design {
           ],
         ]),
       ),
-      2 => InfoBox::new(
+      "Graphite" => InfoBox::new(
         "Graphite",
         styled_block(vec![
           vec![
@@ -2843,7 +2852,7 @@ impl Design {
           ],
         ]),
       ),
-      3 => InfoBox::new(
+      "HackTheBox" => InfoBox::new(
         "HackTheBox",
         styled_block(vec![
           vec![
@@ -2872,7 +2881,7 @@ impl Design {
           ],
         ]),
       ),
-      4 => InfoBox::new(
+      "RedMoon" => InfoBox::new(
         "RedMoon",
         styled_block(vec![
           vec![
@@ -2899,7 +2908,7 @@ impl Design {
           ],
         ]),
       ),
-      5 => InfoBox::new(
+      "Samurai" => InfoBox::new(
         "Samurai",
         styled_block(vec![
           vec![
@@ -2935,7 +2944,7 @@ impl Design {
           ],
         ]),
       ),
-      6 => InfoBox::new(
+      "Sweet" => InfoBox::new(
         "Sweet",
         styled_block(vec![
           vec![
@@ -2967,7 +2976,7 @@ impl Design {
           ],
         ]),
       ),
-      7 => InfoBox::new(
+      "Temple" => InfoBox::new(
         "Temple",
         styled_block(vec![
           vec![
@@ -3006,6 +3015,10 @@ impl Design {
             (None, "."),
           ],
         ]),
+      ),
+      "None" => InfoBox::new(
+        "None",
+        styled_block(vec![vec![(None, "No design will be installed.")]]),
       ),
       _ => InfoBox::new(
         "Unknown Design",
@@ -3071,13 +3084,18 @@ impl Page for Design {
       ]
     );
 
-    let idx = self.designs.selected_idx;
-    let info_box = Self::get_design_info(idx);
     self.designs.render(f, hor_chunks[1]);
-    if idx < 9 {
-      info_box.render(f, vert_chunks[1]);
-    }
-
+    
+    let selected = self
+      .designs
+      .items
+      .get(self.designs.selected_idx)
+      .map(|s| s.as_str())
+      .unwrap_or("");
+    
+    let info_box = Self::get_design_info(selected);
+    info_box.render(f, vert_chunks[1]);
+    
     self.help_modal.render(f, area);
   }
 
@@ -3150,6 +3168,7 @@ pub struct DisplayManager {
 impl DisplayManager {
   pub fn new() -> Self {
     let dms = [
+      "Ly",
       "Astronaut",
       "Black Hole",
       "Cyberpunk",
@@ -3195,13 +3214,51 @@ impl DisplayManager {
       help_modal,
     }
   }
-  pub fn get_displaymanager_info<'a>(idx: usize) -> InfoBox<'a> {
-    match idx {
-      0 => InfoBox::new(
+  pub fn get_displaymanager_info<'a>(name: &str) -> InfoBox<'a> {
+    match name {
+      "Ly" => InfoBox::new(
+        "Ly",
+        styled_block(vec![
+          vec![
+            (HIGHLIGHT, "Ly"),
+            (None, " is a "),
+            (HIGHLIGHT, "lightweight, terminal-based display manager"),
+            (None, " designed for "),
+            (HIGHLIGHT, "speed, simplicity, and minimal resource usage"),
+            (None, "."),
+          ],
+          vec![
+            (None, "It runs "),
+            (HIGHLIGHT, "directly on a TTY"),
+            (None, " and provides a "),
+            (HIGHLIGHT, "keyboard-driven login interface"),
+            (None, " without any graphical overhead."),
+          ],
+          vec![
+            (None, "Ly is "),
+            (HIGHLIGHT, "ideal for tiling window managers"),
+            (None, ", "),
+            (HIGHLIGHT, "Wayland compositors"),
+            (None, ", and users who prefer a "),
+            (HIGHLIGHT, "clean, distraction-free workflow"),
+            (None, "."),
+          ],
+          vec![
+            (None, "Its minimal design makes it "),
+            (HIGHLIGHT, "fast to start"),
+            (None, ", "),
+            (HIGHLIGHT, "easy to configure"),
+            (None, ", and "),
+            (HIGHLIGHT, "reliable on low-end or headless systems"),
+            (None, "."),
+          ],
+        ]),
+      ),
+      "Astronaut" => InfoBox::new(
         "Astronaut",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Astronaut theme"),
+            (HIGHLIGHT, "SDDM Astronaut"),
             (None, " presents a "),
             (HIGHLIGHT, "space-themed illustration"),
             (None, " featuring a "),
@@ -3230,11 +3287,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      1 => InfoBox::new(
+      "Black Hole" => InfoBox::new(
         "Black Hole",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Black Hole theme"),
+            (HIGHLIGHT, "SDDM Black Hole"),
             (None, " depicts a "),
             (HIGHLIGHT, "deep-space scene"),
             (None, " dominated by a "),
@@ -3270,11 +3327,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      2 => InfoBox::new(
+      "Cyberpunk" => InfoBox::new(
         "Cyberpunk",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Cyberpunk theme"),
+            (HIGHLIGHT, "SDDM Cyberpunk"),
             (None, " features a "),
             (HIGHLIGHT, "cyberpunk portrait"),
             (None, " of a "),
@@ -3306,11 +3363,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      3 => InfoBox::new(
+      "Cyborg" => InfoBox::new(
         "Cyborg",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Cyborg theme"),
+            (HIGHLIGHT, "SDDM Cyborg"),
             (None, " showcases a "),
             (HIGHLIGHT, "minimalist retro-futuristic illustration"),
             (None, " of a "),
@@ -3335,11 +3392,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      4 => InfoBox::new(
+      "Kath" => InfoBox::new(
         "Kath",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Kath theme"),
+            (HIGHLIGHT, "SDDM Kath"),
             (None, " is an "),
             (HIGHLIGHT, "animated pixel-art scene"),
             (None, " set in a "),
@@ -3368,11 +3425,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      5 => InfoBox::new(
+      "Jake The Dog" => InfoBox::new(
         "Jake The Dog",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Jake The Dog theme"),
+            (HIGHLIGHT, "SDDM Jake The Dog"),
             (None, " is an "),
             (HIGHLIGHT, "animated, cartoon-style scene"),
             (None, " featuring a "),
@@ -3395,11 +3452,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      6 => InfoBox::new(
+      "Pixel Sakura" => InfoBox::new(
         "Pixel Sakura",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Pixel Sakura theme"),
+            (HIGHLIGHT, "SDDM Pixel Sakura"),
             (None, " is a "),
             (HIGHLIGHT, "pixel-art cityscape"),
             (None, " with a "),
@@ -3441,11 +3498,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      7 => InfoBox::new(
+      "Post-Apocalypse" => InfoBox::new(
         "Post-Apocalypse",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "Post-Apocalypse theme"),
+            (HIGHLIGHT, "SDDM Post-Apocalypse"),
             (None, " presents a "),
             (HIGHLIGHT, "gritty, graphic-novel illustration"),
             (None, " of a "),
@@ -3476,11 +3533,11 @@ impl DisplayManager {
           ],
         ]),
       ),
-      8 => InfoBox::new(
+      "Purple Leaves" => InfoBox::new(
         "Purple Leaves",
         styled_block(vec![
           vec![
-            (HIGHLIGHT, "The wallpaper"),
+            (HIGHLIGHT, "SDDM Purple Leaves"),
             (None, " features a "),
             (HIGHLIGHT, "stylized botanical pattern"),
             (None, " of "),
@@ -3503,11 +3560,15 @@ impl DisplayManager {
           ],
         ]),
       ),
+      "None" => InfoBox::new(
+        "None",
+        styled_block(vec![vec![(None, "No display manager will be installed.")]]),
+      ),
       _ => InfoBox::new(
-        "Unknown Display Manager Theme",
+        "Unknown Display Manager",
         styled_block(vec![vec![(
           None,
-          "No information available for this display manager theme.",
+          "No information available for this display manager.",
         )]]),
       ),
     }
@@ -3517,7 +3578,7 @@ impl DisplayManager {
       let ib = InfoBox::new(
         "",
         styled_block(vec![
-          vec![(None, "Current display manager theme set to:")],
+          vec![(None, "Current display manager set to:")],
           vec![(HIGHLIGHT, &s)],
         ]),
       );
@@ -3530,15 +3591,15 @@ impl DisplayManager {
       styled_block(vec![
         vec![(
           None,
-          "Select the display manager theme to be installed on your system.",
+          "Select the display manager to be installed on your system.",
         )],
         vec![(
           None,
-          "The display manager theme provides the visual presentation of your login screen, including the backgrounds, branding, and session controls.",
+          "The display manager provides the visual presentation of your login screen, including the backgrounds, branding, and session controls.",
         )],
         vec![(
           None,
-          "Choosing a display manager theme can help tailor the login experience to your preferences and accessibility needs.",
+          "Choosing a display manager can help tailor the login experience to your preferences and accessibility needs.",
         )],
       ]),
     )
@@ -3567,12 +3628,17 @@ impl Page for DisplayManager {
       ]
     );
 
-    let idx = self.dms.selected_idx;
-    let info_box = Self::get_displaymanager_info(idx);
     self.dms.render(f, hor_chunks[1]);
-    if idx < 9 {
-      info_box.render(f, vert_chunks[1]);
-    }
+
+    let selected = self
+      .dms
+      .items
+      .get(self.dms.selected_idx)
+      .map(|s| s.as_str())
+      .unwrap_or("");
+
+    let info_box = Self::get_displaymanager_info(selected);
+    info_box.render(f, vert_chunks[1]);
 
     self.help_modal.render(f, area);
   }

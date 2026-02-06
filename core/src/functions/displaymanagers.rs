@@ -12,6 +12,7 @@ pub fn install_dm_setup(dm_setup: DMSetup) -> Vec<&'static str> {
         DMSetup::Gdm => install_gdm(),
         DMSetup::LightDMNeon => install_lightdm_neon(),
         DMSetup::Sddm => install_sddm(),
+        DMSetup::Ly => install_ly(),
         DMSetup::None => {
             debug!("No display manager setup selected");
             Vec::new() // Return empty vector if no DM setup is selected
@@ -57,6 +58,25 @@ fn install_lightdm_neon() -> Vec<&'static str> {
     packages
 }
 
+fn install_ly() -> Vec<&'static str> {
+    let packages = vec![
+        "ly",
+    ];
+
+    if is_nix() {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/nixos/configuration.nix",
+                "  dmanager =.*",
+                "  dmanager = \"ly\";",
+            ),
+            "Set Ly",
+        ); 
+    }
+
+    packages
+}
+
 fn install_sddm() -> Vec<&'static str> {
     let packages = vec![
         "sddm-astronaut-theme",
@@ -95,7 +115,45 @@ pub fn configure_lightdm_neon(desktop: &str) {
     enable_service("lightdm");
 }
 
-pub fn configure_sddm() {
+pub fn configure_ly() {
+    if !is_nix() {
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/ly/config.ini",
+                "animation =.*",
+                "animation = matrix",
+            ),
+            "Set Ly theme",
+        );
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/ly/config.ini",
+                "brightness_down_key =.*",
+                "brightness_down_key = null",
+            ),
+            "Disable Ly Brightness Down key setting",
+        );
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/ly/config.ini",
+                "brightness_up_key =.*",
+                "brightness_up_key = null",
+            ),
+            "Disable Ly Brightness Up key setting",
+        );
+        files_eval(
+            files::sed_file(
+                "/mnt/etc/ly/config.ini",
+                "hide_version_string =.*",
+                "hide_version_string = true",
+            ),
+            "Hide Ly version setting",
+        );
+        enable_service("ly@tty1");
+    }
+}
+
+fn configure_sddm() {
     if !is_nix() {
         // File creation and configuration can still happen here if needed
         files_eval(files::create_directory("/mnt/etc/sddm.conf.d"), "Create /mnt/etc/sddm.conf.d");
@@ -127,6 +185,7 @@ pub fn configure_sddm() {
 }
 
 pub fn configure_sddm_astronaut() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -143,12 +202,13 @@ pub fn configure_sddm_astronaut() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"astronaut\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );
     }
 }
 
 pub fn configure_sddm_blackhole() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -165,12 +225,13 @@ pub fn configure_sddm_blackhole() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"black_hole\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_cyberpunk() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -187,12 +248,13 @@ pub fn configure_sddm_cyberpunk() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"cyberpunk\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_cyborg() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -209,12 +271,13 @@ pub fn configure_sddm_cyborg() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"japanese_aesthetic\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_jake() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -231,12 +294,13 @@ pub fn configure_sddm_jake() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"jake_the_dog\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_kath() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -253,12 +317,13 @@ pub fn configure_sddm_kath() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"hyprland_kath\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_pixelsakura() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -275,12 +340,13 @@ pub fn configure_sddm_pixelsakura() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"pixel_sakura\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_postapocalypse() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -297,12 +363,13 @@ pub fn configure_sddm_postapocalypse() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"post-apocalyptic_hacker\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );        
     }
 }
 
 pub fn configure_sddm_purpleleaves() {
+    configure_sddm();
     if !is_nix() {
         files_eval(
             files::sed_file(
@@ -319,7 +386,7 @@ pub fn configure_sddm_purpleleaves() {
                 "  sddmtheme =.*",
                 "  sddmtheme = \"purple_leaves\";",
             ),
-            "Set LightDM",
+            "Set SDDM theme",
         );
     }
 }

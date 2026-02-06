@@ -406,6 +406,9 @@ pub enum DMSetup {
     #[value(name = "lightdm-neon")]
     LightDMNeon,
 
+    #[value(name = "ly")]
+    Ly,
+
     #[value(name = "sddm")]
     Sddm,
 

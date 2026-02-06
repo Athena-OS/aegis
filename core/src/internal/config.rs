@@ -224,53 +224,72 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     /**************************/
     /*        DESKTOP         */
     info!("Selected desktop : {:?}", config.desktop);
-    /*if let Some(desktop) = &config.desktop {
-        desktops::install_desktop_setup(*desktop);
-    }*/
-    match config.desktop.to_lowercase().as_str() {
-        "onyx" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Onyx)),
-        "kde plasma" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Kde)), //Note that the value on this match statement must fit the name in desktops.py of aegis-gui (then they are lowercase transformed)
-        "mate" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Mate)),
-        "gnome" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Gnome)),
-        "cinnamon" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Cinnamon)),
-        "xfce picom" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::XfcePicom)),
-        "xfce" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::XfceRefined)),
-        "budgie" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Budgie)),
-        "enlightenment" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Enlightenment)),
-        "lxqt" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Lxqt)),
-        "sway" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Sway)),
-        "i3" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::I3)),
-        "herbstluftwm" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Herbstluftwm)),
-        "awesome" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Awesome)),
-        "bspwm" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Bspwm)),
-        "hyprland" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::Hyprland)),
-        "none" => package_set.extend_into(desktops::install_desktop_setup(DesktopSetup::None)),
-        _ => info!("No desktop setup selected!"),
+    let desktop = match config.desktop.trim().to_lowercase().as_str() {
+        "onyx" => Some(DesktopSetup::Onyx),
+        "kde plasma" => Some(DesktopSetup::Kde),
+        "mate" => Some(DesktopSetup::Mate),
+        "gnome" => Some(DesktopSetup::Gnome),
+        "cinnamon" => Some(DesktopSetup::Cinnamon),
+        "xfce picom" => Some(DesktopSetup::XfcePicom),
+        "xfce" => Some(DesktopSetup::XfceRefined),
+        "budgie" => Some(DesktopSetup::Budgie),
+        "enlightenment" => Some(DesktopSetup::Enlightenment),
+        "lxqt" => Some(DesktopSetup::Lxqt),
+        "sway" => Some(DesktopSetup::Sway),
+        "i3" => Some(DesktopSetup::I3),
+        "herbstluftwm" => Some(DesktopSetup::Herbstluftwm),
+        "awesome" => Some(DesktopSetup::Awesome),
+        "bspwm" => Some(DesktopSetup::Bspwm),
+        "hyprland" => Some(DesktopSetup::Hyprland),
+        "none" => Some(DesktopSetup::None),
+        _ => None,
+    };
+
+    if let Some(desktop) = desktop {
+        package_set.extend_into(desktops::install_desktop_setup(desktop));
+    } else {
+        info!("No desktop setup selected!");
     }
     /**************************/
 
     /*     DISPLAY MANAGER    */
     info!("Selected display manager : {:?}", config.displaymanager);
-    package_set.extend_into(displaymanagers::install_dm_setup(DMSetup::Sddm));
-    //match config.displaymanager.to_lowercase().as_str() {
-    //    "gdm" => package_set.extend_into(displaymanagers::install_dm_setup(DMSetup::Gdm)),
-    //    "lightdm neon" => package_set.extend_into(displaymanagers::install_dm_setup(DMSetup::LightDMNeon)),
-    //    "sddm" => package_set.extend_into(displaymanagers::install_dm_setup(DMSetup::Sddm)),
-    //    _ => info!("No display manager setup selected!"),
-    //}
+    let dm = match config.displaymanager.trim().to_lowercase().as_str() {
+        "gdm" => Some(DMSetup::Gdm),
+        "lightdm neon" => Some(DMSetup::LightDMNeon),
+        "ly" => Some(DMSetup::Ly),
+        // all these map to Sddm
+        "astronaut" | "black hole" | "cyberpunk" | "cyborg" | "jake the dog"
+        | "kath" | "pixel sakura" | "post-apocalypse" | "purple leaves"
+            => Some(DMSetup::Sddm),
+
+        _ => None,
+    };
+
+    if let Some(dm) = dm {
+        package_set.extend_into(displaymanagers::install_dm_setup(dm));
+    } else {
+        info!("No display manager setup selected!");
+    }
     /**************************/
     /*         DESIGN         */
     info!("Selected design : {:?}", config.design);
-    match config.design.to_lowercase().as_str() {
-        "cyborg" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Cyborg)),
-        "frost" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Frost)),
-        "graphite" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Graphite)),
-        "hackthebox" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::HackTheBox)), //Note that the value on this match statement must fit the name in themes.py of aegis-gui (then they are lowercase transformed)
-        "redmoon" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::RedMoon)),
-        "samurai" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Samurai)),
-        "sweet" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Sweet)),
-        "temple" => package_set.extend_into(themes::install_theme_setup(ThemeSetup::Temple)),
-        _ => info!("No design setup selected!"),
+    let theme = match config.design.trim().to_lowercase().as_str() {
+        "cyborg" => Some(ThemeSetup::Cyborg),
+        "frost" => Some(ThemeSetup::Frost),
+        "graphite" => Some(ThemeSetup::Graphite),
+        "hackthebox" => Some(ThemeSetup::HackTheBox),
+        "redmoon" => Some(ThemeSetup::RedMoon),
+        "samurai" => Some(ThemeSetup::Samurai),
+        "sweet" => Some(ThemeSetup::Sweet),
+        "temple" => Some(ThemeSetup::Temple),
+        _ => None,
+    };
+
+    if let Some(theme) = theme {
+        package_set.extend_into(themes::install_theme_setup(theme));
+    } else {
+        info!("No design setup selected!");
     }
     /**************************/
     /*    EXTRA PACKAGES    */
@@ -282,12 +301,18 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
     package_set.push("zram-generator".into());
     /**************************/
     /*         USERS         */
-    for i in 0..config.users.len() {
-        match config.users[i].shell.to_lowercase().as_str() {
-            "bash" => package_set.extend_into(shells::install_shell_setup(ShellSetup::Bash)),
-            "fish" => package_set.extend_into(shells::install_shell_setup(ShellSetup::Fish)),
-            "zsh" => package_set.extend_into(shells::install_shell_setup(ShellSetup::Zsh)),
-            _ => info!("No shell setup selected!"),
+    for user in &config.users {
+        let shell = match user.shell.trim().to_lowercase().as_str() {
+            "bash" => Some(ShellSetup::Bash),
+            "fish" => Some(ShellSetup::Fish),
+            "zsh" => Some(ShellSetup::Zsh),
+            _ => None,
+        };
+
+        if let Some(shell) = shell {
+            package_set.extend_into(shells::install_shell_setup(shell));
+        } else {
+            info!("No shell setup selected!");
         }
     }
     /**************************/
@@ -365,11 +390,11 @@ pub fn install_config(inputs: &[ConfigInput], log_path: String) -> i32 {
 
     /* DISPLAY MANAGER CONFIG */
     info!("Configuring display manager : {:?}", config.displaymanager);
-    displaymanagers::configure_sddm();
     match config.displaymanager.to_lowercase().as_str() {
         "gdm" => displaymanagers::configure_gdm(&config.desktop),
         "lightdm neon" => displaymanagers::configure_lightdm_neon(&config.desktop),
-        "sddm" => displaymanagers::configure_sddm(),
+        "ly" => displaymanagers::configure_ly(),
+        //"sddm" => displaymanagers::configure_sddm(),
         "astronaut" => displaymanagers::configure_sddm_astronaut(),
         "black hole" => displaymanagers::configure_sddm_blackhole(),
         "cyberpunk" => displaymanagers::configure_sddm_cyberpunk(),
