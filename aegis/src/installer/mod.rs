@@ -2319,9 +2319,9 @@ impl DesktopEnvironment {
     let help_modal = HelpModal::new("Desktop Environment", help_content);
     Self { desktops, help_modal }
   }
-  pub fn get_desktop_info<'a>(idx: usize) -> InfoBox<'a> {
-    match idx {
-      0 => InfoBox::new(
+  pub fn get_desktop_info<'a>(name: &str) -> InfoBox<'a> {
+    match name {
+      "GNOME" => InfoBox::new(
         "GNOME",
         styled_block(vec![
           vec![
@@ -2356,7 +2356,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      1 => InfoBox::new(
+      "KDE Plasma" => InfoBox::new(
         "KDE Plasma",
         styled_block(vec![
           vec![
@@ -2390,7 +2390,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      2 => InfoBox::new(
+      "Hyprland" => InfoBox::new(
         "Hyprland",
         styled_block(vec![
           vec![
@@ -2421,7 +2421,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      3 => InfoBox::new(
+      "XFCE" => InfoBox::new(
         "XFCE",
         styled_block(vec![
           vec![
@@ -2454,7 +2454,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      4 => InfoBox::new(
+      "Cinnamon" => InfoBox::new(
         "Cinnamon",
         styled_block(vec![
           vec![
@@ -2488,7 +2488,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      5 => InfoBox::new(
+      "MATE" => InfoBox::new(
         "MATE",
         styled_block(vec![
           vec![
@@ -2523,7 +2523,7 @@ impl DesktopEnvironment {
           ],
         ]),
       ),
-      6 => InfoBox::new(
+      "Bspwm" => InfoBox::new(
         "Bspwm",
         styled_block(vec![
           vec![
@@ -2614,12 +2614,15 @@ impl Page for DesktopEnvironment {
       ]
     );
 
-    let idx = self.desktops.selected_idx;
-    let info_box = Self::get_desktop_info(idx);
+    let selected = self
+      .desktops
+      .items
+      .get(self.desktops.selected_idx)
+      .map(|s| s.as_str())
+      .unwrap_or("");
+    let info_box = Self::get_desktop_info(selected);
     self.desktops.render(f, hor_chunks[1]);
-    if idx < 9 {
-      info_box.render(f, vert_chunks[1]);
-    }
+    info_box.render(f, vert_chunks[1]);
 
     self.help_modal.render(f, area);
   }
